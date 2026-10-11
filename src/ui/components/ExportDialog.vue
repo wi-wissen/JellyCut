@@ -6,7 +6,7 @@ import { useExportStore } from '../stores/export'
 import { useCreditsStore } from '../stores/credits'
 import { assetsNeedingCredit } from '../../core/credits/credits'
 import { EXPORT_FPS, EXPORT_QUALITIES, EXPORT_RESOLUTIONS, GIF_FPS, GIF_WIDTHS } from '../../core/export/presets'
-import { formatBytes, formatClock, formatEta } from '../../core/export/format'
+import { exportDuration, formatBytes, formatClock, formatEta } from '../../core/export/format'
 import { formatEstimateValue, type TimeRange } from '../../core/export/estimate'
 
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
@@ -50,13 +50,16 @@ export default defineComponent({
       'runFileName',
       'hiddenNow'
     ]),
-    ...mapState(useEditorStore, ['totalDuration', 'project']),
+    ...mapState(useEditorStore, ['project']),
     ...mapState(useCreditsStore, { creditsOpen: 'open' }),
     locale(): string {
       return this.$i18n.locale
     },
+    exportLength(): number {
+      return exportDuration(this.project)
+    },
     durationText(): string {
-      return formatClock(this.totalDuration)
+      return formatClock(this.exportLength)
     },
     sizeText(): string {
       return formatBytes(this.estimatedBytes, this.locale)
@@ -406,7 +409,7 @@ export default defineComponent({
               </p>
             </template>
 
-            <p v-if="phase === 'ready' && totalDuration <= 0" role="status" class="mb-3 text-sm text-muted">{{ $t('export.errors.empty') }}</p>
+            <p v-if="phase === 'ready' && exportLength <= 0" role="status" class="mb-3 text-sm text-muted">{{ $t('export.errors.empty') }}</p>
             <div v-if="noEncoder" role="alert" class="mb-3 rounded-lg border border-[var(--jc-danger)] bg-panel2 px-3 py-2 text-sm">
               {{ $t('export.errors.noEncoder') }}
             </div>

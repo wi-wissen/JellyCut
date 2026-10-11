@@ -43,7 +43,7 @@ Stop `npm run dev` first (it uses port 5173, which `e2e-gif.mjs` needs). Run the
 - [ ] `e2e-zorder.mjs` (5340)
 - [ ] `e2e-stickers.mjs` (5360)
 - [ ] `e2e-design.mjs` (5310)
-- [ ] `e2e-fitend.mjs` (5370)
+- [ ] `e2e-fitend.mjs` (5380)
 - [ ] `e2e-export-worker.mjs` (5187)
 - [ ] `e2e-export.mjs` (5190)
 - [ ] `e2e-export-ui.mjs` (5186)

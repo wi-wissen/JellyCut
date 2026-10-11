@@ -127,7 +127,7 @@ The scripts in `scripts/e2e-*.mjs` drive Chromium with Playwright (`playwright-c
 | `e2e-zorder.mjs` | 5340 | true stacking order of areas and other overlays |
 | `e2e-stickers.mjs` | 5360 | picture stickers: gallery, preview and export pixels, save and load |
 | `e2e-design.mjs` | 5310 | design tabs: shared sections, no position fields, arrow keys (`E2E_PORT`) |
-| `e2e-fitend.mjs` | 5370 | overlays and texts end with the video: new items, drag, delete the last clip, undo |
+| `e2e-fitend.mjs` | 5380 | overlays, texts and music end with the video: new items, drag, trim, delete the last clip, undo |
 | **Export** | | |
 | `e2e-export-worker.mjs` | 5187 | export in a worker, progress, cancel (root page) |
 | `e2e-export.mjs` | 5190 | exported MP4 frame by frame and audio (root page) |

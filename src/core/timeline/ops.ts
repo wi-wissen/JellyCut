@@ -3,7 +3,7 @@ import { frameDuration, type Micros } from '../time'
 import { clipEnd, findClipAt, rippleClose, splitClip, trimClipEnd, trimClipStart } from './edit'
 import { IMAGE_MAX_DURATION } from './insert'
 import { duplicateOverlay } from './overlayOps'
-import { fitSpan, moveSpan, videoEnd } from './fit'
+import { fitSpan, moveSpan, musicSpan, videoEnd, withMusicSpan } from './fit'
 import { isSpeedInRange, timelineLength } from './speed'
 
 export type ItemKind = 'clip' | 'text' | 'music' | 'overlay'
@@ -113,7 +113,8 @@ export function duplicateItem(project: Project, ref: ItemRef, newId: string): Pr
   const index = project.music.findIndex((m) => m.id === ref.id)
   const original = project.music[index]
   if (!original) return project
-  const copy: MusicItem = { ...original, id: newId, start: original.start + (original.srcOut - original.srcIn) }
+  const span = musicSpan(original)
+  const copy = withMusicSpan({ ...original, id: newId }, fitSpan(span.start + span.duration, span.duration, videoEnd(project)))
   return { ...project, music: [...project.music.slice(0, index + 1), copy, ...project.music.slice(index + 1)] }
 }
 

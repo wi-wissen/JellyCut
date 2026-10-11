@@ -1,7 +1,8 @@
-// Real-browser check of the rule "overlays and texts end with the video": a new sticker near the end ends at
-// the end, a drag past the end stops flush, deleting the last clip moves the items to the new end, and undo
-// brings the lengths back. Uses the demo project (its video ends at 30 s). Usage: node scripts/e2e-fitend.mjs
-// (exit code 1 when a check fails). Port 5370.
+// Real-browser check of the rule "overlays, texts and music end with the video": a new sticker near the end ends
+// at the end, a drag past the end stops flush, deleting the last clip moves the items to the new end, and undo
+// brings the lengths back. Music: an imported file ends at the video end, a drag past the end stops flush, a trim
+// past the end stops there, and deleting the last clip shortens it. Uses the demo project (its video ends at
+// 30 s). Usage: node scripts/e2e-fitend.mjs (exit code 1 when a check fails). Port 5380.
 import { chromium } from 'playwright-core'
 import { createServer } from 'vite'
 import { existsSync, readdirSync } from 'node:fs'
@@ -9,7 +10,7 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const PORT = 5370
+const PORT = 5380
 const VIEW = { width: 1440, height: 900 }
 const S = 1_000_000
 
@@ -54,6 +55,14 @@ const state = () =>
     end: ed.videoEndMicros / 1e6,
     overlays: ed.project.overlays.map((o) => ({ id: o.id, start: o.start / 1e6, end: (o.start + o.duration) / 1e6 })),
     clips: ed.project.clips.map((c) => c.id)
+  })`)
+
+/** Music state as the store sees it, in seconds. */
+const musicState = () =>
+  st(`(ed) => ({
+    end: ed.videoEndMicros / 1e6,
+    music: ed.project.music.map((m) => ({ id: m.id, asset: m.assetId, start: m.start / 1e6, length: (m.srcOut - m.srcIn) / 1e6, end: (m.start + m.srcOut - m.srcIn) / 1e6 })),
+    assets: ed.project.assets.map((a) => ({ id: a.id, name: a.name, duration: a.duration / 1e6 }))
   })`)
 
 const pxPerSecond = () => page.evaluate(() => Number(document.querySelector('[data-px-per-second]').dataset.pxPerSecond))
@@ -145,6 +154,82 @@ const s5 = await state()
 const restored = s5.overlays.find((o) => o.id === dragged.id)
 check('undo: the last clip is back and the video ends at 30 s', s5.clips.length === before.clips.length && close(s5.end, 30), `${s5.end}`)
 check('undo: the sticker is back at its trimmed position (ends at 30 s)', !!restored && close(restored.end, 30) && close(restored.start, 27), JSON.stringify(restored))
+
+// --- 6. imported music is cut at the video end (placed at 27 s; music.webm is 5 s, so it plays 3 s) ---
+await st(`(ed) => ed.setPlayhead(27 * 1e6)`)
+await page.locator('input[type=file]').first().setInputFiles([join(root, 'tests/fixtures', 'music.webm')])
+await page.getByRole('button', { name: 'Audio', exact: true }).click()
+await page.getByRole('button', { name: /^Add music\.webm to the timeline/ }).waitFor({ timeout: 20000 })
+await page.getByRole('button', { name: /^Add music\.webm to the timeline/ }).click()
+await settle(300)
+const m6 = await musicState()
+const musicAsset = m6.assets.find((a) => a.name === 'music.webm')
+const imported = m6.music.find((m) => m.asset === musicAsset?.id)
+const expectedLength = Math.min(musicAsset?.duration ?? 0, 3)
+check('import music at 27 s: it is cut to the video end (30 s) and keeps the first 3 s of the file', !!imported && close(imported.start, 27) && close(imported.end, 30) && close(imported.length, expectedLength), JSON.stringify(imported))
+const L = imported ? imported.length : 0
+console.log(`INFO music.webm is ${musicAsset?.duration.toFixed(2)} s; the imported item plays ${L.toFixed(2)} s`)
+check('import music: the item is shorter than its file (it was cut by the video end)', !!musicAsset && L < musicAsset.duration - 1e-3, `${L} of ${musicAsset?.duration}`)
+
+/** The music bar that starts nearest to `seconds`, scrolled into view (the music lane is at the bottom). */
+const musicBar = async (seconds) => {
+  const pps = await pxPerSecond()
+  const index = await page.evaluate((x) => {
+    const bars = [...document.querySelectorAll('[data-lane="music"] [data-kind="music"]')]
+    let best = 0
+    bars.forEach((el, i) => {
+      if (Math.abs(parseFloat(el.style.left) - x) < Math.abs(parseFloat(bars[best].style.left) - x)) best = i
+    })
+    return best
+  }, seconds * pps)
+  const bar = page.locator('[data-lane="music"] [data-kind="music"]').nth(index)
+  await bar.scrollIntoViewIfNeeded()
+  return bar
+}
+
+// --- 7. drag the imported music past the end: it stops flush and keeps its length ---
+const pps6 = await pxPerSecond()
+await dragBy(await musicBar(imported.start), 8 * pps6)
+await settle(200)
+const m7 = await musicState()
+const dragMusic = m7.music.find((m) => m.id === imported.id)
+check('drag past the end: the music stops flush at 30 s and keeps its length', !!dragMusic && close(dragMusic.end, 30) && close(dragMusic.length, L), JSON.stringify(dragMusic))
+const musicEndLine = await page.locator('[data-role="video-end"]').boundingBox()
+const musicBox = await (await musicBar(dragMusic.start)).boundingBox()
+check('the music bar ends at the video end marker', !!musicEndLine && !!musicBox && musicBox.x + musicBox.width <= musicEndLine.x + 2, `${JSON.stringify(musicBox)} vs ${JSON.stringify(musicEndLine)}`)
+
+// --- 8. trim the music end past the end: it does not grow beyond the video or the file ---
+await (await musicBar(dragMusic.start)).click()
+const musicHandle = (await musicBar(dragMusic.start)).locator('[data-handle="end"]')
+if ((await musicHandle.count()) > 0) {
+  await dragBy(musicHandle, 200)
+  await settle(200)
+  const m8 = await musicState()
+  const trimmedMusic = m8.music.find((m) => m.id === imported.id)
+  check('trim the music end past the end: the length stays and the music still ends at 30 s', !!trimmedMusic && close(trimmedMusic.length, L) && close(trimmedMusic.end, 30), JSON.stringify(trimmedMusic))
+} else {
+  check('trim handle of the music is shown when selected', false, 'no end handle')
+}
+
+// --- 9. delete the last clip: the music follows the new end, the demo bed too, and nothing is deleted ---
+const beforeDelete = await musicState()
+await page.locator('[data-lane="video"] [data-kind="video"] button').nth(2).click()
+await page.keyboard.press('Delete')
+await settle(300)
+const m9 = await musicState()
+const followed = m9.music.find((m) => m.id === imported.id)
+const bed = m9.music.find((m) => m.id === 'music-1')
+check('delete the last clip: the music ends at the new video end (20 s), keeping its length', close(m9.end, 20) && !!followed && close(followed.end, 20) && close(followed.length, L), JSON.stringify(followed))
+check('delete the last clip: the demo music bed is cut to 20 s and not deleted', !!bed && close(bed.end, 20) && close(bed.length, 20), JSON.stringify(bed))
+check('delete the last clip: no music item is removed', m9.music.length === beforeDelete.music.length, `${m9.music.length} vs ${beforeDelete.music.length}`)
+
+// --- 10. undo: the music returns to its length and end ---
+await page.getByRole('button', { name: 'Undo', exact: true }).first().click()
+await settle(300)
+const m10 = await musicState()
+const back = m10.music.find((m) => m.id === imported.id)
+check('undo: the imported music ends at 30 s again with its length', close(m10.end, 30) && !!back && close(back.end, 30) && close(back.length, L), JSON.stringify(back))
+check('undo: the demo music bed is back to 30 s', close(m10.music.find((m) => m.id === 'music-1')?.end ?? 0, 30))
 
 check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '))
 

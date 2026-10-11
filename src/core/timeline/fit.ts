@@ -1,4 +1,4 @@
-import type { Project } from '../project/types'
+import type { MusicItem, Project } from '../project/types'
 import { planTimeline } from '../render/scene'
 import type { Micros } from '../time'
 
@@ -50,8 +50,18 @@ export function fitSpan(start: Micros, duration: Micros, end: Micros): Span {
   return { start, duration }
 }
 
+/** Music plays at speed 1, so its span is the source range. */
+export function musicSpan(item: MusicItem): Span {
+  return { start: item.start, duration: item.srcOut - item.srcIn }
+}
+
+/** Puts a span on a music item. srcIn stays, so a shortened item plays the start of its audio and its fades follow the new end. */
+export function withMusicSpan(item: MusicItem, span: Span): MusicItem {
+  return { ...item, start: span.start, srcOut: item.srcIn + span.duration }
+}
+
 /**
- * Keeps every overlay and text item on the video. Returns the same project when nothing changes, so a
+ * Keeps every overlay, text and music item on the video. Returns the same project when nothing changes, so a
  * normalised project is not an extra undo step. Idempotent.
  */
 export function fitToVideo(project: Project): Project {
@@ -66,7 +76,14 @@ export function fitToVideo(project: Project): Project {
   }
   const overlays = project.overlays.map(fit)
   const texts = project.texts.map(fit)
-  return changed ? { ...project, overlays, texts } : project
+  const music = project.music.map((item) => {
+    const current = musicSpan(item)
+    const span = fitSpan(current.start, current.duration, end)
+    if (span.start === current.start && span.duration === current.duration) return item
+    changed = true
+    return withMusicSpan(item, span)
+  })
+  return changed ? { ...project, overlays, texts, music } : project
 }
 
 /** Span after an edit: a start-only edit moves the item and keeps its length, any other timing edit trims it at the end. */

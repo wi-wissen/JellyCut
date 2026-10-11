@@ -250,10 +250,18 @@ describe('duplicateItem', () => {
     expectValid(next)
   })
 
-  it('places a music copy right after the original', () => {
-    const next = duplicateItem(fixture(), { kind: 'music', id: 'mu1' }, 'music-2')
+  it('places a music copy right after the original when there is room', () => {
+    const base = fixture()
+    const project = { ...base, music: [{ ...base.music[0]!, srcOut: s(10) }] }
+    const next = duplicateItem(project, { kind: 'music', id: 'mu1' }, 'music-2')
     expect(next.music.map((m) => m.id)).toEqual(['mu1', 'music-2'])
-    expect(next.music[1]?.start).toBe(s(30))
+    expect(next.music[1]).toMatchObject({ start: s(10), srcIn: 0, srcOut: s(10) })
+    expectValid(next)
+  })
+
+  it('a music copy with no room at the video end is moved back flush and shortened to fit', () => {
+    const next = duplicateItem(fixture(), { kind: 'music', id: 'mu1' }, 'music-2')
+    expect(next.music[1]).toMatchObject({ start: 0, srcIn: 0, srcOut: s(30) })
     expectValid(next)
   })
 

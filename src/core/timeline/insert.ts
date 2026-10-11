@@ -3,6 +3,7 @@ import { projectFit } from '../project/format'
 import type { Asset, Clip, MusicItem, Project } from '../project/types'
 import type { Micros } from '../time'
 import { clipEnd, rippleClose } from './edit'
+import { placeSpan, videoEnd } from './fit'
 
 /** Duration stored for images: they have no length, so they can be trimmed freely within an hour. */
 export const IMAGE_MAX_DURATION: Micros = 3_600_000_000
@@ -55,7 +56,7 @@ export function insertClipAt(project: Project, assetId: string, newClipId: strin
   return { ...project, clips: rippleClose(keyed) }
 }
 
-/** Adds an audio asset as a music bed starting at `start`. */
+/** Adds an audio asset as a music bed at `start`, placed like an overlay: it ends at the video end when it would pass it. */
 export function addMusic(project: Project, assetId: string, newId: string, start: Micros): Project {
   const asset = findAsset(project, assetId)
   if (asset.kind !== 'audio') {
@@ -65,12 +66,13 @@ export function addMusic(project: Project, assetId: string, newId: string, start
   if (!Number.isSafeInteger(start) || start < 0) {
     throw new RangeError(`start must be a non-negative integer, got ${start}`)
   }
+  const span = placeSpan(start, asset.duration, videoEnd(project))
   const item: MusicItem = {
     id: newId,
     assetId,
-    start,
+    start: span.start,
     srcIn: 0,
-    srcOut: asset.duration,
+    srcOut: span.duration,
     volume: MUSIC_VOLUME,
     fadeIn: 0,
     fadeOut: 0

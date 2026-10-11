@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import type { AudioCodec, VideoCodec } from 'mediabunny'
 import { exportFileName } from '../../core/export/filename'
-import { missingAssetsInUse, type AssetStatusMap } from '../../core/export/format'
+import { exportDuration, missingAssetsInUse, type AssetStatusMap } from '../../core/export/format'
 import {
   applyFactors,
   estimateCodecOf,
@@ -44,7 +44,7 @@ import {
 import type { Project } from '../../core/project/types'
 import { planTimeline } from '../../core/render/scene'
 import type { Micros } from '../../core/time'
-import { checkEncoders, ExportCancelled, ExportUnsupported, projectDuration, type ExportProgress, type ExportResult } from '../../engine/export/exporter'
+import { checkEncoders, ExportCancelled, ExportUnsupported, type ExportProgress, type ExportResult } from '../../engine/export/exporter'
 import { startExport, type RunningExport } from '../../engine/export/exportClient'
 import { GifTooLarge as GifTooLargeError, type GifResult } from '../../engine/export/gifExporter'
 import { FONT_SOURCES } from '../fontUrls'
@@ -384,36 +384,36 @@ export const useExportStore = defineStore('export', {
     /** Estimated file size for the active format and the project length. */
     estimatedBytes(state): number {
       const editor = useEditorStore()
-      if (state.format === 'gif') return gifBytesFor(editor.project, state.gif, editor.totalDuration, state.gifCalibration.bytesPerPixel)
-      return estimateFileSize(state.options, editor.project.format.ratio, editor.totalDuration)
+      if (state.format === 'gif') return gifBytesFor(editor.project, state.gif, exportDuration(editor.project), state.gifCalibration.bytesPerPixel)
+      return estimateFileSize(state.options, editor.project.format.ratio, exportDuration(editor.project))
     },
     /** Estimate of the export time for the current settings, with the learned factors applied. */
     estimate(state): Estimate {
       const editor = useEditorStore()
-      return estimateFor(state, editor.project, editor.totalDuration)
+      return estimateFor(state, editor.project, exportDuration(editor.project))
     },
     /** Expected export time in seconds (the middle of the range). */
     estimatedSeconds(state): number {
       const editor = useEditorStore()
-      return estimateFor(state, editor.project, editor.totalDuration).seconds
+      return estimateFor(state, editor.project, exportDuration(editor.project)).seconds
     },
     /** Expected export time without any learned factor, for comparison. */
     uncalibratedSeconds(state): number {
       const editor = useEditorStore()
-      return totalSeconds(estimateFor(state, editor.project, editor.totalDuration).profile.phases)
+      return totalSeconds(estimateFor(state, editor.project, exportDuration(editor.project)).profile.phases)
     },
     /** A GIF that is too long or too large: the dialog warns and Start stays disabled. */
     gifTooBig(state): boolean {
       const editor = useEditorStore()
-      return state.format === 'gif' && gifRefused(editor.project, state.gif, editor.totalDuration)
+      return state.format === 'gif' && gifRefused(editor.project, state.gif, exportDuration(editor.project))
     },
     missingNames(): string[] {
       return missingInProject(useEditorStore().project)
     },
     canStart(state): boolean {
       const editor = useEditorStore()
-      if (state.phase !== 'ready' || state.picking || editor.totalDuration <= 0 || missingInProject(editor.project).length > 0) return false
-      if (state.format === 'gif') return !gifRefused(editor.project, state.gif, editor.totalDuration)
+      if (state.phase !== 'ready' || state.picking || exportDuration(editor.project) <= 0 || missingInProject(editor.project).length > 0) return false
+      if (state.format === 'gif') return !gifRefused(editor.project, state.gif, exportDuration(editor.project))
       return state.encoders?.video != null
     }
   },
@@ -496,7 +496,7 @@ export const useExportStore = defineStore('export', {
       if (!isGif && this.encoders?.video == null) return
       const editor = useEditorStore()
       const project = editor.project
-      if (projectDuration(project) <= 0) {
+      if (exportDuration(project) <= 0) {
         this.fail({ key: 'export.errors.empty', params: {} })
         return
       }
@@ -505,7 +505,7 @@ export const useExportStore = defineStore('export', {
         this.fail({ key: 'export.errors.missing', params: { names: missing.join(', ') } })
         return
       }
-      if (isGif && gifRefused(project, this.gif, editor.totalDuration)) {
+      if (isGif && gifRefused(project, this.gif, exportDuration(editor.project))) {
         this.fail({ key: 'export.errors.gifTooLarge', params: {} })
         return
       }
@@ -588,7 +588,7 @@ export const useExportStore = defineStore('export', {
           // Throttled by the browser for too long: the timing says nothing about this computer.
         } else if (isGif) {
           const { width, height } = gifOutputSize(project.format.ratio, this.gif.width)
-          this.learnGifCalibration(result.blob.size, totalSeconds(uncalibrated), result.elapsedMs, width, height, totalFrames(editor.totalDuration, this.gif.fps))
+          this.learnGifCalibration(result.blob.size, totalSeconds(uncalibrated), result.elapsedMs, width, height, totalFrames(exportDuration(editor.project), this.gif.fps))
         } else {
           this.learnCalibration(family, featureClass, uncalibrated, (result as ExportResult).phases)
         }

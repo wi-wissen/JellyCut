@@ -1,12 +1,13 @@
 import { buildPalette } from '../../core/gif/quantize'
 import { GifWriter } from '../../core/gif/writer'
+import { exportDuration } from '../../core/export/format'
 import { gifOutputSize, gifTooLarge, totalFrames, type GifOptions } from '../../core/export/presets'
 import type { Project } from '../../core/project/types'
 import { planTimeline } from '../../core/render/scene'
 import { frameStart } from '../../core/time'
 import { ExportEta } from '../../core/export/eta'
 import { Compositor } from '../render/compositor'
-import { ExportCancelled, ExportUnsupported, createFrameProvider, drawFrame, projectDuration, type ExportControl, type ExportProgress } from './exporter'
+import { ExportCancelled, ExportUnsupported, createFrameProvider, drawFrame, type ExportControl, type ExportProgress } from './exporter'
 
 export interface GifExportRequest {
   kind: 'gif'
@@ -56,7 +57,7 @@ export async function runGifExport(
   const started = performance.now()
   const { project, options } = request
   const planned = planTimeline(project)
-  const duration = projectDuration(project, planned)
+  const duration = exportDuration(project)
   if (duration <= 0) throw new ExportUnsupported('The project is empty.')
 
   const { width, height } = gifOutputSize(project.format.ratio, options.width)

@@ -219,6 +219,23 @@ describe('addMusic', () => {
     expectValid(next)
   })
 
+  it('placed at the playhead near the end, it ends at the video end (like an overlay)', () => {
+    const project = { ...projectWith([audio('m', 12 * SEC), video('v1', 30 * SEC)]), clips: [clip('c1', 0, 30 * SEC)] }
+    const near = addMusic(project, 'm', 'mu1', 29_800_000)
+    expect(near.music[0]).toMatchObject({ start: 29_500_000, srcIn: 0, srcOut: 500_000 })
+    expectValid(near)
+  })
+
+  it('placed after the end, it ends at the video end with its full length', () => {
+    const project = { ...projectWith([audio('m', 12 * SEC), video('v1', 30 * SEC)]), clips: [clip('c1', 0, 30 * SEC)] }
+    expect(addMusic(project, 'm', 'mu1', 40 * SEC).music[0]).toMatchObject({ start: 18 * SEC, srcOut: 12 * SEC })
+  })
+
+  it('placed inside the video, it is shortened where it would pass the end', () => {
+    const project = { ...projectWith([audio('m', 40 * SEC), video('v1', 30 * SEC)]), clips: [clip('c1', 0, 30 * SEC)] }
+    expect(addMusic(project, 'm', 'mu1', 5 * SEC).music[0]).toMatchObject({ start: 5 * SEC, srcOut: 25 * SEC })
+  })
+
   it('keeps existing music items', () => {
     const first = addMusic(projectWith([audio('m')]), 'm', 'mu1', 0)
     const second = addMusic(first, 'm', 'mu2', SEC)

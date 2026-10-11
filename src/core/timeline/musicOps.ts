@@ -1,5 +1,6 @@
 import type { MusicItem, Project } from '../project/types'
 import { frameDuration, secondsToMicros, type Micros } from '../time'
+import { moveSpan, musicSpan, videoEnd, withMusicSpan } from './fit'
 
 export interface MusicPatch {
   volume?: number
@@ -64,11 +65,15 @@ function replaceMusic(project: Project, id: string, update: (item: MusicItem) =>
   return sameItems(music, project.music) ? project : { ...project, music }
 }
 
-/** Moves a music item in time; the source range and the length are kept. The start is at least 0. */
+/**
+ * Moves a music item in time; the length is kept, and it stops flush at the video end (shortened when it is
+ * longer than the video). The start is at least 0.
+ */
 export function moveMusic(project: Project, id: string, newStart: Micros): Project {
+  const end = videoEnd(project)
   return replaceMusic(project, id, (item) => {
     if (!Number.isFinite(newStart)) return null
-    return { ...item, start: Math.max(0, Math.round(newStart)) }
+    return withMusicSpan(item, moveSpan(newStart, musicSpan(item).duration, end))
   })
 }
 
@@ -87,15 +92,19 @@ export function trimMusicStart(project: Project, id: string, newStart: Micros, f
   })
 }
 
-/** Moves the end handle. The end can grow only up to the end of the source file. */
+/**
+ * Moves the end handle. The end can grow only up to the end of the source file and up to the video end.
+ */
 export function trimMusicEnd(project: Project, id: string, newEnd: Micros, fps: number): Project {
   const minLength = frameDuration(fps)
+  const end = videoEnd(project)
   return replaceMusic(project, id, (item) => {
     if (!Number.isFinite(newEnd)) return null
     const asset = project.assets.find((a) => a.id === item.assetId)
     if (!asset) return null
-    const nextLength = clamp(Math.round(newEnd) - item.start, minLength, asset.duration - item.srcIn)
-    return { ...item, srcOut: item.srcIn + nextLength }
+    const longest = Math.min(asset.duration - item.srcIn, end > 0 ? end - item.start : Infinity)
+    const nextLength = clamp(Math.round(newEnd) - item.start, Math.min(minLength, longest), longest)
+    return withMusicSpan(item, { start: item.start, duration: nextLength })
   })
 }
 

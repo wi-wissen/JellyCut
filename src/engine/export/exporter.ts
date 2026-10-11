@@ -97,7 +97,7 @@ export async function runExport(
   const started = performance.now()
   const { project, options } = req
   const planned = planTimeline(project)
-  const duration = projectDuration(project, planned)
+  const duration = planned.duration
   if (duration <= 0) throw new ExportUnsupported('The project is empty.')
 
   const { width, height } = outputSize(project.format.ratio, options.resolution)
@@ -212,15 +212,6 @@ export async function runExport(
     elapsedMs: performance.now() - started,
     phases: measured
   }
-}
-
-/**
- * Length of the export in microseconds: the video clips or the music, whichever ends last. Texts and
- * overlays never set the length; they stay on the video (core/timeline/fit).
- */
-export function projectDuration(project: Project, planned: PlannedTimeline = planTimeline(project)): Micros {
-  const musicEnd = project.music.reduce((end, m) => Math.max(end, m.start + (m.srcOut - m.srcIn)), 0)
-  return Math.max(planned.duration, musicEnd)
 }
 
 /** Frame source for every asset that has a file; assets without one render as background only. */

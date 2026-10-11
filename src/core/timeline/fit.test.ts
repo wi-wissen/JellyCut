@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createProject, validateProject } from '../project/schema'
-import type { Clip, OverlayItem, Project, TextItem } from '../project/types'
+import type { Clip, MusicItem, OverlayItem, Project, TextItem } from '../project/types'
 import { secondsToMicros } from '../time'
 import { deleteItem } from './ops'
 import { MIN_ADD_DURATION, editedSpan, fitSpan, fitToVideo, moveSpan, placeSpan, videoEnd } from './fit'
@@ -36,6 +36,11 @@ function projectWith(clips: Clip[], assetSeconds = 120): Project {
 /** A 30 s video: three clips back to back. */
 function thirtySeconds(): Project {
   return projectWith([clip('c1', 0, 10), clip('c2', 10, 10), clip('c3', 20, 10)])
+}
+
+/** A music item from `start` for `length` seconds of source, beginning at `srcIn` seconds of the file. */
+function music(id: string, start: number, length: number, srcIn = 0): MusicItem {
+  return { id, assetId: 'a1', start: s(start), srcIn: s(srcIn), srcOut: s(srcIn + length), volume: 1, fadeIn: 0, fadeOut: 0 }
 }
 
 function sticker(id: string, start: number, duration: number): OverlayItem {
@@ -200,9 +205,41 @@ describe('fitToVideo', () => {
     expect(fitted.overlays[0]).toMatchObject({ start: s(17), duration: s(3) })
   })
 
-  it('does not touch music', () => {
-    const music = [{ id: 'm', assetId: 'a1', start: 0, srcIn: 0, srcOut: s(90), volume: 1, fadeIn: 0, fadeOut: 0 }]
-    const p = { ...thirtySeconds(), music }
+  it('keeps music inside the video, and does not clamp when there are no clips', () => {
+    const p = { ...thirtySeconds(), music: [music('m', 1, 2)] }
     expect(fitToVideo(p)).toBe(p)
+    const noClips = { ...projectWith([]), music: [music('m', 40, 90)] }
+    expect(fitToVideo(noClips)).toBe(noClips)
+  })
+
+  it('shortens music that reaches past the end by trimming its end, so the source start stays', () => {
+    const p = { ...thirtySeconds(), music: [music('m', 25, 12, 2)] }
+    const fitted = fitToVideo(p)
+    expect(fitted.music[0]).toEqual({ ...p.music[0], start: s(25), srcIn: s(2), srcOut: s(7) })
+    expect(validateProject(fitted).ok).toBe(true)
+  })
+
+  it('moves music that starts at or after the end flush to it, shortened when longer than the video', () => {
+    expect(fitToVideo({ ...thirtySeconds(), music: [music('m', 40, 2)] }).music[0]).toMatchObject({ start: s(28), srcIn: 0, srcOut: s(2) })
+    expect(fitToVideo({ ...thirtySeconds(), music: [music('m', 31, 40)] }).music[0]).toMatchObject({ start: 0, srcIn: 0, srcOut: s(30) })
+  })
+
+  it('shortens music that is longer than the video', () => {
+    expect(fitToVideo({ ...thirtySeconds(), music: [music('m', 0, 90)] }).music[0]).toMatchObject({ start: 0, srcOut: s(30) })
+  })
+
+  it('music follows the end when the last clip is deleted, and a speed change', () => {
+    const p = { ...thirtySeconds(), music: [music('m', 18, 10)] }
+    const shorter = fitToVideo(deleteItem(p, { kind: 'clip', id: 'c3' }))
+    expect(shorter.music[0]).toMatchObject({ start: s(18), srcOut: s(2) })
+    const faster = fitToVideo({ ...thirtySeconds(), clips: [clip('c1', 0, 10), clip('c2', 10, 10), { ...clip('c3', 20, 10), speed: 2 }], music: [music('m', 18, 10)] })
+    expect(videoEnd(faster)).toBe(s(25))
+    expect(faster.music[0]).toMatchObject({ start: s(18), srcOut: s(7) })
+  })
+
+  it('is idempotent with music', () => {
+    const p = { ...thirtySeconds(), music: [music('m', 40, 9)] }
+    const once = fitToVideo(p)
+    expect(fitToVideo(once)).toBe(once)
   })
 })

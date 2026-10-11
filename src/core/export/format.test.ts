@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createProject } from '../project/schema'
-import { formatBytes, formatClock, formatEta, missingAssetsInUse } from './format'
+import { exportDuration, formatBytes, formatClock, formatEta, missingAssetsInUse } from './format'
+import type { Project } from '../project/types'
 
 describe('formatClock', () => {
   it('shows minutes and seconds', () => {
@@ -98,5 +99,35 @@ describe('missingAssetsInUse', () => {
 
   it('returns an empty list for a project without media', () => {
     expect(missingAssetsInUse(createProject('Empty'), {})).toEqual([])
+  })
+})
+
+describe('exportDuration', () => {
+  /** A 30 s video clip and, optionally, a 60 s music bed that runs past it. */
+  function project(music: boolean): Project {
+    const p = createProject('Export')
+    return {
+      ...p,
+      assets: [
+        { id: 'v1', kind: 'video', name: 'v.mp4', relPath: 'media/v.mp4', size: 1, duration: 30_000_000, width: 1920, height: 1080, fps: 30 },
+        { id: 'm1', kind: 'audio', name: 'bed.mp3', relPath: 'media/bed.mp3', size: 1, duration: 60_000_000 }
+      ],
+      clips: [
+        {
+          id: 'c1', track: 'video', assetId: 'v1', srcIn: 0, srcOut: 30_000_000, start: 0, speed: 1,
+          transform: { fit: 'fit', scale: 1, x: 0, y: 0, rotation: 0, flipX: false }, volume: 1, muted: false, filter: null, transitionIn: null
+        }
+      ],
+      music: music ? [{ id: 'mu1', assetId: 'm1', start: 0, srcIn: 0, srcOut: 60_000_000, volume: 1, fadeIn: 0, fadeOut: 0 }] : []
+    }
+  }
+
+  it('is the length of the clips: music cannot extend the export', () => {
+    expect(exportDuration(project(false))).toBe(30_000_000)
+    expect(exportDuration(project(true))).toBe(30_000_000)
+  })
+
+  it('is zero without clips', () => {
+    expect(exportDuration(createProject('Empty'))).toBe(0)
   })
 })

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CUT_FADE, gainAt, planAudioSegments } from './mix'
 import { planTimeline } from '../render/scene'
+import { fitToVideo } from '../timeline/fit'
 import { createProject } from '../project/schema'
 import type { Asset, Clip, MusicItem, Project } from '../project/types'
 
@@ -137,6 +138,22 @@ describe('planAudioSegments: music', () => {
     )
     // The first video clip is always rippled to 0, so it starts first; m1 and m2 tie and are ordered by id.
     expect(plan(q).map((s) => s.sourceId)).toEqual(['c1', 'm1', 'm2', 'm0'])
+  })
+})
+
+describe('planAudioSegments: music on the video end', () => {
+  it('a music item cut at the video end keeps the start of its source and fades out at the new end', () => {
+    const base = project(
+      [asset('v', 'video'), asset('m', 'audio', { duration: 60 * S })],
+      [clip('c1', 'v', 0, 20 * S, 0)],
+      [music('mu', 'm', 0, 0, 30 * S, { fadeOut: 2 * S })]
+    )
+    const fitted = fitToVideo(base)
+    const [segment] = plan(fitted).filter((s) => s.kind === 'music')
+    expect(fitted.music[0]).toMatchObject({ start: 0, srcIn: 0, srcOut: 20 * S })
+    expect(segment).toMatchObject({ srcStart: 0, srcEnd: 20 * S, timelineStart: 0, timelineEnd: 20 * S })
+    expect(gainAt(segment!.envelope, 18 * S)).toBeCloseTo(0.5)
+    expect(gainAt(segment!.envelope, 20 * S)).toBe(0)
   })
 })
 

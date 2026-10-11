@@ -1,9 +1,18 @@
 import type { Project } from '../project/types'
+import { planTimeline } from '../render/scene'
 import { MICROS_PER_SECOND, type Micros } from '../time'
 
 const KB = 1024
 const MB = KB * 1024
 const GB = MB * 1024
+
+/**
+ * Length of the export: the video clips, transitions included. Music, texts and overlays never extend it,
+ * they are cut at the video end (core/timeline/fit).
+ */
+export function exportDuration(project: Project): Micros {
+  return planTimeline(project).duration
+}
 
 /** Timecode-style length: "m:ss", or "h:mm:ss" from one hour on. Fractions are cut off. */
 export function formatClock(micros: Micros): string {

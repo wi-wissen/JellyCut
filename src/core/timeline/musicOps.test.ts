@@ -125,3 +125,56 @@ describe('music moves, trims, splits and mute', () => {
     expect(fixture().music[0]!.muted).toBeUndefined()
   })
 })
+
+describe('music on the video end', () => {
+  const FPS = 30
+  const bed = (start: number, srcOut: number, srcIn = 0): Project['music'][number] => ({
+    id: 'mu1', assetId: 'm1', start: s(start), srcIn: s(srcIn), srcOut: s(srcOut), volume: 1, fadeIn: 0, fadeOut: 0
+  })
+
+  /** A 30 s video clip and a 60 s music file. */
+  function withVideo(item: Project['music'][number]): Project {
+    const p = createProject('V')
+    return {
+      ...p,
+      assets: [
+        { id: 'v1', kind: 'video', name: 'v.mp4', relPath: 'media/v.mp4', size: 1, duration: s(30), width: 1920, height: 1080, fps: 30 },
+        { id: 'm1', kind: 'audio', name: 'bed.mp3', relPath: 'media/bed.mp3', size: 1, duration: s(60) }
+      ],
+      clips: [
+        {
+          id: 'c1', track: 'video', assetId: 'v1', srcIn: 0, srcOut: s(30), start: 0, speed: 1,
+          transform: { fit: 'fit', scale: 1, x: 0, y: 0, rotation: 0, flipX: false }, volume: 1, muted: false, filter: null, transitionIn: null
+        }
+      ],
+      music: [item]
+    }
+  }
+
+  it('a move past the end stops flush and keeps the length', () => {
+    const moved = moveMusic(withVideo(bed(0, 10)), 'mu1', s(40))
+    expect(moved.music[0]).toMatchObject({ start: s(20), srcIn: 0, srcOut: s(10) })
+    expect(validateProject(moved).ok).toBe(true)
+  })
+
+  it('a move inside the video keeps the length', () => {
+    expect(moveMusic(withVideo(bed(0, 10)), 'mu1', s(12)).music[0]).toMatchObject({ start: s(12), srcOut: s(10) })
+  })
+
+  it('a move of an item longer than the video shortens it to the video, from the source start', () => {
+    expect(moveMusic(withVideo(bed(0, 40)), 'mu1', s(5)).music[0]).toMatchObject({ start: 0, srcIn: 0, srcOut: s(30) })
+  })
+
+  it('trimming the end stops at the video end', () => {
+    const p = withVideo(bed(4, 10))
+    expect(trimMusicEnd(p, 'mu1', s(100), FPS).music[0]).toMatchObject({ start: s(4), srcOut: s(26) })
+    expect(trimMusicEnd(p, 'mu1', s(8), FPS).music[0]).toMatchObject({ start: s(4), srcOut: s(4) })
+  })
+
+  it('without clips nothing is clamped', () => {
+    const p = { ...withVideo(bed(0, 10)), clips: [] }
+    expect(moveMusic(p, 'mu1', s(40)).music[0]).toMatchObject({ start: s(40), srcOut: s(10) })
+    // The source file (60 s) still limits the end.
+    expect(trimMusicEnd(p, 'mu1', s(100), FPS).music[0]).toMatchObject({ start: 0, srcOut: s(60) })
+  })
+})

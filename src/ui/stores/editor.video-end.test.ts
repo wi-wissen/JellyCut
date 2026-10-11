@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { createProject } from '../../core/project/schema'
-import type { OverlayItem, Project, TextItem } from '../../core/project/types'
+import type { MusicItem, OverlayItem, Project, TextItem } from '../../core/project/types'
+import { addMusic } from '../../core/timeline/insert'
 import { secondsToMicros } from '../../core/time'
 import { buildDemoProject, useEditorStore } from './editor'
 
@@ -136,5 +137,95 @@ describe('overlays and texts on the video end (editor store)', () => {
     store.replaceDocument({ ...buildDemoProject(), overlays: [sticker('o', 1, 2)] }, { handle: null, name: null })
     store.commitProject(store.project)
     expect(store.canUndo).toBe(false)
+  })
+})
+
+describe('music on the video end (editor store)', () => {
+  beforeEach(() => {
+    vi.stubGlobal('location', { search: '?demo=1' })
+    setActivePinia(createPinia())
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  /** Adds a music item of the demo's music file (30 s) with the given timeline start and length. */
+  function musicAt(store: ReturnType<typeof useEditorStore>, id: string, start: number, length: number, srcIn = 0): void {
+    const item: MusicItem = { id, assetId: 'asset-music', start: s(start), srcIn: s(srcIn), srcOut: s(srcIn + length), volume: 1, fadeIn: 0, fadeOut: 0 }
+    store.commitProject({ ...store.project, music: [...store.project.music, item] })
+  }
+
+  function music(store: ReturnType<typeof useEditorStore>, id: string): MusicItem {
+    return store.project.music.find((m) => m.id === id)!
+  }
+
+  it('music added at the playhead near the end ends at the end of the video', () => {
+    const store = useEditorStore()
+    store.setPlayhead(s(29.8))
+    store.commitProject(addMusic(store.project, 'asset-music', 'music-near', store.playheadMicros))
+    expect(music(store, 'music-near')).toMatchObject({ start: s(29.5), srcIn: 0, srcOut: s(0.5) })
+  })
+
+  it('a drag past the end stops flush and keeps the length', () => {
+    const store = useEditorStore()
+    musicAt(store, 'music-b', 5, 10)
+    store.beginGesture()
+    store.moveMusic('music-b', s(20))
+    store.moveMusic('music-b', s(40))
+    store.endGesture()
+    expect(music(store, 'music-b')).toMatchObject({ start: s(20), srcOut: s(10) })
+  })
+
+  it('trimming the end past the end stops at the end of the video', () => {
+    const store = useEditorStore()
+    musicAt(store, 'music-b', 5, 10)
+    store.trimMusicEnd('music-b', s(45))
+    expect(music(store, 'music-b')).toMatchObject({ start: s(5), srcIn: 0, srcOut: s(25) })
+  })
+
+  it('deleting the last clip shortens the music at the end, keeps the rest, and undo restores it', () => {
+    const store = useEditorStore()
+    musicAt(store, 'music-late', 18, 10)
+    musicAt(store, 'music-mid', 5, 10)
+    const count = store.project.music.length
+    store.select({ kind: 'clip', id: 'clip-interview' })
+    store.deleteSelected()
+
+    expect(store.videoEndMicros).toBe(s(20))
+    expect(store.project.music).toHaveLength(count)
+    expect(music(store, 'music-1')).toMatchObject({ srcIn: 0, srcOut: s(20) })
+    expect(music(store, 'music-late')).toMatchObject({ start: s(18), srcOut: s(2) })
+    expect(music(store, 'music-mid')).toMatchObject({ start: s(5), srcOut: s(10) })
+
+    store.undo()
+    expect(music(store, 'music-1')).toMatchObject({ srcOut: s(30) })
+    expect(music(store, 'music-late')).toMatchObject({ start: s(18), srcOut: s(10) })
+  })
+
+  it('a speed change that shortens the video shortens the music', () => {
+    const store = useEditorStore()
+    expect(store.setClipSpeed('clip-interview', 2)).toBe(true)
+    expect(store.videoEndMicros).toBe(s(25))
+    expect(music(store, 'music-1')).toMatchObject({ srcIn: 0, srcOut: s(25) })
+  })
+
+  it('trimming the last clip shortens the music too', () => {
+    const store = useEditorStore()
+    store.trimEnd('clip-interview', s(26))
+    expect(music(store, 'music-1')).toMatchObject({ srcOut: s(26) })
+  })
+
+  it('a project without clips does not clamp its music', () => {
+    const store = useEditorStore()
+    const asset = { id: 'asset-music', kind: 'audio' as const, name: 'bed.mp3', relPath: 'media/bed.mp3', size: 1, duration: s(30) }
+    const item: MusicItem = { id: 'mu', assetId: 'asset-music', start: s(40), srcIn: 0, srcOut: s(10), volume: 1, fadeIn: 0, fadeOut: 0 }
+    store.replaceDocument({ ...createProject('No clips'), assets: [asset], music: [item] }, { handle: null, name: null })
+    expect(music(store, 'mu')).toMatchObject({ start: s(40), srcOut: s(10) })
+  })
+
+  it('a loaded project with music past the end is fitted once, without an undo step or a dirty flag', () => {
+    const store = useEditorStore()
+    store.replaceDocument({ ...buildDemoProject(), music: [{ ...buildDemoProject().music[0]!, id: 'music-over', start: s(25), srcOut: s(10) }] }, { handle: null, name: 'loaded.json' })
+    expect(music(store, 'music-over')).toMatchObject({ start: s(25), srcOut: s(5) })
+    expect(store.canUndo).toBe(false)
+    expect(store.dirtySinceFileSave).toBe(false)
   })
 })
