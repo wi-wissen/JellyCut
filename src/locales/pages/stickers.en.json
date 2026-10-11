@@ -109,8 +109,6 @@
     "credit": "Stickers: Fluent Emoji by Microsoft (MIT licence)"
   },
   "overlays3": {
-    "sticker": {
-      "undefined": "Sticker"
-    }
+    "sticker": {}
   }
 }

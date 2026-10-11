@@ -495,7 +495,7 @@ export default defineComponent({
     },
     /** Short label of an overlay bar: the emoji for stickers, the kind for shapes and strokes. */
     overlayName(item: OverlayItem): string {
-      if (item.kind === 'sticker') return item.emoji ?? this.$t(`overlays3.sticker.${item.shape}`)
+      if (item.kind === 'sticker') return item.imageId !== undefined ? this.$t(`stickers.image.${item.imageId}`) : item.emoji ?? this.$t(`overlays3.sticker.${item.shape}`)
       if (item.kind === 'shape') return this.$t(`overlays.shape.${item.shape}`)
       if (item.kind === 'region') return this.$t(`overlays2.effects.${item.effect}`)
       if (item.kind === 'media') return this.project.assets.find((a) => a.id === item.assetId)?.name ?? ''

@@ -109,8 +109,6 @@
     "credit": "Aufkleber: Fluent Emoji von Microsoft (MIT-Lizenz)"
   },
   "overlays3": {
-    "sticker": {
-      "undefined": "Aufkleber"
-    }
+    "sticker": {}
   }
 }
