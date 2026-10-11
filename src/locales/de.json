@@ -1,10 +1,62 @@
 {
-  "app": { "name": "Jelly Cut" },
-  "top": { "export": "Export", "undo": "Rückgängig", "redo": "Wiederholen", "darkMode": "Dunkles Design", "lightMode": "Helles Design" },
-  "groups": { "material": "Material", "design": "Gestalten", "look": "Look" },
-  "tabs": { "media": "Medien", "audio": "Audio", "record": "Aufnahme", "text": "Text", "sticker": "Sticker", "draw": "Zeichnen", "captions": "Untertitel", "filter": "Filter", "transitions": "Übergänge" },
-  "library": { "media": "Medien", "addMedia": "Medien hinzufügen", "freeSources": "Wo finde ich freie Bilder und Musik?" },
-  "actions": { "play": "Abspielen", "pause": "Pause", "frameBack": "Ein Frame zurück", "frameForward": "Ein Frame vor", "split": "Teilen", "fineCut": "Feinschnitt", "duplicate": "Duplizieren", "flip": "Spiegeln", "rotate": "Drehen", "speed": "Tempo", "mute": "Ton aus", "delete": "Löschen" },
-  "timeline": { "magnet": "Einrasten", "snapOn": "Einrasten an", "zoomOut": "Verkleinern", "fit": "Timeline einpassen", "text": "Text", "overlay": "Überlagerung", "video": "Video", "originalAudio": "Originalton", "music": "Musik" },
-  "player": { "fitFill": "Einpassen · Füllen" }
+  "app": {
+    "name": "Jelly Cut"
+  },
+  "top": {
+    "export": "Export",
+    "undo": "Rückgängig",
+    "redo": "Wiederholen",
+    "darkMode": "Dunkles Design",
+    "lightMode": "Helles Design"
+  },
+  "groups": {
+    "material": "Material",
+    "design": "Gestalten",
+    "look": "Look"
+  },
+  "tabs": {
+    "media": "Medien",
+    "audio": "Audio",
+    "record": "Aufnahme",
+    "text": "Text",
+    "sticker": "Sticker",
+    "draw": "Zeichnen",
+    "captions": "Untertitel",
+    "filter": "Filter",
+    "transitions": "Übergänge"
+  },
+  "library": {
+    "media": "Medien",
+    "addMedia": "Medien hinzufügen",
+    "freeSources": "Wo finde ich freie Bilder und Musik?"
+  },
+  "actions": {
+    "play": "Abspielen",
+    "pause": "Pause",
+    "frameBack": "Ein Frame zurück",
+    "frameForward": "Ein Frame vor",
+    "split": "Teilen",
+    "fineCut": "Feinschnitt",
+    "duplicate": "Duplizieren",
+    "flip": "Spiegeln",
+    "rotate": "Drehen",
+    "speed": "Tempo",
+    "mute": "Ton aus",
+    "delete": "Löschen"
+  },
+  "timeline": {
+    "magnet": "Einrasten",
+    "snapOn": "Einrasten an",
+    "zoom": "Zoom",
+    "zoomOut": "Verkleinern",
+    "fit": "Timeline einpassen",
+    "text": "Text",
+    "overlay": "Überlagerung",
+    "video": "Video",
+    "originalAudio": "Originalton",
+    "music": "Musik"
+  },
+  "player": {
+    "fitFill": "Einpassen · Füllen"
+  }
 }
