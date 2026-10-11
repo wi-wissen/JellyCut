@@ -4,16 +4,21 @@ import { kvGet, kvSet, kvDelete, AUTOSAVE_KEY } from './localStore'
 
 describe('projectFileName', () => {
   it('replaces characters that are unsafe in file names', () => {
-    expect(projectFileName('Urlaub/2024: "Tag"')).toBe('Urlaub_2024_ _Tag_.jellycut')
+    expect(projectFileName('Urlaub/2024: "Tag"')).toBe('Urlaub_2024_ _Tag_.jellycut.json')
   })
 
   it('falls back when nothing usable is left', () => {
-    expect(projectFileName('   ')).toBe('project.jellycut')
-    expect(projectFileName('...')).toBe('project.jellycut')
+    expect(projectFileName('   ')).toBe('project.jellycut.json')
+    expect(projectFileName('...')).toBe('project.jellycut.json')
+  })
+
+  it('always ends in .jellycut.json, also for names that already carry an extension', () => {
+    expect(projectFileName('Trip.jellycut')).toBe('Trip.jellycut.jellycut.json')
+    expect(projectFileName('Sommer  Tag')).toBe('Sommer Tag.jellycut.json')
   })
 
   it('limits the base name to 60 characters', () => {
-    expect(projectFileName('a'.repeat(100))).toBe(`${'a'.repeat(60)}.jellycut`)
+    expect(projectFileName('a'.repeat(100))).toBe(`${'a'.repeat(60)}.jellycut.json`)
   })
 })
 

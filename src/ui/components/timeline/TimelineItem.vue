@@ -44,15 +44,22 @@ export default defineComponent({
     row: { type: Number, default: 0 },
     laneHeight: { type: Number, default: 38 },
     /** Space between the lane edge and the bar; 4 px on a mouse lane, 2 px on a touch lane (44 px bar). */
-    inset: { type: Number, default: 4 }
+    inset: { type: Number, default: 4 },
+    /** Touch lanes: the selected bar shows a "more" button, since a long press is already the move gesture. */
+    moreButton: { type: Boolean, default: false }
   },
   emits: {
     select: () => true,
     'body-down': (event: PointerEvent) => event instanceof PointerEvent,
-    'handle-down': (edge: TrimEdge, event: PointerEvent) => (edge === 'start' || edge === 'end') && event instanceof PointerEvent
+    'handle-down': (edge: TrimEdge, event: PointerEvent) => (edge === 'start' || edge === 'end') && event instanceof PointerEvent,
+    'context-menu': (event: MouseEvent) => event instanceof MouseEvent,
+    more: (button: HTMLElement) => button instanceof HTMLElement
   },
   computed: {
-    bodyStyle(): Record<string, string> {
+    moreLabel(): string {
+      return this.$t('polish.menu.more')
+    },
+    bodyStyle(): Record<string, string | undefined> {
       // Colours per track are defined in tokens.css; see docs/ui-layout.md ("Track colours").
       const v = this.variant
       const background = {
@@ -73,6 +80,8 @@ export default defineComponent({
       return {
         background,
         color,
+        // Room for the "more" button on touch lanes.
+        paddingRight: this.moreButton && this.selected ? '48px' : undefined,
         // Selection: a 2 px lime outline, with a thin dark line inside so it also shows on amber and lime-ish tracks.
         boxShadow: this.selected
           ? 'inset 0 0 0 2px var(--jc-signal), inset 0 0 0 3px var(--jc-signal-fg)'
@@ -134,9 +143,11 @@ export default defineComponent({
       if (!press || press.pointerId !== event.pointerId || this.lifted) return
       if (Math.hypot(event.clientX - press.x, event.clientY - press.y) > LONG_PRESS_SLOP_PX) this.endPress()
     },
-    /** A long press on touch must not open the system menu over the lifted bar. */
-    onContextMenu(event: Event) {
-      if (presses.has(this)) event.preventDefault()
+    /** Right click or the context-menu key opens the item menu. A touch long press is a move, never a menu. */
+    onContextMenu(event: MouseEvent) {
+      event.preventDefault()
+      if (presses.has(this)) return
+      this.$emit('context-menu', event)
     },
     onPressEnd(event: PointerEvent) {
       if (presses.get(this)?.pointerId === event.pointerId) this.endPress()
@@ -148,6 +159,9 @@ export default defineComponent({
       press.element.removeEventListener('touchmove', press.block)
       presses.delete(this)
       this.lifted = false
+    },
+    onMore(event: MouseEvent) {
+      this.$emit('more', event.currentTarget as HTMLElement)
     },
     onHandleDown(edge: TrimEdge, event: PointerEvent) {
       event.stopPropagation()
@@ -197,5 +211,22 @@ export default defineComponent({
         @pointerdown="onHandleDown('end', $event)"
       />
     </template>
+
+    <button
+      v-if="interactive && moreButton && selected"
+      type="button"
+      class="jc-item-more absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-md"
+      :aria-label="moreLabel"
+      aria-haspopup="menu"
+      data-role="item-more"
+      @pointerdown.stop
+      @click.stop="onMore"
+    >
+      <svg viewBox="0 0 24 24" class="size-5" fill="currentColor" aria-hidden="true">
+        <circle cx="5" cy="12" r="2" />
+        <circle cx="12" cy="12" r="2" />
+        <circle cx="19" cy="12" r="2" />
+      </svg>
+    </button>
   </div>
 </template>

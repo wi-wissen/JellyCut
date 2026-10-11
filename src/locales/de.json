@@ -38,7 +38,7 @@
   "groups": {
     "material": "Material",
     "design": "Gestalten",
-    "look": "Look",
+    "look": "Filter",
     "label": "Werkzeugbereich"
   },
   "tabs": {
@@ -73,8 +73,8 @@
   "actions": {
     "play": "Abspielen",
     "pause": "Pause",
-    "frameBack": "Ein Frame zurück",
-    "frameForward": "Ein Frame vor",
+    "frameBack": "Ein Bild zurück",
+    "frameForward": "Ein Bild vor",
     "split": "Teilen",
     "fineCut": "Feinschnitt",
     "duplicate": "Duplizieren",
@@ -405,21 +405,21 @@
     "previousKeyframe": "Vorheriger Keyframe",
     "nextKeyframe": "Nächster Keyframe",
     "keyframe": "Keyframe",
-    "previousFrame": "Ein Frame zurück",
-    "nextFrame": "Ein Frame vor",
-    "frame": "1 Frame",
+    "previousFrame": "Ein Bild zurück",
+    "nextFrame": "Ein Bild vor",
+    "frame": "1 Bild",
     "zoom": "Zoom",
-    "zoomValue": "1 Frame = {px} px",
+    "zoomValue": "1 Bild = {px} px",
     "snap": "Einrasten an Keyframes: {state}",
     "sound": "Ton beim Schritt: {state}",
     "fade": "Überblendung 15 ms",
     "on": "an",
     "off": "aus",
-    "hint": "Pfeiltasten: 1 Frame · Umschalt: 10 Frames · K: nächster Keyframe · P: nächste Pause · Enter: hier schneiden · Esc: schließen",
+    "hint": "Pfeiltasten: 1 Bild · Umschalt: 10 Bilder · K: nächster Keyframe · P: nächste Pause · Enter: hier schneiden · Esc: schließen",
     "noSound": "Kein Ton in dieser Datei",
     "waveform": "Wellenform",
     "waveformLoading": "Wellenform wird berechnet",
-    "strip": "Frame-Streifen",
+    "strip": "Bild-Streifen",
     "keyTile": "KEY",
     "frameTile": "#{n}",
     "backToEditor": "Zurück zum Editor",
@@ -561,7 +561,7 @@
       "cool": "Kühl",
       "vivid": "Lebendig",
       "fade": "Verblasst",
-      "vintage": "Vintage",
+      "vintage": "Retro",
       "noir": "Noir",
       "dream": "Traum"
     }
@@ -799,5 +799,134 @@
     "border": "Rahmen",
     "borderColor": "Rahmenfarbe",
     "confirmPictures": "{count} Bild über dem Video nutzt die Datei ebenfalls. Es wird entfernt. | {count} Bilder über dem Video nutzen die Datei ebenfalls. Sie werden entfernt."
+  },
+  "polish": {
+    "top": {
+      "home": "Zur Startseite"
+    },
+    "format": {
+      "backgroundHint": "Nur bei Einpassen: Der Hintergrund füllt die Balken neben dem Bild."
+    },
+    "save": {
+      "label": "Speicherstand: {state}",
+      "savedBrowser": "Automatisch in diesem Browser gespeichert",
+      "savedFile": "Als Datei gespeichert",
+      "saving": "Wird in diesem Browser gespeichert …",
+      "dirty": "Nicht gespeicherte Änderungen",
+      "fileChanged": "Änderungen seit dem letzten Speichern in die Datei",
+      "neverFile": "Noch nicht als Datei gespeichert",
+      "neverFileHint": "Deine Arbeit bleibt in diesem Browser. Speichere eine Datei, um eine Kopie zu behalten oder das Projekt auf einem anderen Computer zu öffnen.",
+      "error": "Automatisches Speichern fehlgeschlagen",
+      "errorHint": "Die Arbeit konnte nicht in diesem Browser gespeichert werden ({message}). Speichere das Projekt jetzt als Datei.",
+      "demo": "Demo: Es wird nichts gespeichert"
+    },
+    "menu": {
+      "label": "Aktionen für das ausgewählte Element",
+      "more": "Weitere Aktionen",
+      "freezeFrame": "Standbild"
+    },
+    "transitions": {
+      "none": "Kein Übergang",
+      "zone": "Übergang {seconds} s"
+    },
+    "timeline": {
+      "moreLanes": "{count} weitere Spur | {count} weitere Spuren unten",
+      "resize": "Höhe der Zeitleiste ändern"
+    }
+  },
+  "overlays3": {
+    "penOpacity": "Deckkraft",
+    "markerPreset": "Textmarker",
+    "anim": {
+      "fade": "Überblenden",
+      "pop": "Aufpoppen",
+      "slideFromTop": "Von oben hereinfahren",
+      "slideFromBottom": "Von unten hereinfahren",
+      "slideFromLeft": "Von links hereinfahren",
+      "slideFromRight": "Von rechts hereinfahren",
+      "slideToTop": "Nach oben hinausfahren",
+      "slideToBottom": "Nach unten hinausfahren",
+      "slideToLeft": "Nach links hinausfahren",
+      "slideToRight": "Nach rechts hinausfahren"
+    },
+    "sticker": {
+      "star": "Stern",
+      "heart": "Herz",
+      "check": "Haken",
+      "cross": "Kreuz",
+      "arrowRight": "Pfeil rechts",
+      "arrowUp": "Pfeil hoch",
+      "speech": "Sprechblase",
+      "thought": "Gedankenblase",
+      "exclamation": "Ausrufezeichen",
+      "question": "Fragezeichen",
+      "lightbulb": "Idee",
+      "thumbsUp": "Daumen hoch",
+      "smile": "Lächeln",
+      "sun": "Sonne",
+      "cloud": "Wolke",
+      "lightning": "Blitz",
+      "flag": "Flagge",
+      "music": "Notenzeichen",
+      "camera": "Kamera",
+      "play": "Play-Knopf",
+      "crown": "Krone",
+      "sparkles": "Funkeln",
+      "badge1": "Kreis 1",
+      "badge2": "Kreis 2",
+      "badge3": "Kreis 3"
+    },
+    "regionShape": {
+      "rect": "Rechteck",
+      "ellipse": "Ellipse",
+      "roundRect": "Abgerundetes Rechteck"
+    }
+  },
+  "export2": {
+    "estimate": {
+      "video": "Video: {duration}",
+      "size": "Datei ca. {size}",
+      "time": "Export dauert ca. {time}"
+    },
+    "unit": {
+      "seconds": "Sek.",
+      "minutes": "Min.",
+      "hours": "Std."
+    },
+    "time": {
+      "single": "{value} {unit}",
+      "range": "{low}–{high} {unit}"
+    },
+    "compare": "Geschätzt: {estimated}, tatsächlich: {actual}",
+    "saving": {
+      "file": "Die Datei wird nach dem Export in {name} gespeichert.",
+      "download": "Die Datei wird nach dem Export automatisch heruntergeladen."
+    },
+    "saved": {
+      "file": "Gespeichert unter {name}.",
+      "download": "Als {name} heruntergeladen."
+    },
+    "errors": {
+      "writeFailed": "Die Datei konnte nicht geschrieben werden ({message}). Sie wurde stattdessen heruntergeladen."
+    },
+    "saveAgain": "Erneut speichern",
+    "details": {
+      "title": "Details",
+      "step": "Schritt",
+      "estimated": "Geschätzt",
+      "measured": "Gemessen",
+      "phases": {
+        "decode": "Quellvideo dekodieren",
+        "draw": "Bilder zeichnen",
+        "encode": "Kodieren",
+        "other": "Audio, Start und Abschluss"
+      },
+      "class": {
+        "plain": "Einfaches Projekt",
+        "video": "Mit Video im Bild"
+      },
+      "samples": "Kalibrierung: {count} Exporte auf diesem Computer",
+      "none": "Noch keine Kalibrierung"
+    }
   }
 }

@@ -723,7 +723,7 @@ export class Compositor {
       const texture = this.textTexture(layer.text, layer.style, textPixelSize(layer.style?.size, target.h))
       if (!texture) continue
       const scale = finiteOr(layer.scale, 1) > 0 ? finiteOr(layer.scale, 1) : 1
-      const cx = finiteOr(layer.pos?.x, 0.5) * target.w
+      const cx = finiteOr(layer.pos?.x, 0.5) * target.w + finiteOr(layer.offsetX, 0) * target.h
       const cy = (finiteOr(layer.pos?.y, 0.5) + finiteOr(layer.offsetY, 0)) * target.h
       const hw = (texture.w * scale) / 2
       const hh = (texture.h * scale) / 2

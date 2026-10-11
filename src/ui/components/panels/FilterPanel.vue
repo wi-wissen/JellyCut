@@ -2,6 +2,7 @@
 import { defineComponent } from 'vue'
 import { mapActions, mapState } from 'pinia'
 import RangeField from './RangeField.vue'
+import ChoiceTile from './ChoiceTile.vue'
 import { useEditorStore } from '../../stores/editor'
 import { getFrameProvider } from '../../stores/media'
 import { Compositor } from '../../../engine/render/compositor'
@@ -104,7 +105,7 @@ function thumbScene(format: ProjectFormat, grade: Grade | null): Scene {
 
 export default defineComponent({
   name: 'FilterPanel',
-  components: { RangeField },
+  components: { RangeField, ChoiceTile },
   data() {
     return { filterIds: FILTER_IDS, tileW: TILE_W, tileH: TILE_H }
   },
@@ -297,30 +298,23 @@ export default defineComponent({
       <p class="text-xs text-muted" data-testid="filter-target">{{ $t('filters.target', { name: targetName }) }}</p>
 
       <div class="grid grid-cols-2 gap-2.5" role="group" :aria-label="$t('filters.title')">
-        <button
+        <ChoiceTile
           v-for="id in filterIds"
           :key="id"
-          type="button"
-          class="flex flex-col gap-1.5 rounded-lg text-left"
-          :aria-pressed="currentFilter === id"
+          :label="filterName(id)"
+          :selected="currentFilter === id"
           :data-testid="`filter-tile-${id}`"
-          @click="chooseFilter(id)"
+          @choose="chooseFilter(id)"
         >
-          <span class="relative block aspect-video w-full overflow-hidden rounded-lg bg-stage" :class="currentFilter === id ? 'ring-2 ring-fill' : ''">
-            <canvas
-              ref="tiles"
-              :data-filter="id"
-              :width="tileW"
-              :height="tileH"
-              class="block size-full"
-              aria-hidden="true"
-            />
-          </span>
-          <span class="flex items-center gap-1.5 text-xs font-semibold text-fg">
-            <span class="size-2 shrink-0 rounded-full" :class="currentFilter === id ? 'bg-fill' : 'bg-transparent'" aria-hidden="true" />
-            {{ filterName(id) }}
-          </span>
-        </button>
+          <canvas
+            ref="tiles"
+            :data-filter="id"
+            :width="tileW"
+            :height="tileH"
+            class="block size-full"
+            aria-hidden="true"
+          />
+        </ChoiceTile>
       </div>
 
       <section class="flex flex-col gap-2 border-t border-line pt-3">

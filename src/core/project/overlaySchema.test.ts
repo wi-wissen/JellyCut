@@ -58,7 +58,7 @@ describe('overlay schema', () => {
   it('checks the fields of regions and pictures', () => {
     const region = { ...item, id: 'r', kind: 'region', shape: 'arrow', effect: 'wobble', strength: 2, width: 0.3, height: 0.2 }
     const errors = errorsFor([region])
-    expect(errors).toContain('overlays[0].shape must be one of rect, ellipse')
+    expect(errors).toContain('overlays[0].shape must be one of rect, ellipse, roundRect')
     expect(errors).toContain('overlays[0].effect must be one of blur, pixelate')
     expect(errors).toContain('overlays[0].strength must be a number from 0 to 1')
     const media = { ...item, id: 'm', kind: 'media', assetId: '', width: 0.5, height: 0.3, radius: -1, border: 0, borderColor: 'white' }
@@ -71,8 +71,10 @@ describe('overlay schema', () => {
   it('checks opacity, entrance / exit animations and the loop of every kind', () => {
     expect(errorsFor([{ ...item, opacity: 0.5, animIn: 'pop', animOut: null, loop: 'wiggle' }])).toEqual([])
     expect(errorsFor([{ ...item, opacity: 1.5 }])).toContain('overlays[0].opacity must be a number from 0 to 1')
-    expect(errorsFor([{ ...item, animIn: 'spin' }])).toContain('overlays[0].animIn must be one of fade, pop, slideUp')
-    expect(errorsFor([{ ...item, animOut: 'slideDown' }])).toContain('overlays[0].animOut must be one of fade, pop, slideUp')
+    expect(errorsFor([{ ...item, animIn: 'spin' }])).toContain('overlays[0].animIn must be null or an entrance animation name')
+    expect(errorsFor([{ ...item, animOut: 'slideDown' }])).toContain('overlays[0].animOut must be null or an exit animation name')
+    expect(errorsFor([{ ...item, animIn: 'slideToTop' }])).toContain('overlays[0].animIn must be null or an entrance animation name')
+    expect(errorsFor([{ ...item, animOut: 'slideFromTop' }])).toContain('overlays[0].animOut must be null or an exit animation name')
     expect(errorsFor([{ ...item, loop: 'bounce' }])).toContain('overlays[0].loop must be one of wiggle')
   })
 

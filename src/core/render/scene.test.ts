@@ -174,7 +174,7 @@ describe('buildScene: texts', () => {
     expect(t2).toMatchObject({ alpha: 1, scale: 1, offsetY: 0, pos: { x: 0.5, y: 0.8 } })
   })
   it('pop starts small and overshoots slightly, slideUp moves up into place', () => {
-    const q = project([clip('c1', 'a', 0, 10 * S, 0)], [text('p', 0, 4 * S, { animIn: 'pop' }), text('s', 0, 4 * S, { animIn: 'slideUp' })])
+    const q = project([clip('c1', 'a', 0, 10 * S, 0)], [text('p', 0, 4 * S, { animIn: 'pop' }), text('s', 0, 4 * S, { animIn: 'slideUp' as never })])
     const planQ = planTimeline(q)
     const early = buildScene(q, planQ, 1).texts
     expect(early.find((x) => x.id === 'p')!.scale).toBeLessThan(0.5)

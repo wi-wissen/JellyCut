@@ -3,52 +3,92 @@ import { defineComponent, nextTick } from 'vue'
 import { mapActions, mapState } from 'pinia'
 import Icon from './Icon.vue'
 import { useEditorStore } from '../stores/editor'
-import type { AutosaveStatus } from '../../core/io/autosave'
 import { useMediaStore } from '../stores/media'
 import { useCreditsStore } from '../stores/credits'
 import CreditsDialog from './CreditsDialog.vue'
 
-const DOT_CLASSES: Record<AutosaveStatus, string> = {
-  idle: 'bg-[var(--jc-muted)]/40',
-  dirty: 'bg-[var(--jc-muted)]',
-  saving: 'bg-[var(--jc-txt)]',
-  saved: 'bg-[var(--jc-wave)]',
-  error: 'bg-[var(--jc-danger)]'
+type SaveTone = 'green' | 'amber' | 'red' | 'neutral'
+type SaveKey = 'error' | 'saving' | 'dirty' | 'fileChanged' | 'neverFile' | 'savedFile' | 'savedBrowser' | 'demo'
+
+/** Edits this long without a file save get the amber "Not saved as a file yet" state. */
+const NEVER_FILE_HINT_MS = 10 * 60 * 1000
+const CLOCK_TICK_MS = 30 * 1000
+
+const TONE_CLASSES: Record<SaveTone, string> = {
+  green: 'bg-[var(--jc-wave)]',
+  amber: 'bg-[var(--jc-warn)]',
+  red: 'bg-[var(--jc-danger)]',
+  neutral: 'bg-[var(--jc-muted)]'
 }
 
 export default defineComponent({
   name: 'ProjectMenu',
   components: { Icon, CreditsDialog },
   data() {
-    return { open: false }
+    return { open: false, now: Date.now(), clock: 0 }
   },
   computed: {
-    ...mapState(useEditorStore, ['project', 'caps', 'fileName', 'saveStatus', 'loadError', 'dirtySinceFileSave']),
+    ...mapState(useEditorStore, [
+      'project',
+      'caps',
+      'fileName',
+      'saveStatus',
+      'autosaveError',
+      'demo',
+      'loadError',
+      'dirtySinceFileSave',
+      'unsavedSince'
+    ]),
     ...mapState(useMediaStore, ['folder']),
     displayName(): string {
       return this.project.name.trim() === '' ? this.$t('project.untitled') : this.project.name
     },
-    statusText(): string {
-      return this.$t(`project.autosave.${this.saveStatus}`)
+    /** What the dot tells: where the work is kept and whether it is the same as the file. */
+    saveState(): { key: SaveKey; tone: SaveTone } {
+      if (this.demo) return { key: 'demo', tone: 'neutral' }
+      if (this.saveStatus === 'error') return { key: 'error', tone: 'red' }
+      if (this.saveStatus === 'saving') return { key: 'saving', tone: 'neutral' }
+      if (this.saveStatus === 'dirty') return { key: 'dirty', tone: 'amber' }
+      if (this.dirtySinceFileSave) {
+        if (this.fileName !== null) return { key: 'fileChanged', tone: 'amber' }
+        // The periodic tick (this.now) re-runs this computed; the clock itself is read here.
+        if (this.unsavedSince !== null && this.now >= 0 && Date.now() - this.unsavedSince >= NEVER_FILE_HINT_MS) {
+          return { key: 'neverFile', tone: 'amber' }
+        }
+      }
+      return this.fileName !== null ? { key: 'savedFile', tone: 'green' } : { key: 'savedBrowser', tone: 'green' }
+    },
+    saveStateText(): string {
+      return this.$t(`polish.save.${this.saveState.key}`)
+    },
+    saveStateLabel(): string {
+      return this.$t('polish.save.label', { state: this.saveStateText })
+    },
+    saveStateHint(): string {
+      if (this.saveState.key === 'error') return this.$t('polish.save.errorHint', { message: this.autosaveError ?? '' })
+      if (this.saveState.key === 'neverFile') return this.$t('polish.save.neverFileHint')
+      return ''
     },
     dotClass(): string {
-      return DOT_CLASSES[this.saveStatus]
+      return TONE_CLASSES[this.saveState.tone]
     },
-    showUnsavedHint(): boolean {
-      return this.fileName === null || this.dirtySinceFileSave
-    },
-    unsavedHint(): string {
-      return this.fileName === null ? this.$t('project.neverSaved') : this.$t('project.unsaved')
+    isSavedTone(): boolean {
+      return this.saveState.tone === 'green'
     }
   },
   mounted() {
     document.addEventListener('pointerdown', this.onDocumentPointerDown)
     // Document level: focus may already have dropped to <body>, e.g. after a removed alert button.
     document.addEventListener('keydown', this.onDocumentKeydown)
+    // Keeps the "not saved as a file yet" state current while the user works.
+    this.clock = window.setInterval(() => {
+      this.now = Date.now()
+    }, CLOCK_TICK_MS)
   },
   beforeUnmount() {
     document.removeEventListener('pointerdown', this.onDocumentPointerDown)
     document.removeEventListener('keydown', this.onDocumentKeydown)
+    window.clearInterval(this.clock)
   },
   methods: {
     confirmDiscard(): boolean {
@@ -150,11 +190,19 @@ export default defineComponent({
     </button>
     <span
       role="img"
-      class="size-2.5 shrink-0 rounded-full"
+      data-role="save-state"
+      :data-tone="saveState.tone"
+      class="flex size-[18px] shrink-0 items-center justify-center rounded-full text-white"
       :class="dotClass"
-      :aria-label="statusText"
-      :title="statusText"
-    />
+      :aria-label="saveStateLabel"
+      :title="saveStateLabel"
+    >
+      <svg v-if="isSavedTone" viewBox="0 0 12 12" class="size-2.5" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2.5 6.2 5 8.5 9.5 3.5" />
+      </svg>
+      <span v-else-if="saveState.tone === 'red'" class="text-[11px] font-bold leading-none" aria-hidden="true">!</span>
+      <span v-else class="size-1.5 rounded-full bg-white" aria-hidden="true" />
+    </span>
 
     <div
       v-if="open"
@@ -251,9 +299,9 @@ export default defineComponent({
         {{ $t('project.browserInfo') }}
       </p>
 
-      <div class="mt-2 border-t border-line px-2.5 pt-2 text-xs">
-        <p class="font-semibold">{{ statusText }}</p>
-        <p v-if="showUnsavedHint" class="mt-0.5 text-muted">{{ unsavedHint }}</p>
+      <div class="mt-2 border-t border-line px-2.5 pt-2 text-xs" data-role="save-state-panel">
+        <p class="font-semibold">{{ saveStateText }}</p>
+        <p v-if="saveStateHint" class="mt-0.5 text-muted">{{ saveStateHint }}</p>
       </div>
     </div>
 

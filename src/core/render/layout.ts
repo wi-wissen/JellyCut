@@ -64,6 +64,8 @@ export interface TextLayerInput {
   style: { size: number; outline: string | null }
   pos: { x: number; y: number }
   scale?: number
+  /** Offsets as fractions of the output height. */
+  offsetX?: number
   offsetY?: number
 }
 
@@ -151,7 +153,7 @@ export function pointInRotatedRect(p: Point, box: Box): boolean {
 
 /**
  * The box around the ink of a text layer, as the compositor draws it: the rasterised text (with
- * padding) is centred on pos plus offsetY and scaled by the layer scale. Only the glyphs are
+ * padding) is centred on pos plus the offsets and scaled by the layer scale. Only the glyphs are
  * boxed, not the line box, so the frame sits exactly around what is visible. Null for empty text.
  */
 export function textRect(outW: number, outH: number, layer: TextLayerInput, measure: MeasureLine): TextBox | null {
@@ -189,7 +191,7 @@ export function textRect(outW: number, outH: number, layer: TextLayerInput, meas
   bottom += grow
 
   const scale = finiteOr(layer.scale, 1) > 0 ? finiteOr(layer.scale, 1) : 1
-  const anchorX = finiteOr(layer.pos.x, 0.5) * outW
+  const anchorX = finiteOr(layer.pos.x, 0.5) * outW + finiteOr(layer.offsetX, 0) * outH
   const anchorY = (finiteOr(layer.pos.y, 0.5) + finiteOr(layer.offsetY, 0)) * outH
   return {
     cx: anchorX + ((left + right) / 2 - texW / 2) * scale,

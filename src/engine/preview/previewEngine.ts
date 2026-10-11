@@ -220,7 +220,7 @@ export class PreviewEngine {
     for (const layer of scene.overlays) {
       if (layer.item.kind !== 'media') continue
       activePictures.add(layer.item.id)
-      const source = this.pictureFrame(layer.item.id, layer.item.assetId, layer.srcTime, now)
+      const source = this.pictureFrame(layer.item.id, layer.item.assetId, layer.srcTime, layer.item.speed ?? 1, now)
       if (source) frames.set(layer.item.id, source)
     }
     for (const [id, el] of this.overlayEls) {
@@ -285,7 +285,7 @@ export class PreviewEngine {
   }
 
   /** Frame of a picture-in-picture item while playing: an image bitmap, or its muted video element when ready. */
-  private pictureFrame(id: string, assetId: string, srcTime: Micros, now: number): FrameSource | null {
+  private pictureFrame(id: string, assetId: string, srcTime: Micros, speed: number, now: number): FrameSource | null {
     const asset = this.assets.get(assetId)
     if (!asset) return null
     if (asset.kind === 'image') return asset.bitmap
@@ -299,7 +299,7 @@ export class PreviewEngine {
       el.src = asset.url
       this.overlayEls.set(id, el)
     }
-    this.driveMedia(el, srcTime, now, 1, true, 0)
+    this.driveMedia(el, srcTime, now, speed, true, 0)
     return el.readyState >= 2 && !el.seeking ? el : null
   }
 

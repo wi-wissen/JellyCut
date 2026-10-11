@@ -1,4 +1,6 @@
 import type { Micros } from '../time'
+import type { InAnimation, OutAnimation } from '../render/animations'
+import type { StickerShapeId } from '../render/stickerShapes'
 
 export type AssetKind = 'video' | 'audio' | 'image'
 export type FormatRatio = '16:9' | '9:16' | '1:1' | '4:5'
@@ -93,8 +95,8 @@ export interface TextItem {
   text: string
   style: TextStyle
   pos: { x: number; y: number }
-  animIn: string | null
-  animOut: string | null
+  animIn: InAnimation | null
+  animOut: OutAnimation | null
 }
 
 export interface MusicItem {
@@ -108,8 +110,6 @@ export interface MusicItem {
   fadeOut: Micros
 }
 
-/** Entrance and exit animations of overlays (the text set without the text-only names). */
-export type OverlayAnimation = 'fade' | 'pop' | 'slideUp'
 /** Animation that runs for the whole time the overlay is on screen. */
 export type OverlayLoop = 'wiggle'
 
@@ -126,19 +126,28 @@ export interface OverlayBase {
   rotation: number
   /** 0..1. Absent means fully opaque. */
   opacity?: number
-  /** Absent or null means no entrance / exit animation. */
-  animIn?: OverlayAnimation | null
-  animOut?: OverlayAnimation | null
+  /** Absent or null means no entrance / exit animation. See core/render/animations. */
+  animIn?: InAnimation | null
+  animOut?: OutAnimation | null
   /** Absent or null means no looping animation. */
   loop?: OverlayLoop | null
 }
 
+/**
+ * A sticker is either an emoji (legacy, drawn with the system emoji font) or a vector shape of the
+ * built-in set (core/render/stickerShapes), filled with `color` and optionally outlined. Exactly one of
+ * `emoji` and `shape` is set.
+ */
 export interface StickerOverlay extends OverlayBase {
   kind: 'sticker'
-  /** One emoji; drawn with the system emoji font. */
-  emoji: string
-  /** Glyph height as a fraction of the output height. */
+  /** Glyph height (emoji) or box height (shape) as a fraction of the output height. */
   size: number
+  emoji?: string
+  shape?: StickerShapeId
+  /** #RRGGBB fill of a vector sticker. */
+  color?: string
+  /** #RRGGBB outline of a vector sticker, or null for none. */
+  outline?: string | null
 }
 
 export interface ShapeOverlay extends OverlayBase {
@@ -158,18 +167,25 @@ export interface StrokeOverlay extends OverlayBase {
   points: [number, number][]
   lineWidth: number
   color: string
+  /** Line ends. Absent means round; 'flat' is used by the marker preset. */
+  cap?: 'round' | 'flat'
 }
 
-/** Blurs or pixelates the picture below it (video and background), inside a rectangle or an ellipse. */
+/**
+ * A tool, not a sticker: blurs or pixelates the picture below it, only inside its shape (rectangle,
+ * ellipse or rounded rectangle). Stored as kind 'region' (see docs/decisions.md).
+ */
 export interface RegionOverlay extends OverlayBase {
   kind: 'region'
-  shape: 'rect' | 'ellipse'
+  shape: 'rect' | 'ellipse' | 'roundRect'
   effect: 'blur' | 'pixelate'
   /** 0..1: blur amount or mosaic cell size. */
   strength: number
   /** Width and height as fractions of the output height. */
   width: number
   height: number
+  /** Corner radius as a fraction of the output height; only used by 'roundRect'. Absent means the default. */
+  radius?: number
 }
 
 /**
@@ -187,6 +203,10 @@ export interface MediaOverlay extends OverlayBase {
   /** Border width as a fraction of the output height; 0 means no border. */
   border: number
   borderColor: string
+  /** Start of the picture inside its asset (microseconds). Absent means 0. */
+  srcIn?: Micros
+  /** Playback speed of a video picture. Absent means 1. The item's length on the timeline does not change. */
+  speed?: number
 }
 
 export type OverlayItem = StickerOverlay | ShapeOverlay | StrokeOverlay | RegionOverlay | MediaOverlay

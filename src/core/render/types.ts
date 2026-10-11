@@ -17,9 +17,6 @@ export const TRANSITION_TYPES = [
 ] as const
 export type TransitionType = (typeof TRANSITION_TYPES)[number]
 
-export const TEXT_ANIMATIONS = ['fade', 'pop', 'slideUp'] as const
-export type TextAnimation = (typeof TEXT_ANIMATIONS)[number]
-
 /** Default length of a text in/out animation, shortened to half the text duration when needed. */
 export const TEXT_ANIM_DURATION: Micros = 400_000
 
@@ -52,7 +49,8 @@ export interface TextLayer {
   alpha: number
   /** Multiplier, 1 = normal. */
   scale: number
-  /** Extra vertical offset as a fraction of the output height (slide animations). */
+  /** Extra offsets as fractions of the output height (slide animations). */
+  offsetX: number
   offsetY: number
 }
 

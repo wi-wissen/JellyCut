@@ -69,6 +69,8 @@ async function hideToolsIfOpen(page) {
 async function resetTimelineScroll(page, { left = true } = {}) {
   await page.evaluate((resetLeft) => {
     document.querySelector('.jc-timeline').scrollTop = 0
+    // The lanes scroll vertically inside the fixed-height timeline (TimelinePanel).
+    document.querySelector('.jc-timeline__body').scrollTop = 0
     if (resetLeft) document.querySelector('[data-role="ruler"]').parentElement.parentElement.scrollLeft = 0
   }, left)
 }
@@ -304,8 +306,8 @@ for (const size of SIZES.filter((z) => !process.env.SIZE || z.name === process.e
         ['Material', 'Record'],
         ['Design', 'Text'],
         ['Design', 'Draw'],
-        ['Look', 'Filters'],
-        ['Look', 'Transitions']
+        ['Filters', 'Filters'],
+        ['Filters', 'Transitions']
       ]
       for (const [group, tab] of tabs) {
         await page.getByRole('tab', { name: group, exact: true }).click()

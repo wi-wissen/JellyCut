@@ -3,12 +3,16 @@ import { defineComponent } from 'vue'
 import { mapActions, mapState } from 'pinia'
 import Icon from './Icon.vue'
 import TimelineItem from './timeline/TimelineItem.vue'
+import ItemContextMenu, { type MenuEntry } from './timeline/ItemContextMenu.vue'
 import { useEditorStore } from '../stores/editor'
 import { useFineCutStore } from '../stores/fineCut'
 import type { OverlayItem } from '../../core/project/types'
 import type { Micros } from '../../core/time'
 import { frameDuration } from '../../core/time'
 import { clipEnd } from '../../core/timeline/edit'
+import { clipForFineCut } from '../../core/timeline/fineCut'
+import { planTimeline } from '../../core/render/scene'
+import { formatNumber } from '../numberFormat'
 import type { ItemRef } from '../../core/timeline/ops'
 import { collectSnapPoints, snapTime } from '../../core/timeline/snap'
 import { packRows } from '../../core/timeline/overlayRows'
@@ -26,6 +30,13 @@ import {
 
 const RULER_HEIGHT_PX = 22
 const LANE_HEIGHT_PX = 38
+/** Fixed panel height, so a new lane row does not push the whole editor around. The user can change it. */
+const TIMELINE_HEIGHT_KEY = 'jellycut.timelineHeight'
+const DEFAULT_TIMELINE_HEIGHT_PX = 248
+const MIN_TIMELINE_HEIGHT_PX = 160
+const MAX_TIMELINE_VIEWPORT_SHARE = 0.7
+const RESIZE_STEP_PX = 16
+const MENU_GAP_PX = 4
 /** Coarse pointers (touch): lanes and bars grow so every bar is at least 44 px tall. */
 const COARSE_LANE_HEIGHT_PX = 48
 const BAR_INSET_PX = 4
@@ -75,6 +86,45 @@ interface Lane {
 }
 
 /** State of one pointer press. Edits during a press are computed from the origin values stored here. */
+/** Pointer state of a height drag. Not reactive. */
+interface GripDrag {
+  pointerId: number
+  startY: number
+  startHeight: number
+}
+
+interface ItemMenuState {
+  x: number
+  y: number
+  item: LaneItem
+  opener: HTMLElement | null
+}
+
+/** Lane that owns the bars of a selected item. */
+const LANE_OF_KIND: Record<ItemRef['kind'], string> = {
+  clip: 'video',
+  text: 'text',
+  overlay: 'overlay',
+  music: 'music'
+}
+
+function loadTimelineHeight(): number {
+  try {
+    const value = Number(window.localStorage.getItem(TIMELINE_HEIGHT_KEY))
+    return Number.isFinite(value) && value > 0 ? value : DEFAULT_TIMELINE_HEIGHT_PX
+  } catch {
+    return DEFAULT_TIMELINE_HEIGHT_PX
+  }
+}
+
+function saveTimelineHeight(height: number): void {
+  try {
+    window.localStorage.setItem(TIMELINE_HEIGHT_KEY, String(height))
+  } catch {
+    // Storage can be blocked; the height then lasts for this visit only.
+  }
+}
+
 interface Gesture {
   kind: GestureKind
   pointerId: number
@@ -103,12 +153,13 @@ function isTextEntry(target: EventTarget | null): boolean {
 // Kept outside the component data: Vue must not wrap a ResizeObserver in a proxy.
 const observers = new WeakMap<object, ResizeObserver>()
 const pointerQueries = new WeakMap<object, MediaQueryList>()
+let grip: GripDrag | null = null
 /** performance.now() until which playback does not move the view (set by manual scrolling). Not reactive. */
 let followPausedUntil = 0
 
 export default defineComponent({
   name: 'TimelinePanel',
-  components: { Icon, TimelineItem },
+  components: { Icon, TimelineItem, ItemContextMenu },
   data() {
     return {
       rulerHeight: RULER_HEIGHT_PX,
@@ -122,11 +173,16 @@ export default defineComponent({
       gesture: null as Gesture | null,
       dragKey: null as string | null,
       dragOffset: 0,
-      dropPx: null as number | null
+      dropPx: null as number | null,
+      timelineHeight: loadTimelineHeight(),
+      minTimelineHeight: MIN_TIMELINE_HEIGHT_PX,
+      menu: null as ItemMenuState | null,
+      /** Lane rows below the visible part of the lane area; shown as a hint. */
+      hiddenBelow: 0
     }
   },
   computed: {
-    ...mapState(useEditorStore, ['project', 'totalDuration', 'playheadMicros', 'selection', 'isPlaying']),
+    ...mapState(useEditorStore, ['project', 'totalDuration', 'playheadMicros', 'selection', 'isPlaying', 'canSplitAtPlayhead']),
     ...mapState(useFineCutStore, { fineCutOpen: 'isOpen' }),
     fps(): number {
       return this.project.format.fps
@@ -255,6 +311,53 @@ export default defineComponent({
         { id: 'music', icon: 'audio', label: 'timeline.music', swatch: 'var(--jc-track-music)', items: musicItems }
       ]
     },
+    /** Rows of the overlay lane; a change of this number reveals the new row. */
+    overlayRowCount(): number {
+      return this.lanes.find((lane) => lane.id === 'overlay')?.rows ?? 1
+    },
+    /** Where two clips overlap during a transition, from the planner (the same geometry as preview and export). */
+    transitionZones(): { key: string; leftPx: number; widthPx: number; label: string }[] {
+      const planned = planTimeline(this.project)
+      return planned.transitions.map((t) => ({
+        key: t.clipId,
+        leftPx: microsToPx(t.start, this.pxPerSecond),
+        widthPx: microsToPx(t.duration, this.pxPerSecond),
+        label: this.$t('polish.transitions.zone', { seconds: formatNumber(t.duration / 1_000_000, 1) })
+      }))
+    },
+    /** Entries of the item menu: the action bar's actions for the item (clips), or the common ones for other items. */
+    menuEntries(): MenuEntry[] {
+      const ref = this.menu?.item.ref
+      if (!ref) return []
+      const t = (key: string): string => this.$t(`actions.${key}`)
+      if (ref.kind !== 'clip') {
+        return [
+          { key: 'duplicate', label: t('duplicate'), icon: 'copy', enabled: true },
+          { key: 'delete', label: t('delete'), icon: 'trash', enabled: true }
+        ]
+      }
+      const clip = this.project.clips.find((c) => c.id === ref.id)
+      const spansPlayhead = clip !== undefined && clip.start <= this.playheadMicros && this.playheadMicros < clipEnd(clip)
+      const entries: MenuEntry[] = [
+        { key: 'split', label: t('split'), icon: 'split', enabled: this.canSplitAtPlayhead },
+        {
+          key: 'fineCut',
+          label: t('fineCut'),
+          icon: 'fineCut',
+          enabled: clipForFineCut(this.project, this.playheadMicros, this.selection) !== null
+        },
+        { key: 'duplicate', label: t('duplicate'), icon: 'copy', enabled: true },
+        { key: 'flip', label: t('flip'), icon: 'flip', enabled: true },
+        { key: 'rotate', label: t('rotate'), icon: 'rotate', enabled: true },
+        { key: 'speed', label: t('speed'), icon: 'speed', enabled: true },
+        { key: 'mute', label: t('mute'), icon: 'mute', enabled: true }
+      ]
+      if (spansPlayhead) {
+        entries.push({ key: 'freeze', label: this.$t('polish.menu.freezeFrame'), icon: 'camera', enabled: true })
+      }
+      entries.push({ key: 'delete', label: t('delete'), icon: 'trash', enabled: true })
+      return entries
+    },
     dropTop(): number {
       const index = this.lanes.findIndex((lane) => lane.id === 'video')
       const above = this.lanes.slice(0, Math.max(0, index))
@@ -271,12 +374,32 @@ export default defineComponent({
     },
     fineCutOpen(open: boolean): void {
       if (!open) void this.$nextTick(() => this.revealPlayhead())
+    },
+    selection(next: ItemRef | null): void {
+      if (!next) return
+      for (const lane of this.lanes) {
+        const item = lane.items.find((other) => this.isSelected(other))
+        if (item) {
+          this.revealLaneRow(lane.id, item.row ?? 0)
+          return
+        }
+      }
+    },
+    overlayRowCount(next: number, previous: number): void {
+      if (next > previous) this.revealLaneRow('overlay', next - 1)
+    },
+    lanes(): void {
+      void this.$nextTick(() => this.updateHidden())
+    },
+    timelineHeight(): void {
+      void this.$nextTick(() => this.updateHidden())
     }
   },
   mounted() {
     const el = this.$refs.scroller as HTMLElement
     this.viewportWidth = el.clientWidth
     this.fitToWidth()
+    void this.$nextTick(() => this.updateHidden())
     if (typeof window.matchMedia === 'function') {
       const query = window.matchMedia('(pointer: coarse)')
       this.coarse = query.matches
@@ -321,8 +444,15 @@ export default defineComponent({
       'moveOverlay',
       'reorderClip',
       'beginGesture',
-      'endGesture'
+      'endGesture',
+      'duplicateSelected',
+      'flipSelected',
+      'rotateSelected',
+      'cycleSpeedSelected',
+      'toggleMuteSelected',
+      'insertFreezeFrame'
     ]),
+    ...mapActions(useFineCutStore, { openFineCut: 'open' }),
 
     onPointerKindChange(event: MediaQueryListEvent) {
       this.coarse = event.matches
@@ -332,7 +462,7 @@ export default defineComponent({
     },
     /** Short label of an overlay bar: the emoji for stickers, the kind for shapes and strokes. */
     overlayName(item: OverlayItem): string {
-      if (item.kind === 'sticker') return item.emoji
+      if (item.kind === 'sticker') return item.emoji ?? ''
       if (item.kind === 'shape') return this.$t(`overlays.shape.${item.shape}`)
       if (item.kind === 'region') return this.$t(`overlays2.effects.${item.effect}`)
       if (item.kind === 'media') return this.project.assets.find((a) => a.id === item.assetId)?.name ?? ''
@@ -396,6 +526,136 @@ export default defineComponent({
     /** Pressing the scroller itself (its scrollbar or the empty part) is a manual scroll; pressing the ruler or a clip is not. */
     onScrollerPointerdown(event: PointerEvent) {
       if (event.target === event.currentTarget) this.pauseFollow()
+    },
+
+    // --- fixed height: drag or arrow keys on the grip above the panel ---
+    maxTimelineHeight(): number {
+      return Math.max(MIN_TIMELINE_HEIGHT_PX, Math.floor(window.innerHeight * MAX_TIMELINE_VIEWPORT_SHARE))
+    },
+    clampHeight(height: number): number {
+      return Math.round(Math.min(Math.max(height, MIN_TIMELINE_HEIGHT_PX), this.maxTimelineHeight()))
+    },
+    onGripDown(event: PointerEvent) {
+      if (event.button !== 0) return
+      ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+      grip = { pointerId: event.pointerId, startY: event.clientY, startHeight: this.timelineHeight }
+    },
+    onGripMove(event: PointerEvent) {
+      if (!grip || event.pointerId !== grip.pointerId) return
+      this.timelineHeight = this.clampHeight(grip.startHeight + (grip.startY - event.clientY))
+    },
+    onGripEnd(event: PointerEvent) {
+      if (!grip || event.pointerId !== grip.pointerId) return
+      grip = null
+      saveTimelineHeight(this.timelineHeight)
+    },
+    onGripKey(event: KeyboardEvent) {
+      if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
+      event.preventDefault()
+      const step = event.key === 'ArrowUp' ? RESIZE_STEP_PX : -RESIZE_STEP_PX
+      this.timelineHeight = this.clampHeight(this.timelineHeight + step)
+      saveTimelineHeight(this.timelineHeight)
+    },
+
+    // --- lane area: vertical scrolling, reveal and the "more lanes" hint ---
+    laneTop(laneId: string): number {
+      let top = RULER_HEIGHT_PX
+      for (const lane of this.lanes) {
+        if (lane.id === laneId) return top
+        top += this.laneHeightPx(lane)
+      }
+      return top
+    },
+    /** Scrolls the lane area so one lane row is fully visible (nearest edge, no jump when it already is). */
+    revealLaneRow(laneId: string, row: number) {
+      const body = this.$refs.body as HTMLElement | undefined
+      if (!body) return
+      const top = this.laneTop(laneId) + row * this.laneHeight
+      const bottom = top + this.laneHeight
+      if (top < body.scrollTop) body.scrollTop = top
+      else if (bottom > body.scrollTop + body.clientHeight) body.scrollTop = bottom - body.clientHeight
+      this.updateHidden()
+    },
+    /** Counts the lane rows that start below the visible part of the lane area. */
+    updateHidden() {
+      const body = this.$refs.body as HTMLElement | undefined
+      if (!body) return
+      const visibleBottom = body.scrollTop + body.clientHeight
+      let count = 0
+      let top = RULER_HEIGHT_PX
+      for (const lane of this.lanes) {
+        const rows = lane.rows ?? 1
+        for (let row = 0; row < rows; row++) {
+          if (top + row * this.laneHeight >= visibleBottom - 1) count++
+        }
+        top += this.laneHeightPx(lane)
+      }
+      this.hiddenBelow = count
+    },
+    scrollToBottom() {
+      const body = this.$refs.body as HTMLElement | undefined
+      if (body) body.scrollTop = body.scrollHeight
+    },
+
+    // --- item menu: right click, the context-menu key, or the "more" button on touch ---
+    openMenu(item: LaneItem, x: number, y: number, opener: HTMLElement | null) {
+      this.menu = { x, y, item, opener }
+    },
+    onItemContext(item: LaneItem, event: MouseEvent) {
+      if (!item.ref) return
+      this.select(item.ref)
+      // The bar's button is the opener: focus goes back there when the menu closes.
+      const bar = event.currentTarget instanceof HTMLElement ? event.currentTarget : null
+      const rect = bar?.getBoundingClientRect()
+      // The context-menu key sends no pointer position; the bar's corner is used then.
+      const byPointer = event.clientX !== 0 || event.clientY !== 0
+      const x = byPointer ? event.clientX : (rect?.left ?? 0)
+      const y = byPointer ? event.clientY : (rect?.bottom ?? 0)
+      this.openMenu(item, x, y, bar)
+    },
+    onItemMore(item: LaneItem, button: HTMLElement) {
+      if (!item.ref) return
+      this.select(item.ref)
+      const rect = button.getBoundingClientRect()
+      this.openMenu(item, rect.left, rect.bottom + MENU_GAP_PX, button)
+    },
+    closeMenu(restoreFocus: boolean) {
+      const opener = this.menu?.opener ?? null
+      this.menu = null
+      if (restoreFocus && opener?.isConnected) void this.$nextTick(() => opener.focus({ preventScroll: true }))
+    },
+    runMenu(key: string) {
+      const restore = key !== 'fineCut'
+      switch (key) {
+        case 'split':
+          this.splitAtPlayhead()
+          break
+        case 'fineCut':
+          void this.openFineCut()
+          break
+        case 'duplicate':
+          this.duplicateSelected()
+          break
+        case 'flip':
+          this.flipSelected()
+          break
+        case 'rotate':
+          this.rotateSelected()
+          break
+        case 'speed':
+          this.cycleSpeedSelected()
+          break
+        case 'mute':
+          this.toggleMuteSelected()
+          break
+        case 'freeze':
+          this.insertFreezeFrame()
+          break
+        case 'delete':
+          this.deleteSelected()
+          break
+      }
+      this.closeMenu(restore)
     },
 
     // --- pointer: playhead, selection, trims, reorder ---
@@ -574,12 +834,31 @@ export default defineComponent({
 
 <template>
   <section
-    class="jc-timeline flex shrink-0 flex-col border-t border-line bg-panel"
+    class="jc-timeline relative flex shrink-0 flex-col border-t border-line bg-panel"
+    :style="{ height: timelineHeight + 'px' }"
     @keydown="onKeydown"
     @pointermove="onPointerMove"
     @pointerup="onPointerEnd"
     @pointercancel="onPointerEnd"
   >
+    <div
+      role="separator"
+      tabindex="0"
+      aria-orientation="horizontal"
+      class="jc-timeline__grip absolute inset-x-0 -top-1.5 z-40 h-3 cursor-ns-resize touch-none focus-visible:outline-none"
+      :aria-label="$t('polish.timeline.resize')"
+      :aria-valuenow="timelineHeight"
+      :aria-valuemin="minTimelineHeight"
+      :aria-valuemax="maxTimelineHeight()"
+      @pointerdown="onGripDown"
+      @pointermove="onGripMove"
+      @pointerup="onGripEnd"
+      @pointercancel="onGripEnd"
+      @keydown="onGripKey"
+    >
+      <span class="jc-timeline__grip-bar absolute left-1/2 top-1.5 h-[3px] w-10 -translate-x-1/2 rounded-full bg-line" aria-hidden="true" />
+    </div>
+
     <div class="jc-timeline__toolbar flex h-9 shrink-0 items-center gap-2 border-b border-line px-3">
       <button
         type="button"
@@ -626,6 +905,8 @@ export default defineComponent({
       </button>
     </div>
 
+    <div class="relative flex min-h-0 flex-1 flex-col">
+    <div ref="body" class="jc-timeline__body min-h-0 flex-1 overflow-y-auto" @scroll="updateHidden">
     <div class="flex">
       <div class="jc-lane-labels w-[124px] shrink-0 border-r border-line">
         <div class="border-b border-line" :style="{ height: rulerHeight + 'px' }" />
@@ -686,12 +967,27 @@ export default defineComponent({
               :selected="isSelected(item)"
               :interactive="item.ref !== null"
               :handles="handlesFor(item)"
+              :more-button="coarse"
               :start-label="$t('timeline.trimStart')"
               :end-label="$t('timeline.trimEnd')"
               @select="onSelect(item)"
               @body-down="onBodyDown($event, item)"
               @handle-down="(edge, event) => onHandleDown(edge, event, item)"
+              @context-menu="(event) => onItemContext(item, event)"
+              @more="(button) => onItemMore(item, button)"
             />
+            <template v-if="lane.id === 'video'">
+              <div
+                v-for="zone in transitionZones"
+                :key="`zone-${zone.key}`"
+                class="jc-transition-zone pointer-events-none absolute z-[5]"
+                role="img"
+                :aria-label="zone.label"
+                :title="zone.label"
+                data-role="transition-zone"
+                :style="{ left: zone.leftPx + 'px', width: zone.widthPx + 'px', top: barInset + 'px', height: (laneHeight - 2 * barInset) + 'px' }"
+              />
+            </template>
           </div>
 
           <div
@@ -713,5 +1009,27 @@ export default defineComponent({
         </div>
       </div>
     </div>
+    </div>
+
+    <button
+      v-if="hiddenBelow > 0"
+      type="button"
+      class="jc-timeline__more absolute bottom-1 right-2 z-40 flex min-h-11 items-center rounded-full bg-fill px-4 text-[11px] font-semibold text-fill-fg shadow"
+      data-role="more-lanes"
+      @click="scrollToBottom"
+    >
+      {{ $t('polish.timeline.moreLanes', { count: hiddenBelow }, hiddenBelow) }}
+    </button>
+    </div>
+
+    <ItemContextMenu
+      v-if="menu"
+      :entries="menuEntries"
+      :x="menu.x"
+      :y="menu.y"
+      :ariaLabel="$t('polish.menu.label')"
+      @run="runMenu"
+      @close="closeMenu"
+    />
   </section>
 </template>

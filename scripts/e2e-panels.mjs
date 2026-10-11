@@ -311,7 +311,8 @@ await check('ratio popover: an outside click closes it', async () => {
 
 await check('picture fit switch sets Fill and Fit for every clip, whatever is selected', async () => {
   await page.getByRole('button', { name: 'Back to library' }).click()
-  const chip = page.getByRole('button', { name: /^Picture fit, currently/ })
+  // Fit / Fill lives in the format popover now (the toolbar chip was removed).
+  const chip = page.getByRole('button', { name: 'Aspect ratio', exact: true })
   await chip.click()
   await page.getByRole('radio', { name: 'Fill', exact: true }).click()
   await page.keyboard.press('Escape')

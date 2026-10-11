@@ -1,8 +1,9 @@
-// Real-browser check of the export dialog: settings, export, save (download and picker paths), cancel, missing media.
+// Real-browser check of the export dialog: settings and estimate range, automatic saving (download and picker
+// paths), picker cancel and write errors, details, ETA, cancel, missing media, German wording.
 // Usage: node scripts/e2e-export-ui.mjs   (optional env SHOT_DIR=<dir> for screenshots and downloads)
 import { chromium } from 'playwright-core'
 import { createServer } from 'vite'
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -15,14 +16,17 @@ const CLIP_A = join(root, 'tests/fixtures/clip-a.webm')
 mkdirSync(SHOT_DIR, { recursive: true })
 
 const PICKER_OFF = `Object.defineProperty(window, 'showSaveFilePicker', { value: undefined, configurable: true, writable: true });`
-// Records the picker call and keeps the written blob for the test to read back.
-const PICKER_STUB = `
+// A picker stub: 'ok' keeps the written blob for the test to read back, 'abort' is a cancelled dialog,
+// 'writefail' accepts the file and then fails to write it.
+const pickerStub = (mode) => `
 window.__picker = { calls: [], written: null };
 Object.defineProperty(window, 'showSaveFilePicker', { configurable: true, writable: true, value: async (opts) => {
   window.__picker.calls.push({ suggestedName: opts.suggestedName });
+  if ('${mode}' === 'abort') throw new DOMException('The user aborted a request.', 'AbortError');
   return { name: opts.suggestedName, createWritable: async () => ({
-    write: async (data) => { window.__picker.written = data; },
-    close: async () => {}
+    write: async (data) => { if ('${mode}' === 'writefail') throw new Error('disk full'); window.__picker.written = data; },
+    close: async () => {},
+    abort: async () => {}
   }) };
 } });`
 
@@ -70,20 +74,21 @@ async function waitFor(fn, timeout = 10_000, step = 100) {
 
 const dialog = (page) => page.getByRole('dialog', { name: /Export video|Video exportieren/ })
 const startButton = (page) => page.getByRole('button', { name: 'Start export', exact: true })
-const estimateText = (page) =>
-  page.locator('[role=dialog] p', { hasText: /size about/ }).first().innerText()
+const saveAgainButton = (page) => page.getByRole('button', { name: 'Save again', exact: true })
+const sizeLine = (page) => page.locator('[role=dialog] p', { hasText: /size about/ }).first().innerText()
+const timeLine = (page) => page.locator('[role=dialog] p', { hasText: /Export takes about/ }).first().innerText().catch(() => '')
 
-// The time part of the estimate line, spelled the way the dialog spells it in English.
-const expectedTimeText = (page) =>
-  page.evaluate(async () => {
-    const { formatEstimate } = await import('/src/core/export/estimate.ts')
+// The time range as the dialog must spell it in English: the same rule as the store's estimate.range.
+const expectedRange = (page) =>
+  page.evaluate(() => {
     const pinia = document.querySelector('#app').__vue_app__.config.globalProperties.$pinia
-    const f = formatEstimate(pinia._s.get('export').estimatedSeconds)
-    if (f.unit === 'seconds') return `${f.value} s`
-    if (f.unit === 'minutes') return f.seconds ? `${f.value} min ${f.seconds} s` : `${f.value} min`
-    return f.minutes ? `${f.value} h ${f.minutes} min` : `${f.value} h`
+    const r = pinia._s.get('export').estimate.range
+    const units = { seconds: 's', minutes: 'min', hours: 'h' }
+    const nf = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 })
+    if (r.low === r.high) return `${nf.format(r.low)} ${units[r.unit]}`
+    return `${nf.format(r.low)}–${nf.format(r.high)} ${units[r.unit]}`
   })
-const exportTimeOf = async (page) => ((await estimateText(page)).match(/export takes about ([^\n]+)/)?.[1] ?? '').trim()
+const exportTimeOf = async (page) => ((await timeLine(page)).match(/Export takes about ([^\n]+)/)?.[1] ?? '').trim()
 
 async function setTheme(page, theme) {
   await page.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme)
@@ -93,7 +98,7 @@ async function shot(page, name) {
   for (const theme of ['light', 'dark']) {
     await setTheme(page, theme)
     await page.waitForTimeout(150)
-    await dialog(page).screenshot({ path: join(SHOT_DIR, `export-${name}-${theme}.png`) })
+    await dialog(page).screenshot({ path: join(SHOT_DIR, `export2-${name}-${theme}.png`) })
   }
   await setTheme(page, 'light')
 }
@@ -121,11 +126,7 @@ async function waitPhase(page, phase, timeout) {
   return waitFor(async () => (await state(page, '(ed, ex) => ex.phase')) === phase, timeout, 200)
 }
 
-function readFileBytesAsBase64Js() {
-  return `(async (blob) => { const buf = new Uint8Array(await blob.arrayBuffer()); let s = ''; for (let i = 0; i < buf.length; i += 8192) s += String.fromCharCode(...buf.subarray(i, i + 8192)); return btoa(s) })`
-}
-
-// ---------- Pass A: download path (no picker APIs) ----------
+// ---------- Pass A: automatic download path (no picker APIs) ----------
 {
   const { context, page, pageErrors } = await newPage({ initScript: PICKER_OFF })
   await setupProject(page)
@@ -139,35 +140,36 @@ function readFileBytesAsBase64Js() {
   check('Export button opens the dialog', await dialog(page).isVisible())
   check('focus moves into the dialog on open', await page.evaluate(() => !!document.activeElement?.closest('[role=dialog]')))
   check('Start export is enabled once encoders are checked', await startButton(page).isEnabled())
-  await shot(page, 'idle')
+  await shot(page, 'ready')
 
-  const est0 = await estimateText(page)
+  check('the video length, file size and export time are separate lines', (await dialog(page).innerText()).match(/Video: \S+/) !== null)
+  const est0 = await sizeLine(page)
   await pickResolution(page, '720p')
-  await waitFor(async () => (await estimateText(page)) !== est0, 3000)
-  const est1 = await estimateText(page)
-  check('resolution change updates the estimate', est1 !== est0, `${est0} -> ${est1}`)
+  await waitFor(async () => (await sizeLine(page)) !== est0, 3000)
+  const est1 = await sizeLine(page)
+  check('resolution change updates the file size line', est1 !== est0, `${est0} -> ${est1}`)
   await pickResolution(page, '480p')
-  await waitFor(async () => (await estimateText(page)) !== est1, 3000)
-  const est2 = await estimateText(page)
-  check('480p gives a smaller estimate than 720p', est2 !== est1, `${est1} -> ${est2}`)
+  await waitFor(async () => (await sizeLine(page)) !== est1, 3000)
+  const est2 = await sizeLine(page)
+  check('480p gives a smaller file size than 720p', est2 !== est1, `${est1} -> ${est2}`)
   const bytes480_30 = await state(page, '(ed, ex) => ex.estimatedBytes')
   await page.getByRole('radio', { name: '24', exact: true }).click({ force: true })
   await waitFor(async () => (await state(page, '(ed, ex) => ex.estimatedBytes')) !== bytes480_30, 3000)
   check('frame rate change updates the estimate', (await state(page, '(ed, ex) => ex.estimatedBytes')) !== bytes480_30)
   await page.getByRole('radio', { name: '30', exact: true }).click({ force: true })
   await page.getByRole('radio', { name: 'Small', exact: true }).click({ force: true })
-  await waitFor(async () => (await estimateText(page)) !== est2, 3000)
-  const est4 = await estimateText(page)
-  check('quality change updates the estimate', est4 !== est2, `${est2} -> ${est4}`)
+  await waitFor(async () => (await sizeLine(page)) !== est2, 3000)
+  check('quality change updates the file size line', (await sizeLine(page)) !== est2)
   await page.getByRole('radio', { name: 'Good', exact: true }).click({ force: true })
-  await waitFor(async () => (await estimateText(page)) === est2, 3000)
-  check('switching back restores the same estimate', (await estimateText(page)) === est2)
+  await waitFor(async () => (await sizeLine(page)) === est2, 3000)
+  check('switching back restores the same file size', (await sizeLine(page)) === est2)
 
-  // Time: resolution and frame rate change it; the line shows it in words that match the store value.
+  // Time: resolution and frame rate change it; the line shows the range the store computes.
   const seconds = () => state(page, '(ed, ex) => ex.estimatedSeconds')
   const sec480 = await seconds()
-  check('the estimate line names the export time', (await exportTimeOf(page)) !== '', await estimateText(page))
-  check('the export time text matches the store estimate', (await exportTimeOf(page)) === (await expectedTimeText(page)), `${await exportTimeOf(page)} vs ${await expectedTimeText(page)}`)
+  check('the time line names the export time', (await exportTimeOf(page)) !== '', await timeLine(page))
+  check('the export time text matches the store range', (await exportTimeOf(page)) === (await expectedRange(page)), `${await exportTimeOf(page)} vs ${await expectedRange(page)}`)
+  check('before any export the time is a range (uncertain)', /–/.test(await exportTimeOf(page)), await exportTimeOf(page))
   check('the calibration hint is shown before any export', (await dialog(page).innerText()).includes('more accurate'))
   await pickResolution(page, '1080p')
   await waitFor(async () => (await seconds()) > sec480, 3000)
@@ -177,7 +179,7 @@ function readFileBytesAsBase64Js() {
   await waitFor(async () => (await seconds()) > sec1080, 3000)
   const sec1080at60 = await seconds()
   check('60 fps takes longer to export than 30 fps', sec1080at60 > sec1080, `${sec1080} s -> ${sec1080at60} s`)
-  check('the time text follows the new value', (await exportTimeOf(page)) === (await expectedTimeText(page)), await exportTimeOf(page))
+  check('the time text follows the new value', (await exportTimeOf(page)) === (await expectedRange(page)), await exportTimeOf(page))
   await pickResolution(page, '480p')
   await page.getByRole('radio', { name: '30', exact: true }).click({ force: true })
   await waitFor(async () => (await seconds()) === sec480, 3000)
@@ -204,36 +206,30 @@ function readFileBytesAsBase64Js() {
   await page.mouse.click(5, 5)
   check('a backdrop click closes the dialog when idle', !(await dialog(page).isVisible().catch(() => false)))
 
-  // Reopen and export at 480p, 30 fps, Good.
+  // Reopen and export at 480p, 30 fps, Good. Without a picker the file is downloaded by itself.
   await page.locator('#export-button').click()
   await waitPhase(page, 'ready', 15_000)
   await pickResolution(page, '480p')
   await page.getByRole('radio', { name: '30', exact: true }).click({ force: true })
-  const preExportText = await estimateText(page)
+  const autoDownload = page.waitForEvent('download', { timeout: 180_000 }).catch(() => null)
   await startButton(page).click()
-  let maxFraction = 0
   let sawProgressbar = false
   const runDone = await waitFor(async () => {
-    const bar = page.getByRole('progressbar')
-    if (await bar.count()) sawProgressbar = true
-    maxFraction = Math.max(maxFraction, (await state(page, '(ed, ex) => ex.progress?.fraction ?? 0')) || 0)
+    if (await page.getByRole('progressbar').count()) sawProgressbar = true
     return (await state(page, '(ed, ex) => ex.phase')) === 'done'
   }, 180_000, 100)
   const phaseNow = await state(page, '(ed, ex) => ex.phase')
   check('export at 480p/30 finishes in the done state', runDone, `phase=${phaseNow} error=${JSON.stringify(await state(page, '(ed, ex) => ex.error'))}`)
-  check('done state shows Save and the file name', runDone && (await page.getByRole('button', { name: 'Save', exact: true }).isVisible()) && (await dialog(page).innerText()).includes('New project.mp4'))
-  await shot(page, 'done')
-  const storedCalibration = await page.evaluate(() => localStorage.getItem('jellycut.export.calibration'))
-  const learned = storedCalibration ? JSON.parse(storedCalibration) : {}
-  check('the first export stores a calibration', [learned.avc, learned.software].some((f) => typeof f === 'number' && f > 0), storedCalibration ?? 'nothing stored')
+  check('the progress bar was shown while running', sawProgressbar)
+  check('done state names the file and says it was downloaded', runDone && (await dialog(page).innerText()).includes('Downloaded as New project.mp4'))
+  check('done state offers "Save again" instead of "Save"', runDone && (await saveAgainButton(page).isVisible()) && (await page.getByRole('button', { name: 'Save', exact: true }).count()) === 0)
+  check('the comparison line shows estimated and actual time', runDone && /Estimated: .+, actual: .+/.test(await dialog(page).innerText()))
 
-  const downloadPromise = page.waitForEvent('download', { timeout: 15_000 }).catch(() => null)
-  await page.getByRole('button', { name: 'Save', exact: true }).click().catch(() => undefined)
-  const download = await downloadPromise
-  check('Save starts a download', download !== null)
+  const download = await autoDownload
+  check('the download starts without a click (fallback path)', download !== null)
   const savedPath = join(SHOT_DIR, 'export-download.mp4')
   if (download) {
-    check('Save file name is "New project.mp4"', download.suggestedFilename() === 'New project.mp4', download.suggestedFilename())
+    check('the automatic file name is "New project.mp4"', download.suggestedFilename() === 'New project.mp4', download.suggestedFilename())
     await download.saveAs(savedPath)
   }
   const bytes = download ? readFileSync(savedPath) : Buffer.alloc(0)
@@ -255,24 +251,69 @@ function readFileBytesAsBase64Js() {
   )
   check('probed size is 854x480', probe.width === 854 && probe.height === 480, `${probe.width}x${probe.height}`)
 
-  // Cancel halfway through a longer export.
+  // Save again: the same file again, from the button.
+  const again = page.waitForEvent('download', { timeout: 15_000 }).catch(() => null)
+  await saveAgainButton(page).click()
+  const secondDownload = await again
+  check('"Save again" starts another download with the same name', secondDownload !== null && secondDownload.suggestedFilename() === 'New project.mp4')
+
+  // Details: the phases are measured and shown next to the estimate.
+  await page.getByText('Details', { exact: true }).click()
+  const detailRows = await dialog(page).locator('details tbody tr').count()
+  check('the details table has one row per phase', detailRows === 4, `${detailRows} rows`)
+  check('the details name the decoding and drawing steps', (await dialog(page).innerText()).includes('Decoding the source video') && (await dialog(page).innerText()).includes('Drawing the frames'))
+  const measured = await state(page, '(ed, ex) => ex.result?.measuredPhases ?? null')
+  check('the measured phases are stored for the run', measured !== null && measured.decode >= 0 && measured.encode > 0, JSON.stringify(measured))
+  await shot(page, 'done')
+
+  const storedCalibration = await page.evaluate(() => localStorage.getItem('jellycut.export.calibration'))
+  const learned = storedCalibration ? JSON.parse(storedCalibration) : {}
+  // The test Chromium encodes VP9 (software family); a machine with H.264 would store the avc family.
+  check('the first export stores a calibration for its family and class', (learned.avc?.plain?.samples ?? 0) + (learned.software?.plain?.samples ?? 0) >= 1, storedCalibration ?? 'nothing stored')
+  check('after one export the estimate is calibrated', await state(page, '(ed, ex) => ex.estimate.calibrated'))
+
+  // A full 1080p/60 export with the ETA sampled on the way: at a quarter the estimate must be near the real rest.
   await page.getByRole('button', { name: 'Export again', exact: true }).click()
   await waitPhase(page, 'ready', 5000)
-  // Same options as before the export (480p, 30): the estimate now uses the learned correction.
   const uncal = await state(page, '(ed, ex) => ex.uncalibratedSeconds')
   const corrected = await state(page, '(ed, ex) => ex.estimatedSeconds')
   check('the learned correction changes the estimated time', Math.abs(corrected - uncal) > 0.01, `${uncal} s -> ${corrected} s`)
-  check('the displayed time is the corrected value', (await exportTimeOf(page)) === (await expectedTimeText(page)), await exportTimeOf(page))
+  check('the displayed time is the corrected range', (await exportTimeOf(page)) === (await expectedRange(page)), await exportTimeOf(page))
   check('the calibration hint is gone after an export', !(await dialog(page).innerText()).includes('more accurate'))
   await shot(page, 'calibrated')
   await pickResolution(page, '1080p')
   await page.getByRole('radio', { name: '60', exact: true }).click({ force: true })
+  const etaSamples = []
+  await startButton(page).click()
+  const finished = await waitFor(async () => {
+    const p = await state(page, '(ed, ex) => (ex.progress ? { eta: ex.progress.etaMs, elapsed: ex.progress.elapsedMs, fraction: ex.progress.fraction } : null)')
+    if (p && typeof p.eta === 'number' && (etaSamples.length === 0 || etaSamples[etaSamples.length - 1].eta !== p.eta)) etaSamples.push(p)
+    return (await state(page, '(ed, ex) => ex.phase')) === 'done'
+  }, 300_000, 100)
+  check('the 1080p/60 export finishes', finished, `phase=${await state(page, '(ed, ex) => ex.phase')}`)
+  const totalMs = await state(page, '(ed, ex) => ex.result?.elapsedMs ?? 0')
+  const quarter = etaSamples.find((x) => x.fraction >= 0.25)
+  const restMs = quarter ? totalMs - quarter.elapsed : 0
+  const ratio = quarter && restMs > 0 ? quarter.eta / restMs : 0
+  const seq = etaSamples.map((x) => (x.eta / 1000).toFixed(1)).join(' ')
+  check('the ETA at a quarter is within a factor of two of the real rest', ratio > 0.5 && ratio < 2, `ETA ${Math.round((quarter?.eta ?? 0) / 1000)} s, real ${Math.round(restMs / 1000)} s; sequence ${seq}`)
+  let bigRises = 0
+  for (let i = 1; i < etaSamples.length; i++) if (etaSamples[i].eta - etaSamples[i - 1].eta > Math.max(1500, 0.15 * etaSamples[i - 1].eta)) bigRises++
+  check('the ETA rises by more than its hold band only a few times', bigRises <= 4, `${bigRises} rises in ${etaSamples.length} changes; sequence ${seq}`)
+  check('the ETA values are finite and never negative', etaSamples.every((x) => Number.isFinite(x.eta) && x.eta >= 0))
+  let countdowns = 0
+  for (let i = 1; i < etaSamples.length; i++) if (etaSamples[i].eta < etaSamples[i - 1].eta) countdowns++
+  check('the ETA mostly counts down between updates', countdowns >= (etaSamples.length - 1) / 2, `${countdowns} of ${etaSamples.length - 1}`)
+  check('the done state keeps the comparison line', (await dialog(page).innerText()).match(/Estimated: .+, actual: .+/) !== null)
+
+  // Cancel at a quarter of a second run of the same size.
+  await page.getByRole('button', { name: 'Export again', exact: true }).click()
+  await waitPhase(page, 'ready', 5000)
+  await page.getByRole('radio', { name: '30', exact: true }).click({ force: true })
   await startButton(page).click()
   const halfway = await waitFor(async () => ((await state(page, '(ed, ex) => ex.progress?.fraction ?? 0')) || 0) >= 0.25, 120_000, 50)
   check('progress reaches 25 percent before cancelling', halfway)
-  check('progress bar reports a value while running', sawProgressbar || halfway)
-  const bar = page.getByRole('progressbar')
-  check('progressbar carries aria-valuenow', Number(await bar.getAttribute('aria-valuenow')) >= 25)
+  check('progressbar carries aria-valuenow', Number(await page.getByRole('progressbar').getAttribute('aria-valuenow')) >= 25)
   await page.keyboard.press('Escape')
   check('Escape does nothing while an export runs', await dialog(page).isVisible())
   await shot(page, 'running')
@@ -307,7 +348,6 @@ function readFileBytesAsBase64Js() {
   const warningText = (await warning.count()) ? await warning.first().innerText() : ''
   check('missing media shows a warning naming the files', /frames\.webm/.test(warningText) && /clip-a\.webm/.test(warningText), warningText)
   check('missing media disables Start export', !(await startButton(page).isEnabled()))
-  await shot(page, 'warning')
 
   // Narrow viewport: the dialog must fit without horizontal scrolling.
   for (const width of [390, 360]) {
@@ -322,7 +362,6 @@ function readFileBytesAsBase64Js() {
       }
     })
     check(`dialog fits ${width} px without horizontal overflow`, fit.pageOverflow <= 0 && fit.panelOverflow <= 0, JSON.stringify(fit))
-    if (width === 390) await shot(page, 'warning-390')
   }
   await page.keyboard.press('Escape')
   await context.close()
@@ -330,29 +369,77 @@ function readFileBytesAsBase64Js() {
 
 // ---------- Pass B: picker path (showSaveFilePicker present and stubbed) ----------
 {
-  const { context, page, pageErrors } = await newPage({ initScript: PICKER_STUB })
+  const { context, page, pageErrors } = await newPage({ initScript: pickerStub('ok') })
   await setupProject(page)
   await page.locator('#export-button').click()
   await waitPhase(page, 'ready', 15_000)
   await pickResolution(page, '480p')
-  await startButton(page).click()
-  const done = await waitPhase(page, 'done', 180_000)
-  check('picker pass: export finishes', done)
   let downloads = 0
   page.on('download', () => downloads++)
-  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await startButton(page).click()
+  const calledAtStart = await waitFor(() => page.evaluate(() => window.__picker.calls.length === 1), 5000, 50)
+  check('picker pass: the save dialog opens when Start is pressed (before the export)', calledAtStart)
+  check('picker pass: the save dialog suggests "New project.mp4"', await page.evaluate(() => window.__picker.calls[0]?.suggestedName === 'New project.mp4'))
+  const midRun = await state(page, '(ed, ex) => ex.phase')
+  check('picker pass: the export runs after the file is chosen', ['running', 'done'].includes(midRun), midRun)
+  const done = await waitPhase(page, 'done', 180_000)
+  check('picker pass: export finishes', done)
   const picked = await waitFor(() => page.evaluate(() => window.__picker.written !== null), 10_000, 100)
-  const calls = await page.evaluate(() => window.__picker.calls)
-  check('picker pass: showSaveFilePicker is used', calls.length === 1 && calls[0].suggestedName === 'New project.mp4', JSON.stringify(calls))
-  check('picker pass: the blob is written to the picker writable', picked)
+  check('picker pass: the finished file is written to the picked file by itself', picked)
+  check('picker pass: the done state says the file was saved', (await dialog(page).innerText()).includes('Saved to New project.mp4'))
   if (picked) {
-    const b64 = await page.evaluate(`${readFileBytesAsBase64Js()}(window.__picker.written)`)
+    const b64 = await page.evaluate(`(async (blob) => { const buf = new Uint8Array(await blob.arrayBuffer()); let s = ''; for (let i = 0; i < buf.length; i += 8192) s += String.fromCharCode(...buf.subarray(i, i + 8192)); return btoa(s) })(window.__picker.written)`)
     const bytes = Buffer.from(b64, 'base64')
     check('picker pass: written bytes are an MP4 (ftyp at offset 4)', bytes.toString('latin1', 4, 8) === 'ftyp')
   }
   await page.waitForTimeout(500)
   check('picker pass: no download is started', downloads === 0, `${downloads}`)
+  await saveAgainButton(page).click()
+  const againPicked = await waitFor(() => page.evaluate(() => window.__picker.calls.length === 2), 5000, 100)
+  check('picker pass: "Save again" asks for a file again', againPicked)
   check('picker pass: no uncaught page errors', pageErrors.length === 0, pageErrors.join(' | '))
+  await context.close()
+}
+
+// ---------- Pass B2: picker cancelled: nothing starts ----------
+{
+  const { context, page, pageErrors } = await newPage({ initScript: pickerStub('abort') })
+  await setupProject(page)
+  let downloads = 0
+  page.on('download', () => downloads++)
+  await page.locator('#export-button').click()
+  await waitPhase(page, 'ready', 15_000)
+  await pickResolution(page, '480p')
+  await startButton(page).click()
+  await waitFor(() => page.evaluate(() => window.__picker.calls.length === 1), 5000, 50)
+  await page.waitForTimeout(800)
+  check('cancelled picker: the dialog is back in the settings', (await state(page, '(ed, ex) => ex.phase')) === 'ready' && (await dialog(page).isVisible()))
+  check('cancelled picker: no export has started', (await state(page, '(ed, ex) => ex.progress')) === null && (await dialog(page).getByRole('progressbar').count()) === 0)
+  check('cancelled picker: no download', downloads === 0)
+  check('cancelled picker: Start export is enabled again', await startButton(page).isEnabled())
+  check('cancelled picker: no uncaught page errors', pageErrors.length === 0, pageErrors.join(' | '))
+  await context.close()
+}
+
+// ---------- Pass B3: write error after the export: clear message and the file is downloaded ----------
+{
+  const { context, page, pageErrors } = await newPage({ initScript: pickerStub('writefail') })
+  await setupProject(page)
+  let downloads = 0
+  page.on('download', () => downloads++)
+  await page.locator('#export-button').click()
+  await waitPhase(page, 'ready', 15_000)
+  await pickResolution(page, '480p')
+  const autoDownload = page.waitForEvent('download', { timeout: 180_000 }).catch(() => null)
+  await startButton(page).click()
+  await waitPhase(page, 'done', 180_000)
+  const fallback = await autoDownload
+  check('write error: the file is downloaded instead', fallback !== null && fallback.suggestedFilename() === 'New project.mp4')
+  const alert = dialog(page).getByRole('alert')
+  await alert.waitFor({ timeout: 5000 }).catch(() => undefined)
+  const alertText = (await alert.count()) ? await alert.first().innerText() : ''
+  check('write error: a clear message names the reason', /could not be written \(disk full\)/.test(alertText), alertText)
+  check('write error: no uncaught page errors', pageErrors.length === 0, pageErrors.join(' | '))
   await context.close()
 }
 
@@ -368,7 +455,7 @@ function readFileBytesAsBase64Js() {
   await dialog(page).waitFor()
   const text = await dialog(page).innerText()
   check('German title and labels are shown', ['Video exportieren', 'Auflösung', 'Bilder pro Sekunde', 'Qualität', 'Format'].every((s) => text.includes(s)))
-  check('German estimate line names the export time', /Export dauert ca\. \S/.test(text) && !text.includes('export takes'), text.replace(/\n/g, ' | '))
+  check('German estimate lines: video length, file size and export time', text.includes('Video: ') && text.includes('Datei ca. ') && /Export dauert ca\. \S/.test(text) && !text.includes('export takes'), text.replace(/\n/g, ' | '))
   check('German calibration hint is shown', text.includes('Die Schätzung wird nach dem ersten Export'))
   check('German quality names are shown', ['Gut', 'Klein', 'Sehr klein'].every((s) => text.includes(s)))
   await waitPhase(page, 'ready', 15_000)

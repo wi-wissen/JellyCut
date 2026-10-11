@@ -119,7 +119,7 @@ describe('overlay appearance in the scene', () => {
     expect(popStart!.alpha).toBe(0)
     const [popEnd] = scene([sticker({ animIn: 'pop', scale: 2 })], 2 * S).overlays
     expect(popEnd!.scale).toBe(2)
-    const [slide] = scene([sticker({ animIn: 'slideUp' })], 0).overlays
+    const [slide] = scene([sticker({ animIn: 'slideUp' as never })], 0).overlays
     expect(slide!.y).toBeCloseTo(0.5 + 0.06)
   })
 

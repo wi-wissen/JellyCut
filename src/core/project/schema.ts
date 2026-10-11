@@ -1,6 +1,8 @@
 import type { Micros } from '../time'
 import type { FormatRatio, Project } from './types'
 import { CREDIT_FIELDS, CREDIT_MAX_LENGTH, isHttpUrl } from '../credits/credits'
+import { canonicalAnimation } from '../render/animations'
+import { stickerShape } from '../render/stickerShapes'
 
 export const CURRENT_VERSION = 1
 
@@ -88,6 +90,7 @@ export function migrateProject(value: unknown): ProjectResult {
     step(raw)
     raw.version = v + 1
   }
+  canonicalizeAnimations(raw)
   return validateProject(raw)
 }
 
@@ -113,6 +116,25 @@ const MIGRATIONS: Record<number, Migration> = {
   0: (raw) => {
     for (const key of OPTIONAL_LISTS) {
       if (raw[key] === undefined) raw[key] = []
+    }
+  }
+}
+
+/**
+ * Renames legacy animation values in place ('slideUp' became a direction-aware name, see core/render/animations).
+ * Runs for every saved file, whatever its version. Unknown names are left for validation to reject.
+ */
+function canonicalizeAnimations(raw: Rec): void {
+  for (const key of ['texts', 'overlays'] as const) {
+    const list = raw[key]
+    if (!Array.isArray(list)) continue
+    for (const item of list) {
+      if (!isRecord(item)) continue
+      for (const [field, role] of [['animIn', 'in'], ['animOut', 'out']] as const) {
+        if (typeof item[field] !== 'string') continue
+        const name = canonicalAnimation(item[field], role)
+        if (name !== null) item[field] = name
+      }
     }
   }
 }
@@ -249,8 +271,8 @@ function validateTexts(value: unknown, path: string, errors: Errors): void {
       need(errors, isFiniteNumber(pos.y), `${p}.pos.y`, FINITE_MSG)
     }
 
-    need(errors, t.animIn === null || typeof t.animIn === 'string', `${p}.animIn`, 'must be a string or null')
-    need(errors, t.animOut === null || typeof t.animOut === 'string', `${p}.animOut`, 'must be a string or null')
+    validateAnimation(t.animIn, 'in', `${p}.animIn`, errors)
+    validateAnimation(t.animOut, 'out', `${p}.animOut`, errors)
   })
 }
 
@@ -275,10 +297,10 @@ function validateMusic(value: unknown, path: string, assetIds: Set<string>, erro
 }
 
 const OVERLAY_SHAPES = ['rect', 'ellipse', 'arrow'] as const
-const REGION_SHAPES = ['rect', 'ellipse'] as const
+const REGION_SHAPES = ['rect', 'ellipse', 'roundRect'] as const
 const REGION_EFFECTS = ['blur', 'pixelate'] as const
-const OVERLAY_ANIMATIONS = ['fade', 'pop', 'slideUp'] as const
 const OVERLAY_LOOPS = ['wiggle'] as const
+const STROKE_CAPS = ['round', 'flat'] as const
 const OVERLAY_KINDS = ['sticker', 'shape', 'stroke', 'region', 'media'] as const
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/
 const MAX_EMOJI_LENGTH = 16
@@ -300,13 +322,18 @@ function validateOverlays(value: unknown, path: string, errors: Errors): void {
     need(errors, isPositiveNumber(o.scale), `${p}.scale`, POSITIVE_MSG)
     need(errors, isFiniteNumber(o.rotation), `${p}.rotation`, FINITE_MSG)
     if (o.opacity !== undefined) need(errors, isFiniteNumber(o.opacity) && o.opacity >= 0 && o.opacity <= 1, `${p}.opacity`, 'must be a number from 0 to 1')
-    for (const key of ['animIn', 'animOut'] as const) {
-      if (o[key] !== undefined && o[key] !== null) need(errors, OVERLAY_ANIMATIONS.includes(o[key] as (typeof OVERLAY_ANIMATIONS)[number]), `${p}.${key}`, `must be one of ${OVERLAY_ANIMATIONS.join(', ')}`)
-    }
+    validateAnimation(o.animIn, 'in', `${p}.animIn`, errors)
+    validateAnimation(o.animOut, 'out', `${p}.animOut`, errors)
     if (o.loop !== undefined && o.loop !== null) need(errors, OVERLAY_LOOPS.includes(o.loop as (typeof OVERLAY_LOOPS)[number]), `${p}.loop`, `must be one of ${OVERLAY_LOOPS.join(', ')}`)
 
     if (o.kind === 'sticker') {
-      need(errors, typeof o.emoji === 'string' && o.emoji.length > 0 && o.emoji.length <= MAX_EMOJI_LENGTH, `${p}.emoji`, `must be a string of 1 to ${MAX_EMOJI_LENGTH} characters`)
+      if (o.emoji !== undefined) {
+        need(errors, typeof o.emoji === 'string' && o.emoji.length > 0 && o.emoji.length <= MAX_EMOJI_LENGTH, `${p}.emoji`, `must be a string of 1 to ${MAX_EMOJI_LENGTH} characters`)
+      } else {
+        need(errors, typeof o.shape === 'string' && stickerShape(o.shape) !== null, `${p}.shape`, 'must be a known sticker shape (or give an emoji)')
+        need(errors, typeof o.color === 'string' && HEX_COLOR.test(o.color), `${p}.color`, 'must be #RRGGBB')
+        need(errors, o.outline === undefined || o.outline === null || (typeof o.outline === 'string' && HEX_COLOR.test(o.outline)), `${p}.outline`, 'must be #RRGGBB or null')
+      }
       need(errors, isPositiveNumber(o.size), `${p}.size`, POSITIVE_MSG)
     } else if (o.kind === 'shape') {
       need(errors, OVERLAY_SHAPES.includes(o.shape as (typeof OVERLAY_SHAPES)[number]), `${p}.shape`, `must be one of ${OVERLAY_SHAPES.join(', ')}`)
@@ -322,12 +349,14 @@ function validateOverlays(value: unknown, path: string, errors: Errors): void {
       })
       need(errors, isPositiveNumber(o.lineWidth), `${p}.lineWidth`, POSITIVE_MSG)
       need(errors, typeof o.color === 'string' && HEX_COLOR.test(o.color), `${p}.color`, 'must be #RRGGBB')
+      if (o.cap !== undefined) need(errors, STROKE_CAPS.includes(o.cap as (typeof STROKE_CAPS)[number]), `${p}.cap`, `must be one of ${STROKE_CAPS.join(', ')}`)
     } else if (o.kind === 'region') {
       need(errors, REGION_SHAPES.includes(o.shape as (typeof REGION_SHAPES)[number]), `${p}.shape`, `must be one of ${REGION_SHAPES.join(', ')}`)
       need(errors, REGION_EFFECTS.includes(o.effect as (typeof REGION_EFFECTS)[number]), `${p}.effect`, `must be one of ${REGION_EFFECTS.join(', ')}`)
       need(errors, isFiniteNumber(o.strength) && o.strength >= 0 && o.strength <= 1, `${p}.strength`, 'must be a number from 0 to 1')
       need(errors, isPositiveNumber(o.width), `${p}.width`, POSITIVE_MSG)
       need(errors, isPositiveNumber(o.height), `${p}.height`, POSITIVE_MSG)
+      if (o.radius !== undefined) need(errors, isFiniteNumber(o.radius) && o.radius >= 0, `${p}.radius`, 'must be a number of 0 or more')
     } else if (o.kind === 'media') {
       need(errors, typeof o.assetId === 'string' && o.assetId.length > 0, `${p}.assetId`, 'must be the id of an asset')
       need(errors, isPositiveNumber(o.width), `${p}.width`, POSITIVE_MSG)
@@ -335,10 +364,19 @@ function validateOverlays(value: unknown, path: string, errors: Errors): void {
       need(errors, isFiniteNumber(o.radius) && o.radius >= 0, `${p}.radius`, 'must be a number of 0 or more')
       need(errors, isFiniteNumber(o.border) && o.border >= 0, `${p}.border`, 'must be a number of 0 or more')
       need(errors, typeof o.borderColor === 'string' && HEX_COLOR.test(o.borderColor), `${p}.borderColor`, 'must be #RRGGBB')
+      if (o.srcIn !== undefined) need(errors, isMicros(o.srcIn), `${p}.srcIn`, MICROS_MSG)
+      if (o.speed !== undefined) need(errors, isPositiveNumber(o.speed), `${p}.speed`, POSITIVE_MSG)
     } else {
       errors.push(`${p}.kind must be one of ${OVERLAY_KINDS.join(', ')}`)
     }
   })
+}
+
+/** Optional animation name: null or absent, or a canonical name of the role ('in' or 'out'). */
+function validateAnimation(value: unknown, role: 'in' | 'out', path: string, errors: Errors): void {
+  if (value === undefined || value === null) return
+  const ok = typeof value === 'string' && canonicalAnimation(value, role) === value
+  need(errors, ok, path, `must be null or ${role === 'in' ? 'an entrance' : 'an exit'} animation name`)
 }
 
 function isRecord(v: unknown): v is Rec {

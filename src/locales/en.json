@@ -38,7 +38,7 @@
   "groups": {
     "material": "Material",
     "design": "Design",
-    "look": "Look",
+    "look": "Filters",
     "label": "Tool area"
   },
   "tabs": {
@@ -799,5 +799,134 @@
     "border": "Border",
     "borderColor": "Border colour",
     "confirmPictures": "{count} picture over the video also uses this file. It is removed too. | {count} pictures over the video also use this file. They are removed too."
+  },
+  "polish": {
+    "top": {
+      "home": "Back to the start page"
+    },
+    "format": {
+      "backgroundHint": "Only with Fit: the background fills the bars next to the picture."
+    },
+    "save": {
+      "label": "Save state: {state}",
+      "savedBrowser": "Autosaved in this browser",
+      "savedFile": "Saved as a file",
+      "saving": "Saving in this browser…",
+      "dirty": "Unsaved changes",
+      "fileChanged": "Changes since the last save to the file",
+      "neverFile": "Not saved as a file yet",
+      "neverFileHint": "Your work stays in this browser. Save a file to keep a copy or to open the project on another computer.",
+      "error": "Autosave failed",
+      "errorHint": "The work could not be stored in this browser ({message}). Save the project as a file now.",
+      "demo": "Demo: nothing is saved"
+    },
+    "menu": {
+      "label": "Actions for the selected item",
+      "more": "More actions",
+      "freezeFrame": "Freeze frame"
+    },
+    "transitions": {
+      "none": "No transition",
+      "zone": "Transition {seconds} s"
+    },
+    "timeline": {
+      "moreLanes": "{count} more lane | {count} more lanes below",
+      "resize": "Resize the timeline"
+    }
+  },
+  "overlays3": {
+    "penOpacity": "Opacity",
+    "markerPreset": "Marker (highlighter)",
+    "anim": {
+      "fade": "Fade",
+      "pop": "Pop",
+      "slideFromTop": "Slide in from top",
+      "slideFromBottom": "Slide in from bottom",
+      "slideFromLeft": "Slide in from left",
+      "slideFromRight": "Slide in from right",
+      "slideToTop": "Slide out to top",
+      "slideToBottom": "Slide out to bottom",
+      "slideToLeft": "Slide out to left",
+      "slideToRight": "Slide out to right"
+    },
+    "sticker": {
+      "star": "Star",
+      "heart": "Heart",
+      "check": "Check mark",
+      "cross": "Cross",
+      "arrowRight": "Arrow right",
+      "arrowUp": "Arrow up",
+      "speech": "Speech bubble",
+      "thought": "Thought bubble",
+      "exclamation": "Exclamation mark",
+      "question": "Question mark",
+      "lightbulb": "Idea",
+      "thumbsUp": "Thumbs up",
+      "smile": "Smile",
+      "sun": "Sun",
+      "cloud": "Cloud",
+      "lightning": "Lightning",
+      "flag": "Flag",
+      "music": "Music note",
+      "camera": "Camera",
+      "play": "Play button",
+      "crown": "Crown",
+      "sparkles": "Sparkles",
+      "badge1": "Badge 1",
+      "badge2": "Badge 2",
+      "badge3": "Badge 3"
+    },
+    "regionShape": {
+      "rect": "Rectangle",
+      "ellipse": "Ellipse",
+      "roundRect": "Rounded rectangle"
+    }
+  },
+  "export2": {
+    "estimate": {
+      "video": "Video: {duration}",
+      "size": "File size about {size}",
+      "time": "Export takes about {time}"
+    },
+    "unit": {
+      "seconds": "s",
+      "minutes": "min",
+      "hours": "h"
+    },
+    "time": {
+      "single": "{value} {unit}",
+      "range": "{low}–{high} {unit}"
+    },
+    "compare": "Estimated: {estimated}, actual: {actual}",
+    "saving": {
+      "file": "The file is written to {name} when the export is finished.",
+      "download": "The file is downloaded automatically when the export is finished."
+    },
+    "saved": {
+      "file": "Saved to {name}.",
+      "download": "Downloaded as {name}."
+    },
+    "errors": {
+      "writeFailed": "The file could not be written ({message}). It was downloaded instead."
+    },
+    "saveAgain": "Save again",
+    "details": {
+      "title": "Details",
+      "step": "Step",
+      "estimated": "Estimated",
+      "measured": "Measured",
+      "phases": {
+        "decode": "Decoding the source video",
+        "draw": "Drawing the frames",
+        "encode": "Encoding",
+        "other": "Audio, start and finish"
+      },
+      "class": {
+        "plain": "Plain project",
+        "video": "With a picture-in-picture video"
+      },
+      "samples": "Calibration: {count} exports on this computer",
+      "none": "No calibration yet"
+    }
   }
 }

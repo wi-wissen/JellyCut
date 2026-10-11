@@ -15,6 +15,8 @@ import {
 import { clampSamples, mixSegmentInto, type Pcm } from '../../core/audio/pcm'
 import { planAudioSegments, type AudioSegment } from '../../core/audio/mix'
 import { AUDIO_BITRATE, outputSize, totalFrames, videoBitrate, type ExportOptions } from '../../core/export/presets'
+import { emptyPhases, estimateCodecOf, profileExport, type PhaseSeconds } from '../../core/export/estimate'
+import { ExportEta } from '../../core/export/eta'
 import type { Project } from '../../core/project/types'
 import { buildScene, planTimeline, type PlannedTimeline } from '../../core/render/scene'
 import { frameStart, type Micros } from '../../core/time'
@@ -35,8 +37,10 @@ export interface ExportProgress {
   /** 0..1 */
   fraction: number
   elapsedMs: number
-  /** Estimated remaining time, null while too little has been done to tell. */
+  /** Estimated remaining time, null while too little has been done to tell. Smoothed, see ExportEta. */
   etaMs: number | null
+  /** Seconds spent so far per phase (measured on the main loop). */
+  phases?: PhaseSeconds
 }
 
 export interface ExportResult {
@@ -47,6 +51,8 @@ export interface ExportResult {
   audioCodec: string | null
   frames: number
   elapsedMs: number
+  /** Measured seconds per phase, for the calibration and the details of the dialog. */
+  phases: PhaseSeconds
 }
 
 export class ExportCancelled extends Error {
@@ -114,9 +120,28 @@ export async function runExport(
   const provider = createFrameProvider(project, req.files)
   const audioReader = new AudioReader(req.files)
   const frameDuration = 1 / fps
+  const measured = emptyPhases()
+  const profile = profileExport({
+    project,
+    planned,
+    width,
+    height,
+    fps,
+    durationMicros: duration,
+    kind: 'mp4',
+    codec: estimateCodecOf(codecs.video),
+    withWeights: true
+  })
+  const eta = new ExportEta(profile.frameWeights, frames)
+  const writeAudio = async (source: AudioSampleSource, from: Micros, to: Micros): Promise<void> => {
+    const a0 = performance.now()
+    await writeAudioChunk(source, audioReader, segments, from, to)
+    measured.audio += (performance.now() - a0) / 1000
+  }
 
   try {
     await output.start()
+    measured.fixed += (performance.now() - started) / 1000
     let audioCursor: Micros = 0
     for (let i = 0; i < frames; i++) {
       if (signal.aborted) throw new ExportCancelled()
@@ -126,13 +151,15 @@ export async function runExport(
         // Keep audio roughly in step with video so the muxer never has to buffer far ahead.
         while (audioCursor < duration && audioCursor <= t) {
           const end = Math.min(audioCursor + AUDIO_CHUNK, duration)
-          await writeAudioChunk(audioSource, audioReader, segments, audioCursor, end)
+          await writeAudio(audioSource, audioCursor, end)
           audioCursor = end
         }
       }
 
-      await drawFrame(compositor, provider, project, planned, t)
+      await drawFrame(compositor, provider, project, planned, t, measured)
+      const e0 = performance.now()
       await videoSource.add(t / 1_000_000, frameDuration)
+      measured.encode += (performance.now() - e0) / 1000
 
       if ((i & 7) === 0 || i === frames - 1) {
         const elapsedMs = performance.now() - started
@@ -142,19 +169,22 @@ export async function runExport(
           totalFrames: frames,
           fraction: done / frames,
           elapsedMs,
-          etaMs: done >= 15 ? (elapsedMs / done) * (frames - done) : null
+          etaMs: eta.update(elapsedMs, done),
+          phases: { ...measured }
         })
       }
     }
     if (audioSource) {
       while (audioCursor < duration) {
         const end = Math.min(audioCursor + AUDIO_CHUNK, duration)
-        await writeAudioChunk(audioSource, audioReader, segments, audioCursor, end)
+        await writeAudio(audioSource, audioCursor, end)
         audioCursor = end
       }
     }
     if (signal.aborted) throw new ExportCancelled()
+    const f0 = performance.now()
     await output.finalize()
+    measured.fixed += (performance.now() - f0) / 1000
   } catch (error) {
     if (output.state !== 'finalized' && output.state !== 'canceled') await output.cancel().catch(() => undefined)
     throw error
@@ -173,7 +203,8 @@ export async function runExport(
     videoCodec: codecs.video,
     audioCodec,
     frames,
-    elapsedMs: performance.now() - started
+    elapsedMs: performance.now() - started,
+    phases: measured
   }
 }
 
@@ -194,16 +225,28 @@ export function createFrameProvider(project: Project, files: Record<string, File
   return provider
 }
 
-/** Draws the scene at time t onto the compositor. Shared by the MP4 and the GIF export. */
+/**
+ * Draws the scene at time t onto the compositor. Shared by the MP4 and the GIF export. With `timing`, the
+ * seconds spent waiting for frames (decode) and drawing are added to it.
+ */
 export async function drawFrame(
   compositor: Compositor,
   provider: ExactFrameProvider,
   project: Project,
   planned: PlannedTimeline,
-  t: Micros
+  t: Micros,
+  timing?: PhaseSeconds
 ): Promise<void> {
+  const t0 = performance.now()
   const scene = buildScene(project, planned, t)
-  compositor.draw(scene, await sceneFrames(scene, provider))
+  const t1 = performance.now()
+  const frames = await sceneFrames(scene, provider)
+  const t2 = performance.now()
+  compositor.draw(scene, frames)
+  if (timing) {
+    timing.decode += (t2 - t1) / 1000
+    timing.draw += (t1 - t0 + performance.now() - t2) / 1000
+  }
 }
 
 async function writeAudioChunk(

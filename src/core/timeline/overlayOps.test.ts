@@ -226,7 +226,7 @@ describe('addRegion', () => {
     const next = updateOverlay(p, 'r1', { effect: 'pixelate', shape: 'ellipse', strength: 3, width: 0.5, height: 0.4 })
     expect(next.overlays[0]).toMatchObject({ effect: 'pixelate', shape: 'ellipse', strength: 1, width: 0.5, height: 0.4 })
     expect(updateOverlay(p, 'r1', { color: RED })).toBe(p)
-    expect(updateOverlay(p, 'r1', { radius: 0.1 })).toBe(p)
+    expect(updateOverlay(p, 'r1', { radius: 0.1 }).overlays[0]).toMatchObject({ radius: 0.1 })
     expect(updateOverlay(p, 'r1', { shape: 'arrow' as never })).toBe(p)
     expect(updateOverlay(p, 'r1', { effect: 'wobble' as never })).toBe(p)
   })

@@ -67,6 +67,7 @@ node scripts/e2e-relink.mjs
 node scripts/e2e-media-remove.mjs
 node scripts/e2e-start.mjs        # first start: empty project, example video, autosave, ?demo=1
 node scripts/e2e-pwa.mjs          # production build: manifest, service worker, update toast, offline use (port 5260)
+node scripts/e2e-polish.mjs        # format popover, top bar link, save dot, file name, transitions tiles, timeline menu and height (port 5270)
 npm run build && node scripts/e2e-build.mjs   # smoke test of the production build
 ```
 

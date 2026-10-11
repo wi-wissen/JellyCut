@@ -56,6 +56,8 @@ const PROJECT_TYPES: PickerType[] = [
   { description: 'Jelly Cut project', accept: { 'application/json': ['.jellycut', '.json'] } }
 ]
 const CONTROL_CHARS = /[\u0000-\u001f\u007f]/g
+/** Written as <name>.jellycut.json; the opener accepts both .jellycut and .json. */
+export const PROJECT_EXTENSION = '.jellycut.json'
 
 function pickerApi(): FilePickerApi | null {
   return typeof window === 'undefined' ? null : (window as unknown as FilePickerApi)
@@ -73,7 +75,7 @@ export function detectCaps(): ProjectFileCaps {
   }
 }
 
-/** A file name that is safe on all common systems, always ending in .jellycut. */
+/** A file name that is safe on all common systems, always ending in .jellycut.json. */
 export function projectFileName(name: string): string {
   const base = name
     .replace(CONTROL_CHARS, '')
@@ -82,7 +84,7 @@ export function projectFileName(name: string): string {
     .trim()
     .replace(/[. ]+$/, '')
     .slice(0, 60)
-  return `${base || 'project'}.jellycut`
+  return `${base || 'project'}${PROJECT_EXTENSION}`
 }
 
 export async function openProjectFile(): Promise<OpenedProjectFile | null> {

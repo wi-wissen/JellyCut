@@ -1,6 +1,6 @@
 import { CURATED_FONTS } from '../text/fonts'
 import type { Project, TextItem, TextStyle } from '../project/types'
-import { TEXT_ANIMATIONS, type TextAnimation } from '../render/types'
+import { canonicalAnimation, type InAnimation, type OutAnimation } from '../render/animations'
 import type { Micros } from '../time'
 import { projectIds } from './ops'
 
@@ -42,8 +42,8 @@ export interface TextPatch {
   text?: string
   style?: Partial<TextStyle>
   pos?: Partial<{ x: number; y: number }>
-  animIn?: string | null
-  animOut?: string | null
+  animIn?: InAnimation | null
+  animOut?: OutAnimation | null
   start?: Micros
   duration?: Micros
 }
@@ -119,11 +119,11 @@ function applyTextPatch(item: TextItem, patch: TextPatch): TextItem | null {
     if (y !== undefined) next.pos.y = clamp(y, 0, 1)
   }
   if (patch.animIn !== undefined) {
-    if (!isAnimation(patch.animIn)) return null
+    if (patch.animIn !== null && canonicalAnimation(patch.animIn, 'in') !== patch.animIn) return null
     next.animIn = patch.animIn
   }
   if (patch.animOut !== undefined) {
-    if (!isAnimation(patch.animOut)) return null
+    if (patch.animOut !== null && canonicalAnimation(patch.animOut, 'out') !== patch.animOut) return null
     next.animOut = patch.animOut
   }
   if (patch.start !== undefined) {
@@ -135,10 +135,6 @@ function applyTextPatch(item: TextItem, patch: TextPatch): TextItem | null {
     next.duration = clampDuration(patch.duration)
   }
   return next
-}
-
-function isAnimation(value: string | null): value is TextAnimation | null {
-  return value === null || (TEXT_ANIMATIONS as readonly string[]).includes(value)
 }
 
 function clampDuration(d: Micros): Micros {

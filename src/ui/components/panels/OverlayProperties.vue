@@ -7,7 +7,7 @@ import ColorPicker from './ColorPicker.vue'
 import { useEditorStore } from '../../stores/editor'
 import type { OverlayItem } from '../../../core/project/types'
 import { secondsToMicros } from '../../../core/time'
-import { OVERLAY_ANIMATIONS, OVERLAY_LOOPS, REFERENCE_HEIGHT, REGION_EFFECTS, REGION_SHAPES } from '../../../core/timeline/overlayCatalog'
+import { OVERLAY_IN_ANIMATIONS, OVERLAY_LOOPS, OVERLAY_OUT_ANIMATIONS, REFERENCE_HEIGHT, REGION_EFFECTS, REGION_SHAPES } from '../../../core/timeline/overlayCatalog'
 
 /**
  * Settings of one sticker, shape, stroke, blur area or picture. Sizes and angles are sliders; the same
@@ -21,7 +21,7 @@ export default defineComponent({
   },
   data() {
     return {
-      animations: OVERLAY_ANIMATIONS,
+      animations: { in: OVERLAY_IN_ANIMATIONS, out: OVERLAY_OUT_ANIMATIONS },
       loops: OVERLAY_LOOPS,
       regionShapes: REGION_SHAPES,
       regionEffects: REGION_EFFECTS
@@ -30,7 +30,7 @@ export default defineComponent({
   computed: {
     ...mapState(useEditorStore, ['project']),
     header(): string {
-      if (this.item.kind === 'sticker') return this.$t('overlays.header.sticker', { name: this.item.emoji })
+      if (this.item.kind === 'sticker') return this.$t('overlays.header.sticker', { name: this.item.emoji ?? this.$t(`overlays3.sticker.${this.item.shape}`) })
       if (this.item.kind === 'shape') return this.$t('overlays.header.shape', { name: this.$t(`overlays.shape.${this.item.shape}`) })
       if (this.item.kind === 'region') return this.$t('overlays2.regionHeader', { name: this.$t(`overlays2.effects.${this.item.effect}`) })
       if (this.item.kind === 'media') return this.$t('overlays2.pictureHeader', { name: this.pictureName })
@@ -196,7 +196,7 @@ export default defineComponent({
         <div class="flex flex-col gap-1">
           <label :for="`overlay-shape-${item.id}`" class="text-xs font-semibold text-muted">{{ $t('overlays.shapes') }}</label>
           <select :id="`overlay-shape-${item.id}`" class="min-h-11 w-full rounded-lg border border-line bg-panel px-2 text-sm text-fg" :value="item.shape" @change="setRegionShape">
-            <option v-for="shape in regionShapes" :key="shape" :value="shape">{{ $t(`overlays2.regionShape.${shape}`) }}</option>
+            <option v-for="shape in regionShapes" :key="shape" :value="shape">{{ $t(`overlays3.regionShape.${shape}`) }}</option>
           </select>
         </div>
       </section>
@@ -305,14 +305,14 @@ export default defineComponent({
           <label :for="`overlay-anim-in-${item.id}`" class="text-xs font-semibold text-muted">{{ $t('overlays2.animIn') }}</label>
           <select :id="`overlay-anim-in-${item.id}`" class="min-h-11 w-full rounded-lg border border-line bg-panel px-2 text-sm text-fg" :value="item.animIn ?? 'none'" @change="setAnimation('animIn', $event)">
             <option value="none">{{ $t('overlays2.none') }}</option>
-            <option v-for="anim in animations" :key="anim" :value="anim">{{ $t(`overlays2.anim.${anim}`) }}</option>
+            <option v-for="anim in animations.in" :key="anim" :value="anim">{{ $t(`overlays3.anim.${anim}`) }}</option>
           </select>
         </div>
         <div class="flex flex-col gap-1">
           <label :for="`overlay-anim-out-${item.id}`" class="text-xs font-semibold text-muted">{{ $t('overlays2.animOut') }}</label>
           <select :id="`overlay-anim-out-${item.id}`" class="min-h-11 w-full rounded-lg border border-line bg-panel px-2 text-sm text-fg" :value="item.animOut ?? 'none'" @change="setAnimation('animOut', $event)">
             <option value="none">{{ $t('overlays2.none') }}</option>
-            <option v-for="anim in animations" :key="anim" :value="anim">{{ $t(`overlays2.anim.${anim}`) }}</option>
+            <option v-for="anim in animations.out" :key="anim" :value="anim">{{ $t(`overlays3.anim.${anim}`) }}</option>
           </select>
         </div>
       </div>

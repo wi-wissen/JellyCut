@@ -7,7 +7,7 @@ import { useCreditsStore } from '../stores/credits'
 import { assetsNeedingCredit } from '../../core/credits/credits'
 import { EXPORT_FPS, EXPORT_QUALITIES, EXPORT_RESOLUTIONS, GIF_FPS, GIF_WIDTHS } from '../../core/export/presets'
 import { formatBytes, formatClock, formatEta } from '../../core/export/format'
-import { formatEstimate } from '../../core/export/estimate'
+import { formatEstimateValue, type TimeRange } from '../../core/export/estimate'
 
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
 const TRIGGER_ID = 'export-button'
@@ -40,13 +40,14 @@ export default defineComponent({
       'progress',
       'result',
       'error',
+      'notice',
       'encoders',
       'inWorker',
       'estimatedBytes',
-      'estimatedSeconds',
-      'hasCalibration',
+      'estimate',
       'missingNames',
-      'canStart'
+      'canStart',
+      'runFileName'
     ]),
     ...mapState(useEditorStore, ['totalDuration', 'project']),
     ...mapState(useCreditsStore, { creditsOpen: 'open' }),
@@ -64,17 +65,65 @@ export default defineComponent({
     estimateNoteText(): string {
       return this.format === 'gif' ? this.$t('export.roughNote') : this.$t('export.estimateNote')
     },
-    estimateTimeText(): string {
-      const time = formatEstimate(this.estimatedSeconds)
-      if (time.unit === 'seconds') return this.$t('export.time.seconds', { value: time.value })
-      if (time.unit === 'minutes') {
-        return time.seconds
-          ? this.$t('export.time.minutesSeconds', { value: time.value, seconds: time.seconds })
-          : this.$t('export.time.minutes', { value: time.value })
-      }
-      return time.minutes
-        ? this.$t('export.time.hoursMinutes', { value: time.value, minutes: time.minutes })
-        : this.$t('export.time.hours', { value: time.value })
+    /** Video length, file size and export time as separate lines: the time is a range while uncertain. */
+    videoLine(): string {
+      return this.$t('export2.estimate.video', { duration: this.durationText })
+    },
+    sizeLine(): string {
+      return this.$t('export2.estimate.size', { size: this.sizeText })
+    },
+    timeLine(): string {
+      return this.$t('export2.estimate.time', { time: this.rangeText(this.estimate.range) })
+    },
+    calibrationSamples(): number {
+      return this.estimate.samples
+    },
+    detailRows(): { key: string; label: string; estimated: string; measured: string }[] {
+      const r = this.result
+      if (!r?.estimatedPhases || !r.measuredPhases) return []
+      const est = r.estimatedPhases
+      const meas = r.measuredPhases
+      const rows = [
+        { key: 'decode', est: est.decode, meas: meas.decode },
+        { key: 'draw', est: est.draw, meas: meas.draw },
+        { key: 'encode', est: est.encode, meas: meas.encode },
+        { key: 'other', est: est.audio + est.fixed, meas: meas.audio + meas.fixed }
+      ]
+      return rows.map((row) => ({
+        key: row.key,
+        label: this.$t(`export2.details.phases.${row.key}`),
+        estimated: this.secondsText(row.est),
+        measured: this.secondsText(row.meas)
+      }))
+    },
+    comparisonText(): string {
+      if (!this.result) return ''
+      return this.$t('export2.compare', {
+        estimated: this.rangeText(formatEstimateValue(this.result.estimatedSeconds)),
+        actual: this.rangeText(formatEstimateValue(this.result.elapsedMs / 1000))
+      })
+    },
+    classText(): string {
+      return this.result ? this.$t(`export2.details.class.${this.result.featureClass}`) : ''
+    },
+    calibrationText(): string {
+      return this.calibrationSamples > 0
+        ? this.$t('export2.details.samples', { count: this.calibrationSamples })
+        : this.$t('export2.details.none')
+    },
+    savedText(): string {
+      if (!this.result) return ''
+      return this.result.savedAs === 'file'
+        ? this.$t('export2.saved.file', { name: this.result.fileName })
+        : this.$t('export2.saved.download', { name: this.result.fileName })
+    },
+    savingText(): string {
+      return this.runFileName
+        ? this.$t('export2.saving.file', { name: this.runFileName })
+        : this.$t('export2.saving.download')
+    },
+    noticeText(): string {
+      return this.notice ? this.$t(this.notice.key, this.notice.params) : ''
     },
     optionsDisabled(): boolean {
       return this.phase !== 'ready' && this.phase !== 'checking'
@@ -135,6 +184,20 @@ export default defineComponent({
   },
   methods: {
     ...mapActions(useExportStore, ['show', 'close', 'setOptions', 'setFormat', 'setGifOptions', 'start', 'cancel', 'save', 'reset']),
+    /** Number with the locale's separator, one decimal at most. */
+    numberText(value: number): string {
+      return new Intl.NumberFormat(this.locale, { maximumFractionDigits: 1 }).format(value)
+    },
+    /** A range or single value of a duration, in words for the dialog's language. */
+    rangeText(range: TimeRange): string {
+      const unit = this.$t(`export2.unit.${range.unit}`)
+      if (range.low === range.high) return this.$t('export2.time.single', { value: this.numberText(range.low), unit })
+      return this.$t('export2.time.range', { low: this.numberText(range.low), high: this.numberText(range.high), unit })
+    },
+    /** Seconds with one decimal, for the details table. */
+    secondsText(seconds: number): string {
+      return this.$t('export2.time.single', { value: this.numberText(Math.round(seconds * 10) / 10), unit: this.$t('export2.unit.seconds') })
+    },
     /** Opens the credits dialog above this one; focus returns to the hint when it closes. */
     openCredits(): void {
       useCreditsStore().show({ returnId: CREDITS_HINT_BUTTON_ID })
@@ -326,11 +389,15 @@ export default defineComponent({
             <div v-if="phase === 'checking'" role="status" class="mb-3 text-sm text-muted">{{ $t('export.checking') }}</div>
 
             <template v-else-if="phase === 'ready' || phase === 'running'">
-              <p class="mb-1 flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
-                <span>{{ $t('export.estimate', { duration: durationText, size: sizeText, time: estimateTimeText }) }}</span>
-                <small class="text-xs text-muted">{{ estimateNoteText }}</small>
-              </p>
-              <p v-if="!hasCalibration" class="mb-3 text-xs text-muted">{{ $t('export.calibrationHint') }}</p>
+              <div class="mb-3 space-y-1 text-sm">
+                <p>{{ videoLine }}</p>
+                <p>{{ sizeLine }}</p>
+                <p class="flex flex-wrap items-baseline gap-x-2 font-semibold">
+                  <span>{{ timeLine }}</span>
+                  <small class="text-xs font-normal text-muted">{{ estimateNoteText }}</small>
+                </p>
+              </div>
+              <p v-if="!estimate.calibrated" class="mb-3 text-xs text-muted">{{ $t('export.calibrationHint') }}</p>
               <p v-if="format === 'mp4' && encoders?.video" class="mb-3 text-xs text-muted">
                 {{ $t('export.encoder', { codec: codecLabel }) }}
                 <span v-if="codecFallback" class="block">{{ $t('export.codecNote') }}</span>
@@ -364,6 +431,7 @@ export default defineComponent({
                 <div class="h-full rounded-full bg-fill transition-[width] duration-300" :style="{ width: `${percent}%` }" />
               </div>
               <p class="mt-2 text-xs text-muted">{{ timingText }}</p>
+              <p class="mt-2 text-xs text-muted">{{ savingText }}</p>
               <p v-if="!inWorker" class="mt-2 text-xs text-muted">{{ $t('export.keepOpen') }}</p>
             </div>
           </template>
@@ -371,10 +439,34 @@ export default defineComponent({
           <!-- Done -->
           <div v-else-if="phase === 'done' && result" class="py-2">
             <p class="text-base font-bold">{{ $t('export.done') }}</p>
-            <p class="mt-1 text-sm">{{ $t('export.doneText') }}</p>
+            <p class="mt-1 text-sm">{{ savedText }}</p>
             <p class="mt-2 break-all text-sm text-muted">{{ $t('export.fileSize', { name: result.fileName, size: resultSizeText }) }}</p>
+            <p class="mt-2 text-sm">{{ comparisonText }}</p>
+            <div v-if="noticeText" role="alert" class="mt-3 rounded-lg border border-[var(--jc-danger)] bg-panel2 px-3 py-2 text-sm">
+              {{ noticeText }}
+            </div>
+            <details v-if="detailRows.length" class="mt-3 rounded-lg border border-line bg-panel2 px-3 py-2 text-sm">
+              <summary class="min-h-11 cursor-pointer py-2 font-semibold">{{ $t('export2.details.title') }}</summary>
+              <table class="mb-2 w-full text-left text-sm">
+                <thead>
+                  <tr class="text-xs text-muted">
+                    <th class="py-1 font-semibold">{{ $t('export2.details.step') }}</th>
+                    <th class="py-1 text-right font-semibold">{{ $t('export2.details.estimated') }}</th>
+                    <th class="py-1 text-right font-semibold">{{ $t('export2.details.measured') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in detailRows" :key="row.key">
+                    <td class="py-1">{{ row.label }}</td>
+                    <td class="py-1 text-right tabular-nums">{{ row.estimated }}</td>
+                    <td class="py-1 text-right tabular-nums">{{ row.measured }}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p class="text-xs text-muted">{{ classText }} · {{ calibrationText }}</p>
+            </details>
             <div v-if="creditsHintVisible" class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-line bg-panel2 px-3 py-2 text-sm">
-              <p class="min-w-0 flex-1">{{ $t('export.creditsHint.text') }}</p>
+              <p class="w-full">{{ $t('export.creditsHint.text') }}</p>
               <button :id="creditsHintButtonId" type="button" class="min-h-11 rounded-lg px-3 font-semibold text-fg underline hover:bg-panel" @click="openCredits">
                 {{ $t('export.creditsHint.open') }}
               </button>
@@ -418,7 +510,7 @@ export default defineComponent({
               {{ $t('export.again') }}
             </button>
             <button type="button" class="min-h-11 rounded-lg bg-signal px-5 text-sm font-bold text-signal-fg hover:brightness-95" @click="save">
-              {{ $t('export.save') }}
+              {{ $t('export2.saveAgain') }}
             </button>
           </template>
           <template v-else>

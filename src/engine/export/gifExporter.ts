@@ -4,6 +4,7 @@ import { gifOutputSize, gifTooLarge, totalFrames, type GifOptions } from '../../
 import type { Project } from '../../core/project/types'
 import { planTimeline } from '../../core/render/scene'
 import { frameStart } from '../../core/time'
+import { ExportEta } from '../../core/export/eta'
 import { Compositor } from '../render/compositor'
 import { ExportCancelled, ExportUnsupported, createFrameProvider, drawFrame, projectDuration, type ExportProgress } from './exporter'
 
@@ -72,6 +73,7 @@ export async function runGifExport(
   if (!readback) throw new Error('A 2D canvas is not available')
 
   let done = 0
+  const eta = new ExportEta(null, total)
   const report = (): void => {
     const elapsedMs = performance.now() - started
     onProgress({
@@ -79,7 +81,7 @@ export async function runGifExport(
       totalFrames: total,
       fraction: done / total,
       elapsedMs,
-      etaMs: done >= 5 ? (elapsedMs / done) * (total - done) : null
+      etaMs: eta.update(elapsedMs, done)
     })
   }
   // WebGL output is read through a 2D canvas: getImageData gives the unpremultiplied RGBA of the frame.

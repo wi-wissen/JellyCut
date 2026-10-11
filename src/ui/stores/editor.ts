@@ -1,15 +1,21 @@
 import { defineStore } from 'pinia'
 import { createProject, parseProjectJson, serializeProject } from '../../core/project/schema'
 import type { Asset, Clip, FitMode, FormatRatio, MusicItem, OverlayItem, Project, RegionOverlay, ShapeOverlay, TextItem } from '../../core/project/types'
-import { DEFAULT_OVERLAY_COLOR, type LineWidthId } from '../../core/timeline/overlayCatalog'
+import { DEFAULT_OVERLAY_COLOR, MARKER_PRESET, type LineWidthId } from '../../core/timeline/overlayCatalog'
+import type { StickerShapeId } from '../../core/render/stickerShapes'
 import {
   addMedia,
   addRegion,
   addShape,
   addSticker,
   addStroke,
+  addVectorSticker,
+  bringForward,
+  bringToFront,
   moveOverlay as moveOverlayInTime,
   removeLastStroke,
+  sendBackward,
+  sendToBack,
   trimOverlayEnd as trimOverlayEndInTime,
   trimOverlayStart as trimOverlayStartInTime,
   updateOverlay,
@@ -116,7 +122,11 @@ export interface EditorState {
   fileName: string | null
   workFolderName: string | null
   saveStatus: AutosaveStatus
+  /** Message of the last failed autosave in this browser; null when the last save worked. */
+  autosaveError: string | null
   dirtySinceFileSave: boolean
+  /** Time (ms since epoch) of the first edit since the last file save; null when nothing is unsaved. */
+  unsavedSince: number | null
   loadError: string | null
   caps: ProjectFileCaps
   /** The timeline item the user selected, if it still exists. */
@@ -126,6 +136,10 @@ export interface EditorState {
   /** Colour for new shapes and strokes. Not part of the project and not undoable. */
   overlayColor: string
   penWidth: LineWidthId
+  /** Pen opacity 0..1; 1 is opaque. Applied to each stroke as a whole. */
+  penOpacity: number
+  /** Line ends of new strokes; 'flat' only from the marker preset. */
+  penCap: 'round' | 'flat'
   /** Drawing mode: pointer input on the player makes strokes instead of selecting. */
   drawing: boolean
 }
@@ -260,6 +274,7 @@ function errorMessage(error: unknown): string {
 // Non-reactive singletons: one autosaver per store instance, one work folder handle, one lifecycle listener set.
 interface AutosaveTarget {
   saveStatus: AutosaveStatus
+  autosaveError: string | null
 }
 
 const autosavers = new WeakMap<object, Autosaver<Project>>()
@@ -274,8 +289,12 @@ function autosaverFor(target: AutosaveTarget): Autosaver<Project> {
         const record: AutosaveRecord = { text: serializeProject(project), savedAt: Date.now() }
         if (!(await kvSet(AUTOSAVE_KEY, record))) throw new Error('autosave storage unavailable')
       },
+      onError: (e) => {
+        target.autosaveError = errorMessage(e)
+      },
       onStatus: (status) => {
         target.saveStatus = status
+        if (status !== 'error') target.autosaveError = null
       }
     })
     autosavers.set(target, saver)
@@ -330,13 +349,17 @@ export const useEditorStore = defineStore('editor', {
       fileName: null,
       workFolderName: null,
       saveStatus: 'idle',
+      autosaveError: null,
       dirtySinceFileSave: false,
+      unsavedSince: null,
       loadError: null,
       caps: detectCaps(),
       selection: null,
       isPlaying: false,
       overlayColor: DEFAULT_OVERLAY_COLOR,
       penWidth: 'medium',
+      penOpacity: 1,
+      penCap: 'round',
       drawing: false
     }
   },
@@ -489,6 +512,7 @@ export const useEditorStore = defineStore('editor', {
       this.history = next
       // Undo and redo can take an asset out of the project or back in; the media store follows the document.
       useMediaStore().reconcileWith(next.present)
+      if (!this.dirtySinceFileSave) this.unsavedSince = Date.now()
       this.dirtySinceFileSave = true
       this.scheduleAutosave()
     },
@@ -516,6 +540,7 @@ export const useEditorStore = defineStore('editor', {
       this.fileHandle = file.handle
       this.fileName = file.name
       this.dirtySinceFileSave = false
+      this.unsavedSince = null
       this.loadError = null
       this.selection = null
       this.scheduleAutosave()
@@ -554,6 +579,7 @@ export const useEditorStore = defineStore('editor', {
         this.fileName = saved.name
         // Edits made while the save was running stay dirty.
         this.dirtySinceFileSave = this.history.present !== project
+        if (!this.dirtySinceFileSave) this.unsavedSince = null
       } catch (e) {
         this.loadError = errorMessage(e)
       }
@@ -562,6 +588,7 @@ export const useEditorStore = defineStore('editor', {
       const project = this.project
       downloadProjectFile(serializeProject(project), projectFileName(project.name))
       this.dirtySinceFileSave = this.history.present !== project
+      if (!this.dirtySinceFileSave) this.unsavedSince = null
     },
     async chooseFolder() {
       try {
@@ -772,6 +799,18 @@ export const useEditorStore = defineStore('editor', {
     },
     setPenWidth(width: LineWidthId) {
       this.penWidth = width
+      // A width choice leaves the marker preset: round ends again.
+      this.penCap = 'round'
+    },
+    setPenOpacity(opacity: number) {
+      if (Number.isFinite(opacity)) this.penOpacity = Math.min(1, Math.max(0, opacity))
+    },
+    /** Sets the pen to the marker ('Textmarker') preset: yellow, wide, flat ends, 40 % opacity. */
+    applyMarkerPreset() {
+      this.overlayColor = MARKER_PRESET.color
+      this.penWidth = MARKER_PRESET.width
+      this.penOpacity = MARKER_PRESET.opacity
+      this.penCap = MARKER_PRESET.cap
     },
     setDrawing(on: boolean) {
       this.drawing = on
@@ -798,8 +837,27 @@ export const useEditorStore = defineStore('editor', {
     addStrokeAtPlayhead(points: StrokePoint[]) {
       const project = this.project
       const id = freshId(project, ID_PREFIX.overlay)
-      const next = addStroke(project, id, this.playheadMicros, points, this.overlayColor, this.penWidth)
+      const next = addStroke(project, id, this.playheadMicros, points, this.overlayColor, this.penWidth, {
+        opacity: this.penOpacity,
+        cap: this.penCap
+      })
       if (next !== project) this.commitProject(next)
+    },
+    /** Adds a built-in vector sticker at the playhead and selects it. */
+    addVectorStickerAtPlayhead(shape: StickerShapeId) {
+      const project = this.project
+      const id = freshId(project, ID_PREFIX.overlay)
+      const next = addVectorSticker(project, id, this.playheadMicros, shape, this.overlayColor)
+      if (next === project) return
+      this.commitProject(next)
+      this.selection = { kind: 'overlay', id }
+    },
+    /** Changes the stacking of the selected overlay (see core/timeline/overlayOps). One undo step. */
+    stackSelectedOverlay(direction: 'forward' | 'backward' | 'front' | 'back') {
+      const ref = this.selection
+      if (ref?.kind !== 'overlay') return
+      const op = { forward: bringForward, backward: sendBackward, front: bringToFront, back: sendToBack }[direction]
+      this.commitProject(op(this.project, ref.id))
     },
     /** Adds a blur or pixelate area at the playhead and selects it. */
     addRegionAtPlayhead(effect: RegionOverlay['effect']) {

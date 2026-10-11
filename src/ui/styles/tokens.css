@@ -31,6 +31,8 @@
   --jc-radius: 10px;
   --jc-touch: 44px;
   --jc-danger: #b3261e;
+  /* Unsaved changes (save-state dot). */
+  --jc-warn: #a85d00;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -53,6 +55,7 @@
     --jc-wave: #4fd48a;
     --jc-music: #0f6f69;
     --jc-danger: #ff8a80;
+    --jc-warn: #f2b84b;
     --jc-logo-tile: #33287a;
     --jc-logo-tile-line: #5a4bb8;
     color-scheme: dark;
@@ -77,6 +80,7 @@
   --jc-wave: #4fd48a;
   --jc-music: #0f6f69;
   --jc-danger: #ff8a80;
+  --jc-warn: #f2b84b;
   --jc-logo-tile: #33287a;
   --jc-logo-tile-line: #5a4bb8;
   color-scheme: dark;

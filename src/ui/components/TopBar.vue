@@ -48,10 +48,16 @@ export default defineComponent({
 
 <template>
   <header class="jc-topbar flex h-[52px] shrink-0 items-center gap-2.5 border-b border-line bg-panel px-3">
-    <div class="flex items-center gap-2 pr-1">
+    <!-- The editor lives in /app/, so the landing page is one level up; the relative path follows the site's base. -->
+    <a
+      href="./../"
+      class="jc-brand flex min-h-11 min-w-11 items-center gap-2 rounded-lg pr-1 text-fg hover:bg-panel2"
+      :title="$t('polish.top.home')"
+      :aria-label="`${$t('app.name')} · ${$t('polish.top.home')}`"
+    >
       <img :src="logoUrl" alt="" class="size-8" />
       <span class="jc-brand-name text-[15px] font-bold tracking-tight">{{ $t('app.name') }}</span>
-    </div>
+    </a>
 
     <ProjectMenu />
     <div class="jc-topbar__inline ml-1 flex items-center">

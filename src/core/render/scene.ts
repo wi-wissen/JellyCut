@@ -1,4 +1,4 @@
-import type { Clip, OverlayItem, Project, TextItem } from '../project/types'
+import type { Clip, MediaOverlay, OverlayItem, Project, ProjectFormat, TextItem } from '../project/types'
 import type { Micros } from '../time'
 import { clipGrade } from '../filters/ops'
 import { clipEnd, sourceTimeAt } from '../timeline/edit'
@@ -13,6 +13,7 @@ import {
   type VideoLayer
 } from './types'
 import { clamp01, easeOutBack, easeOutCubic } from './easing'
+import { canonicalAnimation, parseAnimation, type Side } from './animations'
 
 export interface PlannedTimeline {
   clips: Clip[]
@@ -82,7 +83,7 @@ export function buildScene(project: Project, planned: PlannedTimeline, t: Micros
   const overlays: OverlayLayer[] = []
   for (const item of project.overlays) {
     if (!(item.start <= t && t < item.start + item.duration)) continue
-    overlays.push(overlayLayer(item, t, project.assets))
+    overlays.push(overlayLayer(item, t, project.format, project.assets))
   }
 
   return {
@@ -118,10 +119,15 @@ function normalizeTransition(type: string | undefined): string {
 interface AnimState {
   alpha: number
   scale: number
+  /** Offsets as fractions of the output height (the same unit for both axes). */
+  offsetX: number
   offsetY: number
 }
 
-const VISIBLE: AnimState = { alpha: 1, scale: 1, offsetY: 0 }
+const VISIBLE: AnimState = { alpha: 1, scale: 1, offsetX: 0, offsetY: 0 }
+
+/** Distance a slide travels, as a fraction of the output height. */
+const SLIDE_DISTANCE = 0.06
 
 function textLayer(item: TextItem, t: Micros): TextLayer {
   const state = spanState(item, t)
@@ -132,6 +138,7 @@ function textLayer(item: TextItem, t: Micros): TextLayer {
     pos: { ...item.pos },
     alpha: state.alpha,
     scale: state.scale,
+    offsetX: state.offsetX,
     offsetY: state.offsetY
   }
 }
@@ -144,15 +151,20 @@ interface AnimatedSpan {
   animOut?: string | null
 }
 
-/** Entrance and exit state of an item at time t. The default length is shortened to half the span when needed. */
+/**
+ * Entrance and exit state of an item at time t. The default length is shortened to half the span when needed.
+ * Stored names are canonicalised first, so legacy 'slideUp' values still play.
+ */
 function spanState(item: AnimatedSpan, t: Micros): AnimState {
   const length = Math.min(TEXT_ANIM_DURATION, Math.floor(item.duration / 2))
   if (length <= 0) return VISIBLE
   const elapsed = t - item.start
   const remaining = item.start + item.duration - t
+  const inName = canonicalAnimation(item.animIn, 'in')
+  const outName = canonicalAnimation(item.animOut, 'out')
   // The out animation runs backwards: progress 1 is fully visible, 0 is gone.
-  if (item.animIn && elapsed < length) return animationAt(item.animIn, elapsed / length)
-  if (item.animOut && remaining < length) return animationAt(item.animOut, remaining / length)
+  if (inName && elapsed < length) return animationAt(inName, elapsed / length)
+  if (outName && remaining < length) return animationAt(outName, remaining / length)
   return VISIBLE
 }
 
@@ -160,12 +172,14 @@ function spanState(item: AnimatedSpan, t: Micros): AnimState {
 const WIGGLE_DEG = 8
 const WIGGLE_PERIOD: Micros = 900_000
 
-function overlayLayer(item: OverlayItem, t: Micros, assets: Project['assets']): OverlayLayer {
+function overlayLayer(item: OverlayItem, t: Micros, format: ProjectFormat, assets: Project['assets']): OverlayLayer {
   const anim = spanState(item, t)
   const wiggle = item.loop === 'wiggle' ? WIGGLE_DEG * Math.sin((2 * Math.PI * (t - item.start)) / WIGGLE_PERIOD) : 0
+  // pos.x is a fraction of the width, so the horizontal offset (a height fraction) is converted.
+  const aspect = format.width / format.height
   return {
     item,
-    x: item.pos.x,
+    x: item.pos.x + (aspect > 0 ? anim.offsetX / aspect : 0),
     y: item.pos.y + anim.offsetY,
     scale: item.scale * anim.scale,
     rotation: item.rotation + wiggle,
@@ -174,23 +188,38 @@ function overlayLayer(item: OverlayItem, t: Micros, assets: Project['assets']): 
   }
 }
 
-/** Frame of a picture-in-picture video at time t: it plays from its first frame and holds the last one. */
-function pictureTime(item: { start: Micros; assetId: string }, t: Micros, assets: Project['assets']): Micros {
+/**
+ * Frame of a picture-in-picture video at time t: it starts at `srcIn` of the asset, runs at `speed` and holds
+ * the last frame after the end of the file.
+ */
+function pictureTime(item: MediaOverlay, t: Micros, assets: Project['assets']): Micros {
   const elapsed = Math.max(0, t - item.start)
   const asset = assets.find((a) => a.id === item.assetId)
   if (!asset || asset.kind !== 'video') return 0
-  return Math.min(elapsed, Math.max(0, asset.duration - 1))
+  const speed = item.speed !== undefined && Number.isFinite(item.speed) && item.speed > 0 ? item.speed : 1
+  const from = item.srcIn !== undefined && item.srcIn > 0 ? item.srcIn : 0
+  const last = Math.max(0, asset.duration - 1)
+  return Math.min(from + Math.round(elapsed * speed), last)
 }
 
-/** `progress` runs 0 -> 1 over the in animation; out animations pass the reversed progress. */
+/** Progress runs 0 -> 1 over an in animation and 1 -> 0 over an out animation (the caller reverses it). */
 function animationAt(name: string, progress: number): AnimState {
   const p = clamp01(progress)
-  switch (name) {
-    case 'pop':
-      return { alpha: p, scale: 1 - 0.6 * (1 - easeOutBack(p)), offsetY: 0 }
-    case 'slideUp':
-      return { alpha: p, scale: 1, offsetY: 0.06 * (1 - easeOutCubic(p)) }
-    default:
-      return { alpha: p, scale: 1, offsetY: 0 }
+  const kind = parseAnimation(name)
+  if (kind?.kind === 'pop') return { alpha: p, scale: 1 - 0.6 * (1 - easeOutBack(p)), offsetX: 0, offsetY: 0 }
+  if (kind?.kind === 'slide') {
+    // The slide starts a full distance away on its side and reaches the place (or leaves it) at p = 1 / 0.
+    const d = SLIDE_DISTANCE * (1 - easeOutCubic(p))
+    const dir = SIDE_VECTOR[kind.side]
+    return { alpha: p, scale: 1, offsetX: dir[0] * d, offsetY: dir[1] * d }
   }
+  return { alpha: p, scale: 1, offsetX: 0, offsetY: 0 }
+}
+
+/** Unit vector of the side an animation comes from or leaves towards (y grows downwards). */
+const SIDE_VECTOR: Record<Side, [number, number]> = {
+  top: [0, -1],
+  bottom: [0, 1],
+  left: [-1, 0],
+  right: [1, 0]
 }

@@ -7,7 +7,7 @@ import ToggleSwitch from './ToggleSwitch.vue'
 import ColorPicker from './ColorPicker.vue'
 import FontSelect from './FontSelect.vue'
 import { useEditorStore } from '../../stores/editor'
-import { TEXT_ANIMATIONS, type TextAnimation } from '../../../core/render/types'
+import { IN_ANIMATIONS, OUT_ANIMATIONS, type InAnimation, type OutAnimation } from '../../../core/render/animations'
 import type { TextItem } from '../../../core/project/types'
 import { secondsToMicros } from '../../../core/time'
 
@@ -37,7 +37,7 @@ export default defineComponent({
   },
   data() {
     return {
-      animations: TEXT_ANIMATIONS,
+      animations: { in: IN_ANIMATIONS, out: OUT_ANIMATIONS },
       rows: ROWS,
       columns: COLUMNS,
       defaultOutline: DEFAULT_OUTLINE
@@ -106,7 +106,7 @@ export default defineComponent({
       this.updateSelectedText({ pos: { y: percent / 100 } }, this.keyFor('y'))
     },
     setAnimation(side: 'animIn' | 'animOut', value: string): void {
-      const anim = value === 'none' ? null : (value as TextAnimation)
+      const anim = value === 'none' ? null : side === 'animIn' ? (value as InAnimation) : (value as OutAnimation)
       this.updateSelectedText({ [side]: anim })
     },
     setStart(event: Event): void {
@@ -231,7 +231,7 @@ export default defineComponent({
             @change="setAnimation('animIn', ($event.target as HTMLSelectElement).value)"
           >
             <option value="none">{{ $t('text.anim.none') }}</option>
-            <option v-for="anim in animations" :key="anim" :value="anim">{{ $t(`text.anim.${anim}`) }}</option>
+            <option v-for="anim in animations.in" :key="anim" :value="anim">{{ $t(`overlays3.anim.${anim}`) }}</option>
           </select>
         </div>
         <div class="flex flex-col gap-1">
@@ -243,7 +243,7 @@ export default defineComponent({
             @change="setAnimation('animOut', ($event.target as HTMLSelectElement).value)"
           >
             <option value="none">{{ $t('text.anim.none') }}</option>
-            <option v-for="anim in animations" :key="anim" :value="anim">{{ $t(`text.anim.${anim}`) }}</option>
+            <option v-for="anim in animations.out" :key="anim" :value="anim">{{ $t(`overlays3.anim.${anim}`) }}</option>
           </select>
         </div>
       </div>

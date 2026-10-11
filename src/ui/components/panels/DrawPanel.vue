@@ -16,10 +16,10 @@ export default defineComponent({
     return { widths: Object.keys(LINE_WIDTHS) as LineWidthId[], bars: { thin: 2, medium: 4, thick: 7 } as Record<LineWidthId, number> }
   },
   computed: {
-    ...mapState(useEditorStore, ['overlayColor', 'penWidth', 'drawing', 'strokeCount'])
+    ...mapState(useEditorStore, ['overlayColor', 'penWidth', 'penOpacity', 'penCap', 'drawing', 'strokeCount'])
   },
   methods: {
-    ...mapActions(useEditorStore, ['setDrawing', 'setOverlayColor', 'setPenWidth', 'undoLastStroke']),
+    ...mapActions(useEditorStore, ['setDrawing', 'setOverlayColor', 'setPenWidth', 'setPenOpacity', 'applyMarkerPreset', 'undoLastStroke']),
     widthName(id: LineWidthId): string {
       return this.$t(`overlays.penWidths.${id}`)
     }
@@ -66,6 +66,31 @@ export default defineComponent({
           {{ widthName(width) }}
         </button>
       </div>
+    </section>
+
+    <section class="flex flex-col gap-2 border-t border-line pt-3">
+      <label class="flex flex-col gap-1 text-xs font-semibold text-muted">
+        {{ $t('overlays3.penOpacity') }}: {{ Math.round(penOpacity * 100) }} %
+        <input
+          type="range"
+          min="0"
+          max="100"
+          step="1"
+          class="w-full"
+          :value="Math.round(penOpacity * 100)"
+          :aria-label="$t('overlays3.penOpacity')"
+          @input="setPenOpacity(Number(($event.target as HTMLInputElement).value) / 100)"
+        />
+      </label>
+      <button
+        type="button"
+        class="flex min-h-11 items-center justify-center gap-2 rounded-lg text-sm font-semibold text-fg"
+        :class="penCap === 'flat' ? 'bg-fill text-fill-fg' : 'bg-panel2 hover:bg-panel'"
+        :aria-pressed="penCap === 'flat'"
+        @click="applyMarkerPreset"
+      >
+        {{ $t('overlays3.markerPreset') }}
+      </button>
     </section>
 
     <section class="flex flex-col gap-2 border-t border-line pt-3">

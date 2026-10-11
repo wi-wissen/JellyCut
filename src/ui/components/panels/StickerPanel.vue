@@ -4,7 +4,8 @@ import { mapActions, mapState } from 'pinia'
 import Icon from '../Icon.vue'
 import ColorPicker from './ColorPicker.vue'
 import { useEditorStore } from '../../stores/editor'
-import { SHAPE_KINDS, STICKERS } from '../../../core/timeline/overlayCatalog'
+import { SHAPE_KINDS } from '../../../core/timeline/overlayCatalog'
+import { STICKER_SHAPES } from '../../../core/render/stickerShapes'
 import type { ShapeOverlay } from '../../../core/project/types'
 
 /** Stickers, shapes, blur areas and pictures; each click adds one item at the playhead and selects it for editing. */
@@ -12,7 +13,7 @@ export default defineComponent({
   name: 'StickerPanel',
   components: { Icon, ColorPicker },
   data() {
-    return { stickers: STICKERS, shapes: SHAPE_KINDS }
+    return { stickers: STICKER_SHAPES, shapes: SHAPE_KINDS }
   },
   computed: {
     ...mapState(useEditorStore, ['overlayColor', 'project']),
@@ -22,9 +23,9 @@ export default defineComponent({
     }
   },
   methods: {
-    ...mapActions(useEditorStore, ['addStickerAtPlayhead', 'addShapeAtPlayhead', 'addRegionAtPlayhead', 'addMediaAtPlayhead', 'setOverlayColor']),
+    ...mapActions(useEditorStore, ['addVectorStickerAtPlayhead', 'addShapeAtPlayhead', 'addRegionAtPlayhead', 'addMediaAtPlayhead', 'setOverlayColor']),
     stickerName(id: string): string {
-      return this.$t(`overlays.stickerNames.${id}`)
+      return this.$t(`overlays3.sticker.${id}`)
     },
     shapeName(shape: ShapeOverlay['shape']): string {
       return this.$t(`overlays.shape.${shape}`)
@@ -48,9 +49,19 @@ export default defineComponent({
         class="flex aspect-square min-h-11 items-center justify-center rounded-lg bg-panel2 text-[26px] leading-none hover:bg-panel"
         :aria-label="stickerName(sticker.id)"
         :title="stickerName(sticker.id)"
-        @click="addStickerAtPlayhead(sticker.emoji)"
+        @click="addVectorStickerAtPlayhead(sticker.id)"
       >
-        <span aria-hidden="true">{{ sticker.emoji }}</span>
+        <svg viewBox="0 0 24 24" class="size-8" aria-hidden="true">
+          <path
+            :d="sticker.d"
+            :fill="sticker.kind === 'fill' ? 'currentColor' : 'none'"
+            :stroke="sticker.kind === 'line' ? 'currentColor' : 'none'"
+            stroke-width="2.4"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            fill-rule="evenodd"
+          />
+        </svg>
       </button>
     </div>
 

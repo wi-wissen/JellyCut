@@ -1,5 +1,6 @@
 import type { ShapeOverlay, StickerOverlay, StrokeOverlay } from '../../core/project/types'
 import { overlayBounds } from '../../core/render/overlayLayout'
+import { STICKER_GRID, stickerShape } from '../../core/render/stickerShapes'
 import { createCanvas, type Canvas2D, type Ctx2D } from './text'
 
 /** System emoji fonts only; nothing is loaded from the network. */
@@ -24,9 +25,12 @@ export function overlayRasterKey(item: DrawnOverlay, outH: number): string {
   const known = keyCache.get(item)
   if (known && known.outH === outH) return known.key
   let key: string
-  if (item.kind === 'sticker') key = JSON.stringify([item.kind, item.emoji, item.size, outH])
-  else if (item.kind === 'shape') key = JSON.stringify([item.kind, item.shape, item.width, item.height, item.lineWidth, item.color, outH])
-  else key = JSON.stringify([item.kind, item.points, item.lineWidth, item.color, outH])
+  if (item.kind === 'sticker') {
+    key = item.emoji !== undefined
+      ? JSON.stringify([item.kind, item.emoji, item.size, outH])
+      : JSON.stringify([item.kind, item.shape, item.size, item.color, item.outline ?? null, outH])
+  } else if (item.kind === 'shape') key = JSON.stringify([item.kind, item.shape, item.width, item.height, item.lineWidth, item.color, outH])
+  else key = JSON.stringify([item.kind, item.points, item.lineWidth, item.color, item.cap ?? 'round', outH])
   keyCache.set(item, { outH, key })
   return key
 }
@@ -54,10 +58,14 @@ export function rasterizeOverlay(item: DrawnOverlay, outH: number): OverlayRaste
   const Y = (y: number) => (y - b.minY) * k
 
   if (item.kind === 'sticker') {
-    ctx.font = `${item.size * k}px ${EMOJI_FONT}`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(item.emoji, X(0), Y(0))
+    if (item.emoji !== undefined) {
+      ctx.font = `${item.size * k}px ${EMOJI_FONT}`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(item.emoji, X(0), Y(0))
+    } else if (!drawVectorSticker(ctx, item, X(0), Y(0), k)) {
+      return null
+    }
   } else if (item.kind === 'shape') {
     const w = item.width * k
     const h = item.height * k
@@ -84,12 +92,59 @@ export function rasterizeOverlay(item: DrawnOverlay, outH: number): OverlayRaste
     if (!first) return null
     ctx.strokeStyle = item.color
     ctx.lineWidth = item.lineWidth * k
+    // A flat cap ends the stroke exactly at its points (the marker preset).
+    ctx.lineCap = item.cap === 'flat' ? 'butt' : 'round'
     ctx.beginPath()
     ctx.moveTo(X(first[0]), Y(first[1]))
     for (const [x, y] of rest) ctx.lineTo(X(x), Y(y))
     ctx.stroke()
   }
   return { canvas, width, height }
+}
+
+/** Outline width of a vector sticker, in grid units (half of it lies outside the fill). */
+const OUTLINE_UNITS = 1.6
+const FILL_LINE_UNITS = 2.4
+const CUT_UNITS = 1.9
+
+/**
+ * Draws a vector sticker centred on (cx, cy) in canvas pixels, `k` pixels per output-height unit (the same
+ * scale as the rest of the raster). Fill shapes use the even-odd rule, so inner subpaths are holes. Returns
+ * false for an unknown shape.
+ */
+function drawVectorSticker(ctx: Ctx2D, item: StickerOverlay, cx: number, cy: number, k: number): boolean {
+  const def = item.shape ? stickerShape(item.shape) : null
+  if (!def || !item.color) return false
+  const unit = (item.size * k) / STICKER_GRID
+  const path = new Path2D(def.d)
+  ctx.save()
+  ctx.translate(cx, cy)
+  ctx.scale(unit, unit)
+  ctx.translate(-STICKER_GRID / 2, -STICKER_GRID / 2)
+  ctx.lineJoin = 'round'
+  ctx.lineCap = 'round'
+  if (item.outline) {
+    // Drawn first: the fill covers the inner half of the outline stroke.
+    ctx.strokeStyle = item.outline
+    ctx.lineWidth = def.kind === 'line' ? FILL_LINE_UNITS + 2 * OUTLINE_UNITS : 2 * OUTLINE_UNITS
+    ctx.stroke(path)
+  }
+  ctx.fillStyle = item.color
+  ctx.strokeStyle = item.color
+  if (def.kind === 'fill') {
+    ctx.fill(path, 'evenodd')
+  } else {
+    ctx.lineWidth = FILL_LINE_UNITS
+    ctx.stroke(path)
+  }
+  if (def.cut) {
+    ctx.globalCompositeOperation = 'destination-out'
+    ctx.lineWidth = CUT_UNITS
+    ctx.stroke(new Path2D(def.cut))
+    ctx.globalCompositeOperation = 'source-over'
+  }
+  ctx.restore()
+  return true
 }
 
 function context2d(canvas: Canvas2D): Ctx2D {

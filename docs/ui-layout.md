@@ -36,3 +36,10 @@ Reference size 1120x700, but the layout is fluid (flex/grid), never fixed px wid
 - Text: amber/gold (`--jc-track-text`), dark labels (`--jc-track-text-fg`).
 - Selection: always a 2 px lime outline (`--jc-signal`) with corner handles, never a violet (`--jc-fill`) fill.
 - All label pairs meet WCAG AA (4.5:1) in light and dark; lane swatches in the label column show the same colours.
+
+## Save state (project dot)
+
+- The dot behind the project name tells where the work is kept; its tooltip and aria-label give the text (`ProjectMenu.vue`).
+- Green: autosaved in this browser (or saved as a file when nothing changed since the last file save).
+- Amber: unsaved changes (autosave pending), changes since the last save to the file, or "Not saved as a file yet" after 10 minutes of edits without a file.
+- Red: the last autosave failed; the panel shows the reason. Grey with a pulse: saving. Demo sessions say nothing is saved.

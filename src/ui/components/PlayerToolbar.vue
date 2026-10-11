@@ -16,7 +16,6 @@ interface RatioOption {
   box: { width: number; height: number }
 }
 
-type Panel = 'ratio' | 'fit'
 
 const RATIO_OPTIONS: readonly RatioOption[] = [
   { ratio: '16:9', name: 'landscape', box: { width: 26, height: 15 } },
@@ -29,13 +28,13 @@ const DEFAULT_BACKGROUND_COLOR = '#14121f'
 const POPOVER_WIDTH = 264
 const STAGE_MARGIN = 8
 
-/** Ratio chip and picture fit chip. One popover shows whichever chip was used. */
+/** Ratio chip. Its popover holds the format, the project-wide Fit / Fill and (with Fit) the background. */
 export default defineComponent({
   name: 'PlayerToolbar',
   components: { Icon, FitSwitch, ColorPicker },
   data() {
     return {
-      panel: null as Panel | null,
+      panel: null as 'ratio' | null,
       ratioOptions: RATIO_OPTIONS,
       placement: { left: 0, top: 0, width: POPOVER_WIDTH, maxHeight: 400 }
     }
@@ -47,12 +46,6 @@ export default defineComponent({
     },
     fit(): FitMode {
       return projectFit(this.project)
-    },
-    fitLabel(): string {
-      return this.$t(this.fit === 'fill' ? 'player.fillMode' : 'player.fitMode')
-    },
-    fitChipText(): string {
-      return this.$t('player.pictureFit.chip', { mode: this.fitLabel })
     },
     background(): { type: 'blur' } | { type: 'color'; color: string } {
       return this.project.format.background
@@ -69,7 +62,7 @@ export default defineComponent({
     }
   },
   watch: {
-    panel(next: Panel | null) {
+    panel(next: 'ratio' | null) {
       if (next) {
         this.place()
         document.addEventListener('pointerdown', this.onOutsidePointer)
@@ -97,15 +90,15 @@ export default defineComponent({
     ratioName(name: string): string {
       return this.$t(`player.ratioNames.${name}`)
     },
-    triggerFor(panel: Panel): HTMLElement | undefined {
-      return (panel === 'fit' ? this.$refs.fitTrigger : this.$refs.ratioTrigger) as HTMLElement | undefined
+    triggerFor(): HTMLElement | undefined {
+      return this.$refs.ratioTrigger as HTMLElement | undefined
     },
     /**
      * Places the popover under its trigger, inside the player stage (the section around the
      * toolbar). It is teleported to the body, so the stage's own overflow clipping does not cut it.
      */
     place(): void {
-      const trigger = this.panel ? this.triggerFor(this.panel) : undefined
+      const trigger = this.panel ? this.triggerFor() : undefined
       const stage = (this.$el as HTMLElement | null)?.closest('section')
       if (!trigger || !stage) return
       const t = trigger.getBoundingClientRect()
@@ -115,13 +108,13 @@ export default defineComponent({
       const top = Math.min(t.bottom + 6, s.bottom - STAGE_MARGIN - 120)
       this.placement = { left, top, width, maxHeight: Math.max(120, s.bottom - STAGE_MARGIN - top) }
     },
-    toggle(panel: Panel): void {
-      this.panel = this.panel === panel ? null : panel
+    toggle(): void {
+      this.panel = this.panel ? null : 'ratio'
     },
     close(returnFocus: boolean): void {
-      const from = this.panel
+      const wasOpen = this.panel !== null
       this.panel = null
-      if (returnFocus && from) this.$nextTick(() => this.triggerFor(from)?.focus())
+      if (returnFocus && wasOpen) this.$nextTick(() => this.triggerFor()?.focus())
     },
     focusChecked(): void {
       const checked = (this.$refs.dialog as HTMLElement | undefined)?.querySelector<HTMLButtonElement>('[aria-checked="true"]')
@@ -169,22 +162,10 @@ export default defineComponent({
         aria-haspopup="dialog"
         :aria-expanded="panel === 'ratio'"
         :aria-label="$t('player.ratio')"
-        @click="toggle('ratio')"
+        @click="toggle()"
       >
         <Icon name="ratio" class="size-3.5" />
         {{ ratio }}
-      </button>
-      <button
-        ref="fitTrigger"
-        type="button"
-        class="relative flex h-9 items-center rounded-full bg-black/35 px-3 hover:bg-black/50 before:absolute before:inset-x-0 before:-inset-y-1 before:content-['']"
-        aria-haspopup="dialog"
-        :aria-expanded="panel === 'fit'"
-        :aria-label="$t('player.pictureFit.chipAria', { mode: fitLabel })"
-        :title="$t('player.pictureFit.scope')"
-        @click="toggle('fit')"
-      >
-        {{ fitChipText }}
       </button>
     </div>
 
@@ -194,7 +175,7 @@ export default defineComponent({
         ref="dialog"
         role="dialog"
         aria-modal="false"
-        :aria-label="panel === 'ratio' ? $t('player.ratioDialog') : $t('player.pictureFit.title')"
+        :aria-label="$t('player.ratioDialog')"
         class="fixed z-50 flex flex-col gap-3 overflow-y-auto rounded-xl border border-line bg-panel p-3 text-[12px] font-normal text-fg shadow-xl"
         :style="placementStyle"
       >
@@ -228,27 +209,26 @@ export default defineComponent({
 
           <FitSwitch />
 
-          <h2 class="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">{{ $t('player.background') }}</h2>
-          <div class="flex flex-col gap-1" role="radiogroup" :aria-label="$t('player.background')">
-            <button
-              type="button"
-              role="radio"
-              class="flex min-h-11 items-center gap-2 rounded-lg px-2 text-left"
-              :class="isBlur ? 'bg-panel2 ring-1 ring-fill' : 'hover:bg-panel2'"
-              :aria-checked="isBlur"
-              @click="chooseBlur"
-            >
-              <span class="size-4 shrink-0 rounded-full bg-fill blur-[1px]" aria-hidden="true" />
-              <span class="truncate">{{ $t('player.blurBackground') }}</span>
-            </button>
-            <div
-              class="flex min-h-11 items-center gap-2 rounded-lg px-2"
-              :class="!isBlur ? 'bg-panel2 ring-1 ring-fill' : ''"
-            >
+          <template v-if="fit === 'fit'">
+            <h2 class="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">{{ $t('player.background') }}</h2>
+            <p class="-mt-2 text-[12px] leading-snug text-muted" data-role="background-hint">{{ $t('polish.format.backgroundHint') }}</p>
+            <div class="grid grid-cols-2 gap-1.5" role="radiogroup" :aria-label="$t('player.background')">
               <button
                 type="button"
                 role="radio"
-                class="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-left"
+                class="flex min-h-11 min-w-0 items-center gap-2 rounded-lg px-2 text-left"
+                :class="isBlur ? 'bg-panel2 ring-1 ring-fill' : 'hover:bg-panel2'"
+                :aria-checked="isBlur"
+                @click="chooseBlur"
+              >
+                <span class="size-4 shrink-0 rounded-full bg-fill blur-[1px]" aria-hidden="true" />
+                <span class="truncate">{{ $t('player.blurBackground') }}</span>
+              </button>
+              <button
+                type="button"
+                role="radio"
+                class="flex min-h-11 min-w-0 items-center gap-2 rounded-lg px-2 text-left"
+                :class="!isBlur ? 'bg-panel2 ring-1 ring-fill' : 'hover:bg-panel2'"
                 :aria-checked="!isBlur"
                 @click="chooseColor"
               >
@@ -264,10 +244,8 @@ export default defineComponent({
               @update="onBackgroundPick"
               @commit="onColorCommit"
             />
-          </div>
+            </template>
         </template>
-
-        <FitSwitch v-else />
 
         <button type="button" class="min-h-11 rounded-lg bg-panel2 text-xs font-semibold text-fg hover:bg-line" @click="close(true)">
           {{ $t('player.close') }}

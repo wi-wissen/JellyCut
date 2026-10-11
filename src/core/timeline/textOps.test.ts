@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createProject, validateProject } from '../project/schema'
 import type { Project } from '../project/types'
-import { TEXT_ANIMATIONS } from '../render/types'
+import { IN_ANIMATIONS, OUT_ANIMATIONS } from '../render/animations'
 import { secondsToMicros } from '../time'
 import { DEFAULT_TEXT_DURATION, TEXT_PRESETS, addText, textPreset, updateText } from './textOps'
 
@@ -152,14 +152,19 @@ describe('updateText', () => {
   })
 
   it('sets the animations and refuses unknown ones', () => {
-    const p = updateText(fixture(), 'text-1', { animIn: 'pop', animOut: 'slideUp' })
-    expect(p.texts[0]).toMatchObject({ animIn: 'pop', animOut: 'slideUp' })
+    const p = updateText(fixture(), 'text-1', { animIn: 'pop', animOut: 'slideToTop' })
+    expect(p.texts[0]).toMatchObject({ animIn: 'pop', animOut: 'slideToTop' })
+    expect(updateText(fixture(), 'text-1', { animIn: 'slideToTop' as never })).toEqual(fixture())
+    expect(updateText(fixture(), 'text-1', { animOut: 'slideUp' as never })).toEqual(fixture())
     expect(updateText(p, 'text-1', { animIn: null }).texts[0]!.animIn).toBeNull()
-    expect(updateText(fixture(), 'text-1', { animIn: 'spin' })).toEqual(fixture())
+    expect(updateText(fixture(), 'text-1', { animIn: 'spin' as never })).toEqual(fixture())
   })
 
   it('accepts every animation the renderer knows', () => {
-    for (const anim of TEXT_ANIMATIONS) {
+    for (const anim of IN_ANIMATIONS) {
+      expect(updateText(fixture(), 'text-1', { animIn: anim }).texts[0]!.animIn).toBe(anim)
+    }
+    for (const anim of OUT_ANIMATIONS) {
       expect(updateText(fixture(), 'text-1', { animOut: anim }).texts[0]!.animOut).toBe(anim)
     }
   })

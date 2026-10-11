@@ -2,6 +2,7 @@
 import { defineComponent } from 'vue'
 import { mapActions, mapState } from 'pinia'
 import RangeField from './RangeField.vue'
+import ChoiceTile from './ChoiceTile.vue'
 import { useEditorStore } from '../../stores/editor'
 import { TRANSITION_TYPES, type TransitionType } from '../../../core/render/types'
 import { secondsToMicros } from '../../../core/time'
@@ -11,7 +12,7 @@ const DEFAULT_SECONDS = 0.5
 
 export default defineComponent({
   name: 'TransitionsPanel',
-  components: { RangeField },
+  components: { RangeField, ChoiceTile },
   data() {
     return { types: TRANSITION_TYPES, seconds: DEFAULT_SECONDS }
   },
@@ -83,54 +84,80 @@ export default defineComponent({
     </section>
 
     <div class="grid grid-cols-2 gap-2.5" role="group" :aria-label="$t('transitions.title')">
-      <button
+      <ChoiceTile
+        :label="$t('polish.transitions.none')"
+        :selected="targetClip !== null && activeType === null"
+        :disabled="!targetClip"
+        aspect="aspect-[16/10]"
+        data-testid="transition-tile-none"
+        @choose="remove"
+      >
+        <span class="flex size-full items-center justify-center text-muted" aria-hidden="true">
+          <svg viewBox="0 0 40 24" class="h-6 w-10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M8 20 32 4" />
+          </svg>
+        </span>
+      </ChoiceTile>
+      <ChoiceTile
         v-for="type in types"
         :key="type"
-        type="button"
-        class="flex flex-col gap-1.5 rounded-lg text-left disabled:opacity-50"
+        :label="typeName(type)"
+        :selected="activeType === type"
         :disabled="!targetClip"
-        :aria-pressed="activeType === type"
-        @click="apply(type)"
+        aspect="aspect-[16/10]"
+        :data-testid="`transition-tile-${type}`"
+        @choose="apply(type)"
       >
-        <span class="jc-preview relative block aspect-[16/10] w-full overflow-hidden rounded-lg bg-stage" :class="`type-${type}`" aria-hidden="true">
+        <span class="jc-preview absolute inset-0 block" :class="`type-${type}`" aria-hidden="true">
           <i class="a absolute inset-0" />
           <i class="b absolute inset-0" />
         </span>
-        <span class="flex items-center gap-1.5 text-xs font-semibold text-fg">
-          <span
-            class="size-2 shrink-0 rounded-full"
-            :class="activeType === type ? 'bg-fill' : 'bg-transparent'"
-            aria-hidden="true"
-          />
-          {{ typeName(type) }}
-        </span>
-      </button>
+      </ChoiceTile>
     </div>
-
-    <button
-      v-if="activeType"
-      type="button"
-      class="min-h-11 self-start rounded-lg px-3 text-xs font-semibold text-txt hover:bg-panel2"
-      @click="remove"
-    >
-      {{ $t('transitions.remove') }}
-    </button>
   </div>
 </template>
 
 <style scoped>
+/* Two colourful frames: A (warm, sun) leaves, B (cool, stripes) arrives. Each type animates one or both. */
 .jc-preview .a {
-  background: var(--jc-track-video-1);
+  background:
+    radial-gradient(circle at 74% 30%, #ffe27a 0 15%, transparent 16%),
+    linear-gradient(150deg, #ff6b57 0%, #ff9f1c 100%);
 }
 .jc-preview .b {
-  background: var(--jc-track-video-2);
+  background:
+    radial-gradient(circle at 28% 72%, rgb(255 255 255 / 0.55) 0 13%, transparent 14%),
+    repeating-linear-gradient(-45deg, rgb(255 255 255 / 0.2) 0 8px, transparent 8px 16px),
+    linear-gradient(200deg, #1fb5a8 0%, #5b3fd9 100%);
 }
 .jc-preview .a,
 .jc-preview .b {
-  animation-duration: 1.8s;
+  animation-duration: 1.2s;
   animation-timing-function: ease-in-out;
+  /* Rest: frozen halfway through the effect, so the tile shows what the transition does. */
+  animation-delay: -0.6s;
+  animation-play-state: paused;
+  animation-iteration-count: 1;
+  animation-fill-mode: both;
+}
+/* Selected: plays once and keeps the end state. Hover or keyboard focus: loops while the pointer stays. */
+.jc-tile[aria-pressed='true'] .jc-preview .a,
+.jc-tile[aria-pressed='true'] .jc-preview .b {
+  animation-delay: 0s;
+  animation-play-state: running;
+}
+.jc-tile:hover .jc-preview .a,
+.jc-tile:hover .jc-preview .b,
+.jc-tile:focus-visible .jc-preview .a,
+.jc-tile:focus-visible .jc-preview .b {
+  animation-delay: 0s;
+  animation-play-state: running;
   animation-iteration-count: infinite;
   animation-direction: alternate;
+}
+.jc-tile:disabled .jc-preview .a,
+.jc-tile:disabled .jc-preview .b {
+  animation-play-state: paused;
 }
 
 .type-fade .b {
@@ -165,6 +192,10 @@ export default defineComponent({
 }
 .type-zoomOut .a {
   animation-name: tr-zoom-out;
+  z-index: 1;
+}
+.type-zoomOut .b {
+  z-index: 0;
 }
 .type-blur .b {
   animation-name: tr-blur;
@@ -212,21 +243,21 @@ export default defineComponent({
 }
 @keyframes tr-zoom-out {
   from { transform: scale(1); opacity: 1; }
-  to { transform: scale(0.3); opacity: 0; }
+  to { transform: scale(0.25); opacity: 0; }
 }
 @keyframes tr-blur {
-  from { filter: blur(10px); opacity: 0; }
+  from { filter: blur(12px); opacity: 0; }
   to { filter: blur(0); opacity: 1; }
 }
 
-/* Reduced motion: one still frame with the two colours side by side. */
+/* Reduced motion: no movement at all, the halfway frame stays on screen. */
 @media (prefers-reduced-motion: reduce) {
   .jc-preview .a,
   .jc-preview .b {
-    animation: none !important;
-  }
-  .jc-preview .b {
-    clip-path: inset(0 50% 0 0);
+    animation-play-state: paused !important;
+    animation-delay: -0.6s !important;
+    animation-iteration-count: 1 !important;
+    animation-direction: normal !important;
   }
 }
 </style>
