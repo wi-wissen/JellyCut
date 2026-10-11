@@ -14,6 +14,7 @@ const TRIGGER_ID = 'fine-cut-button'
 const TITLE_ID = 'fine-cut-title'
 /** Same count as the frame strip: 8 tiles on each side of the cut. */
 const STRIP_TILES = 16
+const STEP_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'k', 'K', 'p', 'P'])
 
 export default defineComponent({
   name: 'FineCutOverlay',
@@ -40,7 +41,10 @@ export default defineComponent({
       'hasAudio',
       'error',
       'canCut',
-      'frameMicros'
+      'frameMicros',
+      'mediaReady',
+      'mediaProblem',
+      'hintVisible'
     ]),
     locale(): string {
       return this.$i18n.locale
@@ -66,11 +70,22 @@ export default defineComponent({
     pauseEnabled(): boolean {
       return this.hasAudio === true
     },
+    /** A missing file is explained in the picture area instead; see unavailableText. */
     errorText(): string {
-      if (this.error === 'no-file') return this.$t('fineCut.noFile')
       if (this.error === 'too-short') return this.$t('fineCut.tooShort')
       if (this.error === 'cannot-cut') return this.$t('fineCut.cannotCut')
       return ''
+    },
+    unavailableText(): string {
+      return this.mediaProblem === 'unsupported' ? this.$t('fineCut.unsupported') : this.$t('fineCut.unavailable')
+    },
+    /** The main action is "Cut here" when a cut can be made, otherwise "Back" (closes without a change). */
+    primaryIsCut(): boolean {
+      return this.canCut && this.mediaReady
+    },
+    /** Tooltip of the disabled cut buttons. */
+    cutBlockedReason(): string {
+      return this.mediaReady ? this.errorText : this.unavailableText
     },
     zoomPx(): number {
       return Math.round(this.px)
@@ -114,7 +129,17 @@ export default defineComponent({
     this.resizeObserver = null
   },
   methods: {
-    ...mapActions(useFineCutStore, ['close', 'cutHere', 'stepFrames', 'jumpKeyframe', 'jumpPause', 'setZoom', 'setSnap', 'setSound']),
+    ...mapActions(useFineCutStore, [
+      'close',
+      'cutHere',
+      'stepFrames',
+      'jumpKeyframe',
+      'jumpPause',
+      'setZoom',
+      'setSnap',
+      'setSound',
+      'dismissHint'
+    ]),
     detail(frame: number): string {
       const time = formatTimecode(frameStart(Math.max(0, frame), this.fps), this.fps)
       return this.$t('fineCut.frameInfo', { frame: Math.max(0, frame), time })
@@ -150,7 +175,13 @@ export default defineComponent({
       })
     },
     cut(): void {
+      if (!this.primaryIsCut) return
       void this.cutHere()
+    },
+    /** The header's main action: cut when that is possible, otherwise just go back. */
+    primary(): void {
+      if (this.primaryIsCut) this.cut()
+      else this.close()
     },
     onZoomInput(event: Event): void {
       this.setZoom(Number((event.target as HTMLInputElement).value))
@@ -174,6 +205,8 @@ export default defineComponent({
       if (!store.isOpen) return
       event.stopPropagation()
       if (event.ctrlKey || event.metaKey || event.altKey) return
+      // Without a picture there is nothing to step through.
+      if (!this.mediaReady && STEP_KEYS.has(event.key)) return
       const target = event.target as HTMLElement | null
       const onButton = target?.tagName === 'BUTTON'
       const onRange = target instanceof HTMLInputElement && target.type === 'range'
@@ -243,8 +276,16 @@ export default defineComponent({
       class="fixed inset-0 z-50 flex flex-col overflow-hidden bg-bg text-fg"
     >
       <header class="flex flex-wrap items-center gap-2 border-b border-line bg-panel px-3 py-2">
+        <button
+          type="button"
+          data-testid="fine-back"
+          class="flex min-h-12 items-center rounded-lg border-2 border-fill px-4 text-base font-bold hover:bg-panel2"
+          @click="close"
+        >
+          <span aria-hidden="true" class="mr-2">←</span>{{ $t('fineCut.backToEditor') }}
+        </button>
         <h2 :id="titleId" class="text-base font-bold">{{ $t('fineCut.title') }}</h2>
-        <span class="max-w-[60vw] truncate rounded-full bg-panel2 px-2.5 py-1 font-mono text-xs text-muted">{{ chip }}</span>
+        <span class="max-w-[40vw] truncate rounded-full bg-panel2 px-2.5 py-1 font-mono text-xs text-muted">{{ chip }}</span>
         <span class="flex-1" />
         <button
           v-if="fullscreenSupported"
@@ -256,23 +297,49 @@ export default defineComponent({
         </button>
         <button
           type="button"
-          class="min-h-11 rounded-lg border border-line px-4 text-sm font-semibold hover:bg-panel2"
-          @click="close"
+          data-testid="fine-primary"
+          class="min-h-12 rounded-lg px-5 text-sm font-bold"
+          :class="primaryIsCut ? 'bg-signal text-signal-fg' : 'border border-line bg-panel2'"
+          @click="primary"
         >
-          {{ $t('fineCut.done') }}
-        </button>
-        <button
-          type="button"
-          class="min-h-11 rounded-lg bg-signal px-4 text-sm font-bold text-signal-fg disabled:opacity-40"
-          :disabled="!canCut"
-          @click="cut"
-        >
-          {{ $t('fineCut.cutHere') }}
+          {{ primaryIsCut ? $t('fineCut.cutHere') : $t('fineCut.back') }}
         </button>
       </header>
 
       <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
-        <div class="mx-auto flex w-full max-w-[980px] shrink-0 flex-col gap-3 sm:flex-row">
+        <div
+          v-if="hintVisible && mediaReady"
+          role="note"
+          data-testid="fine-hint"
+          class="mx-auto flex w-full max-w-[980px] shrink-0 flex-wrap items-center gap-3 rounded-xl border border-fill bg-panel px-4 py-2 text-sm"
+        >
+          <p class="min-w-0 flex-1">{{ $t('fineCut.hintIntro') }}</p>
+          <button
+            type="button"
+            class="min-h-11 rounded-lg border border-line px-4 font-semibold hover:bg-panel2"
+            @click="dismissHint"
+          >
+            {{ $t('fineCut.hintDismiss') }}
+          </button>
+        </div>
+
+        <div
+          v-if="!mediaReady"
+          data-testid="fine-unavailable"
+          role="alert"
+          class="mx-auto flex min-h-64 w-full max-w-[980px] shrink-0 flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-line bg-panel p-6 text-center"
+        >
+          <p class="max-w-md text-base font-semibold">{{ unavailableText }}</p>
+          <button
+            type="button"
+            class="min-h-12 rounded-lg bg-fill px-5 text-sm font-bold text-fill-fg"
+            @click="close"
+          >
+            {{ $t('fineCut.backToEditor') }}
+          </button>
+        </div>
+
+        <div v-else class="mx-auto flex w-full max-w-[980px] shrink-0 flex-col gap-3 sm:flex-row">
           <FineCutFrame
             :asset-id="assetId ?? ''"
             :src-time="Math.max(0, cutSrc - frameMicros / 2)"
@@ -288,14 +355,18 @@ export default defineComponent({
           />
         </div>
 
-        <div ref="scroll" class="relative mx-auto w-full max-w-[980px] shrink-0 overflow-x-auto rounded-xl border border-line bg-panel">
+        <div
+          v-if="mediaReady"
+          ref="scroll"
+          class="relative mx-auto w-full max-w-[980px] shrink-0 overflow-x-auto rounded-xl border border-line bg-panel"
+        >
           <div class="relative" :style="{ width: innerWidth + 'px' }">
             <FineCutStrip :width="innerWidth" :px="px" />
             <FineCutWaveform :width="innerWidth" :px="px" />
           </div>
         </div>
 
-        <div class="mx-auto flex shrink-0 flex-wrap items-center justify-center gap-2">
+        <div v-if="mediaReady" class="mx-auto flex shrink-0 flex-wrap items-center justify-center gap-2">
           <button
             type="button"
             class="flex min-h-11 items-center rounded-xl bg-panel2 px-3 text-sm font-semibold disabled:opacity-40"
@@ -325,6 +396,7 @@ export default defineComponent({
             type="button"
             class="flex min-h-11 items-center rounded-xl bg-signal px-5 text-sm font-bold text-signal-fg disabled:opacity-40"
             :disabled="!canCut"
+            :title="!canCut ? cutBlockedReason : undefined"
             @click="cut"
           >
             {{ $t('fineCut.cutHere') }}
@@ -358,7 +430,7 @@ export default defineComponent({
 
         <p v-if="errorText" role="status" class="mx-auto shrink-0 text-center text-sm font-semibold text-[var(--jc-danger)]">{{ errorText }}</p>
 
-        <div class="mx-auto flex w-full max-w-[980px] shrink-0 flex-wrap items-center justify-center gap-2 text-sm">
+        <div v-if="mediaReady" class="mx-auto flex w-full max-w-[980px] shrink-0 flex-wrap items-center justify-center gap-2 text-sm">
           <label class="flex items-center gap-2">
             <span class="font-semibold">{{ $t('fineCut.zoom') }}</span>
             <input
@@ -397,7 +469,7 @@ export default defineComponent({
           <span class="rounded-full bg-panel2 px-3 py-2 text-xs text-muted">{{ $t('fineCut.fade') }}</span>
         </div>
 
-        <p class="mx-auto shrink-0 text-center text-xs text-muted">{{ $t('fineCut.hint') }}</p>
+        <p v-if="mediaReady" class="mx-auto shrink-0 text-center text-xs text-muted">{{ $t('fineCut.hint') }}</p>
       </div>
     </div>
   </Teleport>

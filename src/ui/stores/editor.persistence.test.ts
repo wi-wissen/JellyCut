@@ -28,12 +28,16 @@ vi.mock('../../platform/projectFiles', async (importOriginal) => {
 
 const DEMO_NAME = 'Summer trip'
 
+// The demo project only loads with ?demo=1; the start project is empty and unnamed.
+afterEach(() => vi.unstubAllGlobals())
+
 function makeStore() {
   return useEditorStore()
 }
 
 describe('editor store: history', () => {
   beforeEach(() => {
+    vi.stubGlobal('location', { search: '?demo=1' })
     vi.useFakeTimers()
     vi.clearAllMocks()
     setActivePinia(createPinia())
@@ -104,6 +108,7 @@ describe('editor store: history', () => {
 
 describe('editor store: open and save', () => {
   beforeEach(() => {
+    vi.stubGlobal('location', { search: '?demo=1' })
     vi.useFakeTimers()
     vi.clearAllMocks()
     setActivePinia(createPinia())
@@ -188,11 +193,12 @@ describe('editor store: autosave', () => {
     expect(store.canUndo).toBe(false)
   })
 
-  it('restoreAutosave ignores a corrupt autosave and keeps the demo project', async () => {
+  it('restoreAutosave ignores a corrupt autosave and keeps the start project', async () => {
     vi.mocked(kvGet).mockResolvedValueOnce({ text: '{ broken', savedAt: 1 })
     const store = makeStore()
     await store.restoreAutosave()
-    expect(store.project.name).toBe(DEMO_NAME)
+    expect(store.project.clips).toEqual([])
+    expect(store.project.assets).toEqual([])
   })
 
   it('restoreAutosave does not overwrite edits made while storage was loading', async () => {

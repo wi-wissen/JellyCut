@@ -1,7 +1,8 @@
 import { TRANSITION_TYPES } from '../../core/render/types'
 import type { LayerTransition, Scene, TextLayer, VideoLayer } from '../../core/render/types'
 import type { ProjectFormat, TextStyle, Transform } from '../../core/project/types'
-import { FRAGMENT_BLUR, FRAGMENT_COPY, FRAGMENT_FRAME, FRAGMENT_MIX, FRAGMENT_TEXT } from './shaders'
+import { isIdentity, type Grade } from '../../core/filters/filters'
+import { FRAGMENT_BLUR, FRAGMENT_COPY, FRAGMENT_FRAME, FRAGMENT_GRADED_FRAME, FRAGMENT_MIX, FRAGMENT_TEXT } from './shaders'
 import { Program, createTarget, createTexture, type Target } from './gl'
 import { parseCssColor, rasterizeText, textPixelSize, type Rgb } from './text'
 
@@ -33,6 +34,8 @@ interface FrameTexture {
 
 interface Programs {
   frame: Program
+  /** FRAGMENT_FRAME with a colour grade; only used for graded clips. */
+  graded: Program
   copy: Program
   text: Program
   blur: Program
@@ -268,6 +271,7 @@ export class Compositor {
     const gl = this.gl
     this.programs = {
       frame: new Program(gl, FRAGMENT_FRAME),
+      graded: new Program(gl, FRAGMENT_GRADED_FRAME),
       copy: new Program(gl, FRAGMENT_COPY),
       text: new Program(gl, FRAGMENT_TEXT),
       blur: new Program(gl, FRAGMENT_BLUR),
@@ -434,19 +438,39 @@ export class Compositor {
     const isColor = format.background?.type === 'color'
     this.clear(target, isColor ? this.backgroundRgb(format) : [0, 0, 0])
     if (!frame) return
-    if (!isColor) this.drawBlurBackground(target, frame)
-    this.drawPicture(target, frame, sanitizeTransform(layer.transform))
+    // Ungraded clips (and identity grades) take the plain path: no extra work.
+    const grade = layer.grade && !isIdentity(layer.grade) ? layer.grade : null
+    if (!isColor) this.drawBlurBackground(target, frame, grade)
+    this.drawPicture(target, frame, sanitizeTransform(layer.transform), grade)
   }
 
-  /** Cover copy at 1/8 size, blurred separably, dimmed, and stretched back up over the target. */
-  private drawBlurBackground(target: Target, frame: FrameTexture): void {
+  /** Binds the picture program, with the grade when there is one. Null when the compositor is not ready. */
+  private useFrameProgram(grade: Grade | null): Program | null {
+    const programs = this.programs
+    if (!programs) return null
+    if (!grade) {
+      programs.frame.use()
+      return programs.frame
+    }
+    const p = programs.graded
+    const gl = this.gl
+    p.use()
+    const [r0, r1, r2] = [grade.matrix.slice(0, 3), grade.matrix.slice(3, 6), grade.matrix.slice(6, 9)]
+    gl.uniform3f(p.uniform('u_row0'), r0[0]!, r0[1]!, r0[2]!)
+    gl.uniform3f(p.uniform('u_row1'), r1[0]!, r1[1]!, r1[2]!)
+    gl.uniform3f(p.uniform('u_row2'), r2[0]!, r2[1]!, r2[2]!)
+    gl.uniform3f(p.uniform('u_offset'), grade.offset[0]!, grade.offset[1]!, grade.offset[2]!)
+    return p
+  }
+
+  /** Cover copy at 1/8 size (graded, so the bars match the picture), blurred separably, dimmed, and stretched back up. */
+  private drawBlurBackground(target: Target, frame: FrameTexture, grade: Grade | null): void {
     const blur = this.ensureBlurTargets()
     const p = this.programs
-    if (!p) return
+    if (!p || !this.useFrameProgram(grade)) return
 
     this.bindTarget(blur.cover)
     this.setBlend(false)
-    p.frame.use()
     this.bindTexture(frame.tex)
     const [u0, u1, v0, v1] = coverUv(frame.w, frame.h, blur.cover.w, blur.cover.h)
     this.drawQuad(FULL_QUAD, [[u0, v1], [u1, v1], [u1, v0], [u0, v0]])
@@ -479,8 +503,8 @@ export class Compositor {
     this.drawQuad(FULL_QUAD, UV_UPRIGHT)
   }
 
-  private drawPicture(target: Target, frame: FrameTexture, t: PictureTransform): void {
-    const p = this.programs?.frame
+  private drawPicture(target: Target, frame: FrameTexture, t: PictureTransform, grade: Grade | null): void {
+    const p = this.useFrameProgram(grade)
     if (!p) return
     const base = t.fill
       ? Math.max(target.w / frame.w, target.h / frame.h)
@@ -497,7 +521,6 @@ export class Compositor {
 
     this.bindTarget(target)
     this.setBlend(true)
-    p.use()
     this.bindTexture(frame.tex)
     this.drawQuad(corners, t.flipX ? UV_MIRRORED : UV_UPRIGHT)
   }

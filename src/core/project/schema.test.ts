@@ -170,3 +170,66 @@ describe('JSON roundtrip', () => {
     expect(parseProjectJson(JSON.stringify({ name: 1 })).ok).toBe(false)
   })
 })
+
+describe('clip colour grade fields', () => {
+  it('accepts a valid filter amount and adjustments, and projects without them', () => {
+    const p = sample()
+    p.clips[0] = { ...p.clips[0]!, filter: 'sepia', filterAmount: 0.5, adjust: { brightness: -1, contrast: 0, saturation: 1 } }
+    expect(validateProject(p).ok).toBe(true)
+    expect(validateProject(sample()).ok).toBe(true)
+  })
+  it('rejects amounts outside 0..1 and adjustments outside -1..1', () => {
+    const p = sample()
+    p.clips[0] = { ...p.clips[0]!, filterAmount: 1.5 }
+    expect(validateProject(p)).toMatchObject({ ok: false, errors: [expect.stringContaining('filterAmount')] })
+    const q = sample()
+    q.clips[0] = { ...q.clips[0]!, adjust: { brightness: 0, contrast: 2, saturation: 0 } }
+    expect(validateProject(q)).toMatchObject({ ok: false, errors: [expect.stringContaining('adjust.contrast')] })
+  })
+  it('rejects non-finite values and a non-object adjust', () => {
+    const p = sample()
+    p.clips[0] = { ...p.clips[0]!, filterAmount: NaN }
+    expect(validateProject(p).ok).toBe(false)
+    const q = sample()
+    q.clips[0] = { ...q.clips[0]!, adjust: 'bright' as unknown as Project['clips'][number]['adjust'] }
+    expect(validateProject(q).ok).toBe(false)
+  })
+})
+
+describe('asset credits (optional)', () => {
+  const withCredit = (credit: unknown): unknown => {
+    const p: any = structuredClone(sample())
+    p.assets[0].credit = credit
+    return p
+  }
+  it('projects without credit stay valid', () => {
+    expect(validateProject(sample()).ok).toBe(true)
+  })
+  it('accepts a complete credit and empty optional fields', () => {
+    expect(validateProject(withCredit({ title: 'Beach', author: 'Jane', source: 'Pixabay', url: 'https://pixabay.com', license: 'pixabay' })).ok).toBe(true)
+    expect(validateProject(withCredit({})).ok).toBe(true)
+    expect(validateProject(withCredit({ url: 'http://example.org/x' })).ok).toBe(true)
+  })
+  it('rejects a credit that is not an object or has non-string fields', () => {
+    expect(validateProject(withCredit('Jane')).ok).toBe(false)
+    expect(validateProject(withCredit(null)).ok).toBe(false)
+    expect(validateProject(withCredit({ author: 3 })).ok).toBe(false)
+  })
+  it('rejects fields longer than 300 characters and accepts exactly 300', () => {
+    expect(validateProject(withCredit({ title: 'x'.repeat(300) })).ok).toBe(true)
+    const r = validateProject(withCredit({ title: 'x'.repeat(301) }))
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.errors[0]).toContain('assets[0].credit.title')
+  })
+  it('requires http or https links', () => {
+    for (const url of ['javascript:alert(1)', 'ftp://x.org', 'www.pixabay.com', 'https://', 42]) {
+      expect(validateProject(withCredit({ url })).ok).toBe(false)
+    }
+  })
+  it('keeps credits through a JSON roundtrip', () => {
+    const p = withCredit({ title: 'Beach', license: 'cc-by-4.0' })
+    const r = parseProjectJson(serializeProject(p as any))
+    expect(r.ok).toBe(true)
+    if (r.ok) expect(r.project.assets[0]?.credit).toEqual({ title: 'Beach', license: 'cc-by-4.0' })
+  })
+})

@@ -16,7 +16,7 @@ export default defineComponent({
     badge: { type: String, default: '' }
   },
   data() {
-    return { loading: true, token: 0 }
+    return { loading: true, failed: false, token: 0 }
   },
   watch: {
     srcTime(): void {
@@ -33,6 +33,7 @@ export default defineComponent({
     async load(): Promise<void> {
       const token = ++this.token
       this.loading = true
+      this.failed = false
       let frame: DecodedFrame | null = null
       try {
         frame = await getFrameProvider().getFrame(this.assetId, this.srcTime, LANE)
@@ -46,6 +47,7 @@ export default defineComponent({
         canvas.height = frame.height
         canvas.getContext('2d')?.drawImage(frame, 0, 0)
       }
+      this.failed = !frame
       this.loading = false
     }
   }
@@ -62,6 +64,13 @@ export default defineComponent({
         role="status"
       >
         {{ $t('fineCut.loadingFrame') }}
+      </span>
+      <span
+        v-else-if="failed"
+        class="absolute inset-0 flex items-center justify-center p-3 text-center text-sm font-semibold"
+        role="status"
+      >
+        {{ $t('fineCut.frameFailed') }}
       </span>
       <span
         v-if="badge"

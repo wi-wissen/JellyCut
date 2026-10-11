@@ -5,6 +5,8 @@ import Icon from './Icon.vue'
 import { useEditorStore } from '../stores/editor'
 import type { AutosaveStatus } from '../../core/io/autosave'
 import { useMediaStore } from '../stores/media'
+import { useCreditsStore } from '../stores/credits'
+import CreditsDialog from './CreditsDialog.vue'
 
 const DOT_CLASSES: Record<AutosaveStatus, string> = {
   idle: 'bg-[var(--jc-muted)]/40',
@@ -16,7 +18,7 @@ const DOT_CLASSES: Record<AutosaveStatus, string> = {
 
 export default defineComponent({
   name: 'ProjectMenu',
-  components: { Icon },
+  components: { Icon, CreditsDialog },
   data() {
     return { open: false }
   },
@@ -66,6 +68,9 @@ export default defineComponent({
     async chooseWorkFolderItem(): Promise<void> {
       await this.chooseFolder()
       await this.refreshWorkFolder()
+    },
+    openCredits(): void {
+      useCreditsStore().show({ returnId: 'project-menu-trigger' })
     },
     menuItems(): HTMLElement[] {
       const panel = this.$refs.panel as HTMLElement | undefined
@@ -202,6 +207,10 @@ export default defineComponent({
           <Icon name="download" class="size-4 shrink-0 text-muted" />
           {{ $t('project.download') }}
         </button>
+        <button type="button" role="menuitem" class="flex min-h-11 w-full items-center gap-3 rounded-lg px-2.5 text-left text-sm text-fg hover:bg-panel2 focus-visible:bg-panel2" @click="run(() => openCredits())">
+          <Icon name="copy" class="size-4 shrink-0 text-muted" />
+          {{ $t('credits.menuItem') }}
+        </button>
         <button
           v-if="caps.directoryPicker"
           type="button"
@@ -247,5 +256,8 @@ export default defineComponent({
         <p v-if="showUnsavedHint" class="mt-0.5 text-muted">{{ unsavedHint }}</p>
       </div>
     </div>
+
+    <!-- Mounted here because the top bar is always present; it opens for the menu item and the library tiles. -->
+    <CreditsDialog />
   </div>
 </template>

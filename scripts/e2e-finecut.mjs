@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const SHOTS = '/tmp/claude-0/-home-user-JellyCut/8ac8332d-b077-5711-8558-272fe1bb4e47/scratchpad'
+const SHOTS = process.env.SHOT_DIR ?? '/tmp/claude-0/-home-user-JellyCut/8ac8332d-b077-5711-8558-272fe1bb4e47/scratchpad'
 mkdirSync(SHOTS, { recursive: true })
 
 function findChromium() {
@@ -114,6 +114,7 @@ const pressKey = async (page, key, times = 1) => {
 }
 
 const near = (a, b, tol) => Math.abs(a - b) <= tol
+const extraErrors = []
 
 // ---------- Desktop: scenarios a to k ----------
 const desk = await openPage({ viewport: { width: 1280, height: 800 }, locale: 'en', colorScheme: 'light' })
@@ -127,6 +128,8 @@ const loaded = await settle(page)
 await page.waitForTimeout(400)
 
 // (a) Layout content: two frames, waveform, one pause, keyframe tiles
+const hintOnFirstOpen = await page.locator('[data-testid="fine-hint"]').count()
+check('(a) the one-time hint is shown on the first open', hintOnFirstOpen === 1, String(hintOnFirstOpen))
 const frames = await canvasStats(page, '[data-testid="fine-frame"]')
 check('(a) both frame images are drawn (non-blank canvases)', frames.length === 2 && frames.every((f) => f.w > 0 && drawn(f)), JSON.stringify(frames))
 const wave = await canvasStats(page, '[data-testid="fine-waveform"]')
@@ -311,6 +314,52 @@ await page.waitForTimeout(200)
 const afterUndo = await readState(page, `(ed) => ed.project.clips.length`)
 check('(f) one Ctrl+Z restores a single clip', afterUndo === 1, String(afterUndo))
 
+// (m) Leaving: the big labelled back button, Escape, a click on empty space, the header's main action
+await readState(page, `(ed, fc) => { fc.close(); ed.setPlayhead(300000); return true }`)
+await page.locator('#fine-cut-button').click()
+await dialog.waitFor({ state: 'visible' })
+await settle(page)
+const backButton = page.locator('[data-testid="fine-back"]')
+const backBox = await backButton.boundingBox()
+const dialogBox = await dialog.boundingBox()
+check('(m) the back button is labelled "Back to editor" and sits at the top left', (await backButton.innerText()).includes('Back to editor') && backBox.x - dialogBox.x < 120 && backBox.y - dialogBox.y < 80, JSON.stringify(backBox))
+check('(m) the back button is large (48 px high or more)', backBox.height >= 47, String(backBox.height))
+check('(m) there is no second "Done" exit', (await page.getByRole('button', { name: 'Done', exact: true }).count()) === 0)
+check('(m) the header main action reads "Cut here" when a cut is possible', (await page.locator('[data-testid="fine-primary"]').innerText()).trim() === 'Cut here')
+const clipsM = await readState(page, `(ed) => ed.project.clips.length`)
+const pastM = await readState(page, `(ed) => ed.history.past.length`)
+await page.mouse.click(dialogBox.x + 4, dialogBox.y + dialogBox.height - 4)
+await page.waitForTimeout(150)
+check('(m) a click on empty space outside the content changes nothing and keeps the view open', (await dialog.count()) === 1 && (await readState(page, `(ed) => ed.history.past.length`)) === pastM)
+await page.keyboard.press('Escape')
+await dialog.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => undefined)
+check('(m) Escape closes without a change', (await dialog.count()) === 0 && (await readState(page, `(ed) => ed.project.clips.length`)) === clipsM && (await readState(page, `(ed) => ed.history.past.length`)) === pastM)
+await page.locator('#fine-cut-button').click()
+await dialog.waitFor({ state: 'visible' })
+await settle(page)
+await page.locator('[data-testid="fine-back"]').click()
+await dialog.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => undefined)
+check('(m) the back button closes without a change', (await dialog.count()) === 0 && (await readState(page, `(ed) => ed.history.past.length`)) === pastM)
+check('(m) closing puts the focus back on the Fine cut button', (await page.evaluate(() => document.activeElement?.id)) === 'fine-cut-button')
+
+// (m2) The one-time hint: dismissed once, remembered in localStorage, not shown again.
+await page.locator('#fine-cut-button').click()
+await dialog.waitFor({ state: 'visible' })
+await settle(page)
+check('(m2) the hint is still there before it is dismissed', (await page.locator('[data-testid="fine-hint"]').count()) === 1)
+await page.getByRole('button', { name: 'Got it' }).click()
+check('(m2) dismissing the hint removes it', (await page.locator('[data-testid="fine-hint"]').count()) === 0)
+const stored = await page.evaluate(() => localStorage.getItem('jellycut.fineCut'))
+check('(m2) the dismissal is stored in localStorage', stored !== null && JSON.parse(stored).hintSeen === true, String(stored))
+await page.locator('[data-testid="fine-back"]').click()
+await dialog.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => undefined)
+await page.locator('#fine-cut-button').click()
+await dialog.waitFor({ state: 'visible' })
+await settle(page)
+check('(m2) the hint stays hidden on the next open', (await page.locator('[data-testid="fine-hint"]').count()) === 0)
+await page.locator('[data-testid="fine-back"]').click()
+await dialog.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => undefined)
+
 // (j) Narrow layout at 390 x 800 is a separate page; (k) errors checked at the end
 await desk.context.close()
 
@@ -373,7 +422,63 @@ const darkFrames = await canvasStats(dark.page, '[data-testid="fine-frame"]')
 check('(h) both frame images are drawn in dark mode', darkFrames.length === 2 && darkFrames.every(drawn), JSON.stringify(darkFrames))
 await dark.context.close()
 
-check('(k) no uncaught page errors or console errors', errors.length === 0, errors.join(' | ').slice(0, 800))
+// (n) Picture missing: the picture areas explain it, with a button back to the editor. (o) No clip under the playhead.
+const missing = await openPage({ viewport: { width: 1440, height: 900 }, locale: 'en', colorScheme: 'light' })
+missing.page.on('dialog', (d) => d.accept())
+await newProjectWith(missing.page, 'talk.webm')
+await missing.page.waitForTimeout(1500)
+await missing.page.reload()
+await missing.page.waitForSelector('header')
+// The re-link dialog opens by itself for a missing used file; close it to reach the editor.
+await missing.page.getByRole('dialog', { name: /Missing files/ }).waitFor({ timeout: 8000 })
+await missing.page.keyboard.press('Escape')
+await missing.page.waitForTimeout(400)
+await setPlayhead(missing.page, 700_000)
+await missing.page.locator('#fine-cut-button').click()
+const mdialog = missing.page.getByRole('dialog', { name: 'Fine cut' })
+await mdialog.waitFor({ state: 'visible', timeout: 5000 })
+await missing.page.waitForTimeout(400)
+const unavailable = missing.page.locator('[data-testid="fine-unavailable"]')
+check('(n) a missing file is explained in the picture area', (await unavailable.count()) === 1 && (await unavailable.innerText()).includes('The video file is not available. Re-link it in the library.'))
+check('(n) no empty picture boxes are shown in its place', (await missing.page.locator('[data-testid="fine-frame"]').count()) === 0)
+check('(n) the header main action reads "Back" when no cut is possible', (await missing.page.locator('[data-testid="fine-primary"]').innerText()).trim() === 'Back')
+check('(n) the Fine cut button stays enabled: the clip is there, only its file is not', (await missing.page.locator('#fine-cut-button').getAttribute('aria-disabled')) === 'false')
+await missing.page.screenshot({ path: `${SHOTS}/finecut2-missing-1440-light.png` })
+await unavailable.getByRole('button', { name: 'Back to editor' }).click()
+await mdialog.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => undefined)
+check('(n) the picture area button closes the view', (await mdialog.count()) === 0)
+
+await missing.page.locator('header button[aria-haspopup]').first().click()
+await missing.page.getByRole('menuitem', { name: /New project/ }).click()
+await missing.page.waitForTimeout(300)
+const noClipButton = missing.page.locator('#fine-cut-button')
+check('(o) with no clip under the playhead, Fine cut is disabled with a tooltip', (await noClipButton.getAttribute('aria-disabled')) === 'true' && (await noClipButton.getAttribute('title')) === 'Move the playhead onto a video clip first', String(await noClipButton.getAttribute('title')))
+await noClipButton.click({ force: true })
+check('(o) the disabled Fine cut button opens nothing', (await missing.page.getByRole('dialog', { name: 'Fine cut' }).count()) === 0)
+await missing.context.close()
+
+// (p) Screenshots for the review: 1440 x 900 and 1920 x 1080, light and dark, with the hint.
+for (const [w, h] of [[1440, 900], [1920, 1080]]) {
+  for (const scheme of ['light', 'dark']) {
+    const shot = await openPage({ viewport: { width: w, height: h }, locale: 'en', colorScheme: scheme })
+    shot.page.on('dialog', (d) => d.accept())
+    await newProjectWith(shot.page, 'talk.webm')
+    await setPlayhead(shot.page, 700_000)
+    await shot.page.locator('#fine-cut-button').click()
+    await shot.page.getByRole('dialog', { name: 'Fine cut' }).waitFor({ state: 'visible' })
+    await settle(shot.page)
+    await shot.page.waitForTimeout(400)
+    const pictures = await canvasStats(shot.page, '[data-testid="fine-frame"]')
+    check(`(p) ${w}x${h} ${scheme}: both pictures are drawn`, pictures.length === 2 && pictures.every(drawn), JSON.stringify(pictures))
+    const overflow = await shot.page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+    check(`(p) ${w}x${h} ${scheme}: no horizontal page overflow`, overflow <= 0, String(overflow))
+    await shot.page.screenshot({ path: `${SHOTS}/finecut2-${w}-${scheme}.png` })
+    extraErrors.push(...shot.errors)
+    await shot.context.close()
+  }
+}
+
+check('(k) no uncaught page errors or console errors', errors.length === 0 && extraErrors.length === 0, [...errors, ...extraErrors].join(' | ').slice(0, 800))
 await browser.close()
 await server.close()
 if (failed) {

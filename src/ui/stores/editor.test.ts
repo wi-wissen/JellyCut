@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { validateProject } from '../../core/project/schema'
 import { buildDemoProject, projectDuration, useEditorStore } from './editor'
@@ -12,7 +12,11 @@ describe('demo project', () => {
 })
 
 describe('editor store', () => {
-  beforeEach(() => setActivePinia(createPinia()))
+  beforeEach(() => {
+    vi.stubGlobal('location', { search: '?demo=1' })
+    setActivePinia(createPinia())
+  })
+  afterEach(() => vi.unstubAllGlobals())
 
   it('places timeline spans as percentages of the total duration', () => {
     const store = useEditorStore()

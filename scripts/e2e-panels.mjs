@@ -81,7 +81,8 @@ const newPage = async (options) => {
   const context = await browser.newContext({ locale: 'en-US', ...options })
   const page = await context.newPage()
   page.on('pageerror', (e) => pageErrors.push(e.message))
-  await page.goto(APP_URL)
+  // The panels need the demo project's clips, texts and music (?demo=1).
+  await page.goto(`${APP_URL}?demo=1`)
   await page.getByRole('button', { name: 'Clip: Beach.mp4', exact: true }).first().waitFor()
   return page
 }

@@ -36,7 +36,7 @@ const GROUPS: GroupDef[] = [
   {
     key: 'look',
     tabs: [
-      { id: 'filter', icon: 'filter', soon: true },
+      { id: 'filter', icon: 'filter' },
       { id: 'transitions', icon: 'transition' }
     ]
   }
@@ -56,9 +56,9 @@ export default defineComponent({
   },
   methods: {
     ...mapActions(useEditorStore, ['setActiveTab', 'setActiveGroup', 'select']),
-    /** Opening another tab leaves the selected item's panel. Transitions keep the selection: it is the target. */
+    /** Opening another tab leaves the selected item's panel. Transitions and filters keep the selection: it is the target. */
     leaveSelection(tab: TabId) {
-      if (tab !== 'transitions') this.select(null)
+      if (tab !== 'transitions' && tab !== 'filter') this.select(null)
     },
     selectGroup(group: GroupDef) {
       const first = group.tabs.find((t) => !t.soon)?.id ?? group.tabs[0]!.id

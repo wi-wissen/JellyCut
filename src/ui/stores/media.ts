@@ -31,6 +31,7 @@ import {
 import { chooseWorkFolder } from '../../platform/projectFiles'
 import { assetUsage, removeAsset as removeAssetFromProject, removeUnusedAssets } from '../../core/timeline/assetOps'
 import { useEditorStore } from './editor'
+import { planReconcile, RemovedMediaCache, REMOVED_MEDIA_LIMIT } from './removedMedia'
 
 export type MediaStatus = 'ready' | 'missing' | 'unsupported'
 
@@ -60,6 +61,15 @@ interface PoolEntry {
 }
 const pool = new Map<string, PoolEntry>()
 let poolSeq = 0
+
+/** What a removed asset had, kept so an undo can bring it back as ready (see reconcileWith). */
+interface RemovedMedia {
+  file: File
+  status: MediaStatus
+  problems: ProbeProblem[]
+  thumbnail: string | null
+}
+const removedMedia = new RemovedMediaCache<RemovedMedia>(REMOVED_MEDIA_LIMIT)
 let rememberedFolder: WorkFolderHandle | null = null
 
 /** Frame source for media in this session. Call it each time: the instance is replaced when media is reset. */
@@ -247,7 +257,10 @@ export const useMediaStore = defineStore('media', {
         if (imported.length === 0) return
 
         let project = editor.project
-        for (const { asset } of imported) project = addAsset(project, asset)
+        for (const { asset } of imported) {
+          project = addAsset(project, asset)
+          removedMedia.take(asset.id)
+        }
         for (const { asset, info, file } of imported) {
           registerFile(asset.id, file)
           if (info.problems.length === 0) {
@@ -311,6 +324,7 @@ export const useMediaStore = defineStore('media', {
     markMissingFor(project: Project): void {
       resetFiles()
       pool.clear()
+      removedMedia.clear()
       const status: Record<string, MediaStatus> = {}
       for (const asset of project.assets) status[asset.id] = 'missing'
       this.status = status
@@ -360,7 +374,6 @@ export const useMediaStore = defineStore('media', {
       const name = before.assets.find((a) => a.id === assetId)?.name ?? ''
       const usage = assetUsage(before, assetId)
       editor.commitProject(after)
-      this.freeAssets([assetId])
       const clips = usage.clipIds.length
       this.removalNote = clips > 0
         ? { key: 'relink.removed.withClips', params: { name, clips } }
@@ -400,7 +413,6 @@ export const useMediaStore = defineStore('media', {
       if (after === before) return 0
       const removed = before.assets.filter((a) => !after.assets.some((b) => b.id === a.id)).map((a) => a.id)
       editor.commitProject(after)
-      this.freeAssets(removed)
       this.removalNote = { key: 'relink.removed.unused', params: { count: removed.length } }
       this.afterRemoval()
       return removed.length
@@ -416,13 +428,29 @@ export const useMediaStore = defineStore('media', {
       this.removalNote = null
     },
 
-    /** Drops everything the session knows about the given assets. */
-    freeAssets(assetIds: string[]): void {
-      if (assetIds.length === 0) return
-      const gone = new Set(assetIds)
-      let hadFile = false
-      for (const id of assetIds) {
-        if (files.delete(id)) hadFile = true
+    /**
+     * Runs after every change of the document (commit, undo, redo). A file whose asset left the project is
+     * kept in a small cache, with its thumbnail and status, so undo can bring it back. An asset that is in the
+     * project again and has a cached file becomes ready at once. Everything else is left alone.
+     */
+    reconcileWith(project: Project): void {
+      const inProject = new Set(project.assets.map((a) => a.id))
+      const plan = planReconcile(project.assets.map((a) => a.id), files.keys(), removedMedia.ids())
+      const leftStatus = Object.keys(this.status).filter((id) => !inProject.has(id))
+      if (plan.evict.length === 0 && plan.restore.length === 0 && leftStatus.length === 0) return
+
+      const gone = new Set([...plan.evict, ...leftStatus])
+      for (const id of gone) {
+        const file = files.get(id)
+        if (file) {
+          removedMedia.put(id, {
+            file,
+            status: this.status[id] ?? 'ready',
+            problems: this.problems[id] ?? [],
+            thumbnail: this.thumbnails[id] ?? null
+          })
+          files.delete(id)
+        }
         delete this.status[id]
         delete this.problems[id]
         delete this.thumbnails[id]
@@ -431,9 +459,23 @@ export const useMediaStore = defineStore('media', {
         delete this.relinkChoices[id]
       }
       // Rebuilding the provider disposes the decoders of the removed files.
-      if (hadFile || gone.size > 0) rebuildProvider()
+      if (plan.evict.length > 0) rebuildProvider()
+
+      for (const id of plan.restore) {
+        const cached = removedMedia.take(id)
+        if (!cached) continue
+        registerFile(id, cached.file)
+        this.status[id] = cached.status
+        if (cached.problems.length > 0) this.problems[id] = cached.problems
+        if (cached.thumbnail) this.thumbnails[id] = cached.thumbnail
+      }
       this.relinkListIds = this.relinkListIds.filter((id) => !gone.has(id))
       this.replan()
+    },
+
+    /** Ids of removed assets whose file is still kept for undo. */
+    removedMediaIds(): string[] {
+      return removedMedia.ids()
     },
 
     /** After a removal: nothing missing any more closes the dialog. */

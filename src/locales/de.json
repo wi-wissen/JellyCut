@@ -82,7 +82,8 @@
     "rotate": "Drehen",
     "speed": "Tempo",
     "mute": "Ton aus",
-    "delete": "Löschen"
+    "delete": "Löschen",
+    "fineCutNeedsClip": "Setze den Abspielkopf zuerst auf einen Videoclip"
   },
   "timeline": {
     "zoom": "Zoom",
@@ -184,7 +185,11 @@
     "transitionRemove": "Entfernen",
     "firstClip": "Der erste Clip hat keinen Schnitt davor. Übergänge gibt es nur zwischen zwei Clips.",
     "sound": "Ton",
-    "timing": "Zeit"
+    "timing": "Zeit",
+    "filter": "Filter und Anpassung",
+    "filterSummary": "Filter: {name}",
+    "filterNone": "Filter: Ohne",
+    "filterChange": "Filter öffnen"
   },
   "transitions": {
     "title": "Übergänge",
@@ -273,6 +278,7 @@
     "labels": {
       "resolution": "Auflösung",
       "fps": "Bilder pro Sekunde",
+      "width": "Breite",
       "quality": "Qualität",
       "format": "Format"
     },
@@ -283,8 +289,7 @@
     },
     "formats": {
       "mp4": "Video (MP4)",
-      "gif": "GIF",
-      "soon": "Demnächst"
+      "gif": "GIF"
     },
     "estimate": "Dauer {duration} · Größe ca. {size} · Export dauert ca. {time}",
     "estimateNote": "Schätzung",
@@ -311,6 +316,7 @@
       "noEncoder": "Dieser Browser kann kein Video kodieren. Bitte Chrome oder Edge verwenden.",
       "empty": "Es gibt noch nichts zu exportieren. Lege zuerst einen Clip auf die Timeline.",
       "missing": "Für den Export fehlen Dateien: {names}. Importiere sie in der Bibliothek erneut.",
+      "gifTooLarge": "GIFs werden sehr groß: bitte einen kürzeren Abschnitt oder eine kleinere Größe wählen.",
       "unsupported": "Dieser Browser kann dieses Projekt nicht exportieren.",
       "failed": "Der Export ist fehlgeschlagen. {message}"
     },
@@ -321,6 +327,9 @@
       "hours": "{value} Std.",
       "hoursMinutes": "{value} Std. {minutes} Min."
     },
+    "widthValue": "{value} px",
+    "loop": "Endlos wiederholen",
+    "roughNote": "Grobe Schätzung",
     "calibrationHint": "Die Schätzung wird nach dem ersten Export auf diesem Computer genauer."
   },
   "record": {
@@ -372,14 +381,12 @@
     "chip": "{name} · {fps} fps",
     "fullscreen": "Vollbild",
     "exitFullscreen": "Vollbild beenden",
-    "done": "Fertig",
     "cutHere": "Hier schneiden",
     "before": "Letztes Bild vor dem Schnitt",
     "after": "Erstes Bild nach dem Schnitt",
     "cutBadge": "Schnitt",
     "frameInfo": "Bild {frame} · {time}",
     "loadingFrame": "Bild wird geladen …",
-    "noFile": "Diese Datei ist nicht geladen. Importiere sie in der Bibliothek erneut.",
     "tooShort": "Dieser Clip ist zu kurz für einen Schnitt.",
     "cannotCut": "Hier ist kein Schnitt möglich.",
     "previousPause": "Vorherige Pause",
@@ -405,7 +412,14 @@
     "waveformLoading": "Wellenform wird berechnet",
     "strip": "Frame-Streifen",
     "keyTile": "KEY",
-    "frameTile": "#{n}"
+    "frameTile": "#{n}",
+    "backToEditor": "Zurück zum Editor",
+    "back": "Zurück",
+    "unavailable": "Die Videodatei ist nicht verfügbar. Verknüpfe sie in der Mediathek neu.",
+    "unsupported": "Dieses Videoformat kann in diesem Browser nicht angezeigt werden.",
+    "frameFailed": "Das Bild konnte nicht gelesen werden.",
+    "hintIntro": "Geh Bild für Bild vor und drücke dann „Hier schneiden“. Der Clip wird am Schnitt geteilt; den Teil, den du nicht willst, löschst du danach.",
+    "hintDismiss": "Verstanden"
   },
   "relink": {
     "remove": "Entfernen",
@@ -504,6 +518,157 @@
       "zinc": "Zink",
       "neutral": "Neutral",
       "stone": "Warmes Grau"
+    }
+  },
+  "start": {
+    "projectName": "Neues Projekt",
+    "title": "Mit einem Video anfangen",
+    "text": "Füge ein eigenes Video, Bilder oder Musik hinzu. Oder probiere es zuerst mit einem Beispielvideo aus.",
+    "filesStay": "Deine Dateien bleiben auf diesem Computer.",
+    "createExample": "Beispielvideo erstellen",
+    "creating": "Wird erstellt... {percent} %",
+    "abort": "Abbrechen",
+    "errors": {
+      "noEncoder": "Dieser Browser kann das Beispiel nicht erstellen. Bitte nutze Chrome oder Edge oder füge eigene Medien hinzu.",
+      "failed": "Das Beispiel konnte nicht erstellt werden. Bitte versuche es noch einmal oder füge eigene Medien hinzu."
+    }
+  },
+  "filters": {
+    "title": "Filter",
+    "intensity": "Intensität",
+    "adjust": "Anpassen",
+    "brightness": "Helligkeit",
+    "contrast": "Kontrast",
+    "saturation": "Sättigung",
+    "reset": "Zurücksetzen",
+    "applyAll": "Auf alle Clips anwenden",
+    "pickClip": "Wähle einen Clip in der Timeline oder setze den Abspielkopf auf einen Clip.",
+    "target": "Bearbeitet: {name}",
+    "names": {
+      "none": "Ohne",
+      "blackWhite": "Schwarzweiß",
+      "sepia": "Sepia",
+      "warm": "Warm",
+      "cool": "Kühl",
+      "vivid": "Lebendig",
+      "fade": "Verblasst",
+      "vintage": "Vintage",
+      "noir": "Noir",
+      "dream": "Traum"
+    }
+  },
+  "credits": {
+    "title": "Credits",
+    "menuItem": "Credits…",
+    "tile": "Credit",
+    "tileLabel": "Credits für {name}",
+    "intro": "Notiere Quelle und Lizenz jedes Mediums, das du verwendest. Jelly Cut macht daraus einen Text, den du kopieren kannst.",
+    "empty": "Auf der Zeitleiste liegt noch nichts. Clips und Musik erscheinen hier, sobald du sie hinzufügst.",
+    "noneNeeded": "Die verwendeten Medien brauchen keinen Credit-Text.",
+    "kinds": {
+      "video": "Video",
+      "image": "Bild",
+      "audio": "Audio"
+    },
+    "fields": {
+      "title": "Titel",
+      "author": "Urheber",
+      "source": "Quelle",
+      "url": "Link",
+      "license": "Lizenz"
+    },
+    "hints": {
+      "title": "z. B. Sonnenuntergang am Strand",
+      "author": "z. B. Lena Beispiel",
+      "source": "z. B. Pixabay",
+      "url": "https://…"
+    },
+    "chooseLicence": "Lizenz wählen",
+    "licenseOwn": "Eigenes Werk",
+    "licenseOther": "Sonstige",
+    "status": {
+      "complete": "Vollständig",
+      "missing": "Angaben fehlen",
+      "notNeeded": "Keine Nennung nötig"
+    },
+    "urlInvalid": "Bitte gib eine vollständige Web-Adresse ein, die mit https:// beginnt",
+    "preview": "Credits-Text",
+    "previewHint": "Füge diesen Text in die Videobeschreibung oder auf die Schlussfolie ein.",
+    "copy": "Text kopieren",
+    "copied": "Kopiert",
+    "copyFailed": "Das Kopieren hat nicht geklappt. Markiere den Text und kopiere ihn von Hand.",
+    "close": "Schließen"
+  },
+  "sources": {
+    "title": "Freie Bilder, Musik und Videos",
+    "intro": "Hier findest du Quellen für Material, das du in deinen Videos verwenden darfst, und erfährst, wie du die Urheber nennst. Lies vor jeder Verwendung die Lizenz auf der Seite, auf der du das Material gefunden hast.",
+    "contents": "Inhalt",
+    "backToEditor": "Zurück zum Editor",
+    "toStart": "Startseite von Jelly Cut",
+    "newTab": "öffnet in neuem Tab",
+    "own": {
+      "title": "1. Am besten: selbst aufnehmen oder erstellen",
+      "text": "Eigene Fotos, Videos, Tonaufnahmen und Zeichnungen sind die sicherste Wahl. Eine Quelle musst du dafür nicht nennen. Wähle in Jelly Cut die Lizenz „Eigenes Werk“; dann bleibt der Credits-Text dafür leer.",
+      "more": "Prüfe auch deine eigenen Aufnahmen: Frag Personen, bevor du sie filmst, und achte darauf, dass im Hintergrund keine Musik zu hören ist, die du nicht verwenden darfst."
+    },
+    "images": {
+      "title": "2. Freie Bilder",
+      "text": "Diese Seiten bieten Bilder an, die in der Regel frei nutzbar sind. Ihre Bedingungen können sich ändern und von Seite zu Seite unterscheiden. Prüfe sie auf der Seite selbst.",
+      "pixabay": "Fotos und Illustrationen. Lizenz: Pixabay Content License.",
+      "pexels": "Fotos. Lizenz: Pexels License.",
+      "unsplash": "Fotos. Lizenz: Unsplash License.",
+      "commons": "Dateien vieler Art, jede mit eigener Lizenz. Lies die Lizenz jeder Datei.",
+      "openverse": "Suchmaschine für offen lizenzierte Werke, auch Bilder. Lies die Lizenz jedes Treffers."
+    },
+    "videos": {
+      "title": "3. Freie Videos",
+      "text": "Videoclips gibt es oft an denselben Orten.",
+      "pexels": "Videos von Pexels. Lizenz: Pexels License.",
+      "pixabay": "Videos von Pixabay. Lizenz: Pixabay Content License.",
+      "commons": "Wikimedia Commons, siehe oben. Lies die Lizenz jeder Datei."
+    },
+    "music": {
+      "title": "4. Freie Musik und Geräusche",
+      "text": "Musik und Geräusche haben eigene Lizenzen. Manche sind frei nutzbar, andere verlangen eine Nennung, und die Lizenz kann von Stück zu Stück verschieden sein.",
+      "freesound": "Geräusche und Aufnahmen. Prüfe die Lizenz jedes einzelnen Geräuschs und verwende nur CC0 oder CC BY.",
+      "pixabay": "Musik. Lizenz: Pixabay Content License.",
+      "fma": "Free Music Archive. Die Lizenzen unterscheiden sich von Stück zu Stück, prüfe jedes einzeln.",
+      "incompetech": "Musik unter CC BY. Der Komponist muss genannt werden. Prüfe die Lizenz jedes Stücks."
+    },
+    "licences": {
+      "title": "5. Was die Lizenzen bedeuten",
+      "text": "Die Lizenz steht auf der Seite, auf der du das Material findest. Diese Fälle kommen häufig vor:",
+      "head": {
+        "licence": "Lizenz",
+        "meaning": "Was es für dich bedeutet"
+      },
+      "cc0": "CC0 und Public Domain",
+      "cc0Meaning": "Du darfst es frei verwenden. Den Urheber musst du nicht nennen.",
+      "by": "CC BY",
+      "byMeaning": "Du darfst es verwenden und auch verändern. Du musst Urheber, Titel, Quelle und Lizenz nennen.",
+      "bySa": "CC BY-SA",
+      "bySaMeaning": "Wie CC BY. Veränderst du das Material, musst du deine Version unter derselben Lizenz weitergeben (Share-alike).",
+      "reserved": "Alle Rechte vorbehalten",
+      "reservedMeaning": "Nicht verwenden, außer der Inhaber hat dir schriftlich die Erlaubnis gegeben."
+    },
+    "avoid": {
+      "title": "Nicht verwenden",
+      "streaming": "Musik aus Streamingdiensten. Dass man ein Lied hören kann, heißt nicht, dass man es in einem Video verwenden darf.",
+      "video": "Videos von YouTube oder ähnlichen Plattformen, außer die Lizenz auf der Videoseite erlaubt die Weiterverwendung ausdrücklich.",
+      "search": "Bilder aus einer normalen Websuche. Sie sind meist urheberrechtlich geschützt.",
+      "film": "Filmausschnitte aus Filmen oder Serien."
+    },
+    "credit": {
+      "title": "6. So nennst du die Urheber",
+      "text": "Jelly Cut merkt sich Quelle und Lizenz jedes Mediums. Öffne im Projektmenü „Credits“ oder klicke in der Bibliothek bei einer Kachel auf „Credit“. Trage Titel, Urheber, Quelle, Link und Lizenz ein und kopiere den erzeugten Text in die Videobeschreibung oder auf die Schlussfolie.",
+      "exampleLabel": "Beispiel",
+      "example": "Wellen am Strand von Lena Beispiel, Quelle: Freesound (https://freesound.org), Lizenz: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)",
+      "tip": "Wenn du den Link zur Seite der einzelnen Datei hast, nimm diesen statt der Startseite. Die Zeile „Bearbeitet mit Jelly Cut“ fügt Jelly Cut selbst an."
+    },
+    "check": {
+      "title": "7. Immer die Lizenz prüfen",
+      "text": "Lies die Lizenz auf der Seite des Materials, bevor du es verwendest. Regeln können sich ändern. Diese Seite ist eine Orientierung und keine Rechtsberatung.",
+      "school": "Für die Schule gilt: Wenn du ein Video außerhalb der Schule veröffentlichst, zum Beispiel auf einer Videoplattform oder der Schulhomepage, gelten dieselben Regeln."
     }
   }
 }

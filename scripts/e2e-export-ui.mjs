@@ -183,8 +183,7 @@ function readFileBytesAsBase64Js() {
   await waitFor(async () => (await seconds()) === sec480, 3000)
   check('back at 480p/30 the time is the first value again', (await seconds()) === sec480)
 
-  const gifDisabled = await page.getByRole('radio', { name: /GIF/ }).isDisabled()
-  check('GIF format is shown but disabled', gifDisabled)
+  check('GIF format is selectable (e2e-gif.mjs covers the GIF flow)', await page.getByRole('radio', { name: 'GIF', exact: true }).isEnabled())
 
   // Tab stays inside the dialog, wrapping at both ends.
   let tabOutside = 0

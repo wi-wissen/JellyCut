@@ -9,6 +9,7 @@ import {
 } from '../../core/project/format'
 import type { TransitionType } from '../../core/render/types'
 import { formatTimecode, frameIndexAt, frameStart, secondsToMicros, type Micros } from '../../core/time'
+import { applyGradeToAll, setClipGrade as setGrade, type GradePatch } from '../../core/filters/ops'
 import { nextId } from '../../core/timeline/ids'
 import { updateMusic, type MusicPatch } from '../../core/timeline/musicOps'
 import { addText, updateText, type TextPresetId, type TextPatch } from '../../core/timeline/textOps'
@@ -58,6 +59,9 @@ import {
 } from '../../platform/projectFiles'
 import { useMediaStore } from './media'
 import { activeWorkFolder, setActiveWorkFolder } from '../../platform/workFolder'
+import { detectLocale } from '../i18n'
+import de from '../../locales/de.json'
+import en from '../../locales/en.json'
 
 export type TabId = 'media' | 'audio' | 'record' | 'text' | 'sticker' | 'draw' | 'captions' | 'filter' | 'transitions'
 export type GroupId = 'material' | 'design' | 'look'
@@ -84,6 +88,8 @@ export interface Subtitle {
 
 export interface EditorState {
   history: HistoryState<Project>
+  /** Set by `?demo=1`. A demo session never reads or writes the autosave. */
+  demo: boolean
   activeGroup: GroupId
   activeTab: TabId
   playheadMicros: Micros
@@ -271,25 +277,44 @@ function attachLifecycleFlush(flush: () => void): void {
   }
 }
 
+/** `?demo=1` starts with the built-in demo project (tests and screenshots). Read once, when the store is created. */
+function isDemoRequested(): boolean {
+  try {
+    return new URLSearchParams(globalThis.location?.search ?? '').get('demo') === '1'
+  } catch {
+    return false
+  }
+}
+
+/** The start project: an empty project, named in the UI language. */
+function startProject(): Project {
+  const locale = detectLocale(typeof navigator === 'undefined' ? ['en'] : navigator.languages)
+  return createProject((locale === 'de' ? de : en).start.projectName)
+}
+
 export const useEditorStore = defineStore('editor', {
-  state: (): EditorState => ({
-    history: createHistory(buildDemoProject()),
-    activeGroup: 'material',
-    activeTab: 'media',
-    // Frame 338 at 30 fps, displayed as 00:11:08.
-    playheadMicros: frameStart(338, 30),
-    theme: 'system',
-    prefersDark: systemPrefersDark(),
-    fileHandle: null,
-    fileName: null,
-    workFolderName: null,
-    saveStatus: 'idle',
-    dirtySinceFileSave: false,
-    loadError: null,
-    caps: detectCaps(),
-    selection: null,
-    isPlaying: false
-  }),
+  state: (): EditorState => {
+    const demo = isDemoRequested()
+    return {
+      history: createHistory(demo ? buildDemoProject() : startProject()),
+      demo,
+      activeGroup: 'material',
+      activeTab: 'media',
+      // Frame 338 at 30 fps, displayed as 00:11:08.
+      playheadMicros: demo ? frameStart(338, 30) : 0,
+      theme: 'system',
+      prefersDark: systemPrefersDark(),
+      fileHandle: null,
+      fileName: null,
+      workFolderName: null,
+      saveStatus: 'idle',
+      dirtySinceFileSave: false,
+      loadError: null,
+      caps: detectCaps(),
+      selection: null,
+      isPlaying: false
+    }
+  },
   getters: {
     project(state): Project {
       return state.history.present
@@ -424,6 +449,8 @@ export const useEditorStore = defineStore('editor', {
     moveHistory(next: HistoryState<Project>) {
       if (next === this.history) return
       this.history = next
+      // Undo and redo can take an asset out of the project or back in; the media store follows the document.
+      useMediaStore().reconcileWith(next.present)
       this.dirtySinceFileSave = true
       this.scheduleAutosave()
     },
@@ -513,6 +540,7 @@ export const useEditorStore = defineStore('editor', {
     },
 
     scheduleAutosave() {
+      if (this.demo) return
       autosaverFor(this).notify(this.history.present)
     },
     async flushAutosave() {
@@ -524,7 +552,9 @@ export const useEditorStore = defineStore('editor', {
         void this.flushAutosave()
       })
       const startedFrom = this.history
-      const [record, folder] = await Promise.all([kvGet<AutosaveRecord>(AUTOSAVE_KEY), loadWorkFolder()])
+      // A demo session keeps its own document and must not pick up a real project's autosave.
+      const savedRecord = this.demo ? Promise.resolve(null) : kvGet<AutosaveRecord>(AUTOSAVE_KEY)
+      const [record, folder] = await Promise.all([savedRecord, loadWorkFolder()])
       setActiveWorkFolder(folder)
       this.workFolderName = folder?.name ?? null
       // The user may have started editing while storage was loading; their work wins.
@@ -647,6 +677,14 @@ export const useEditorStore = defineStore('editor', {
       const ref = this.selection
       if (ref?.kind !== 'text') return
       this.commitProject(updateText(this.project, ref.id, patch), key)
+    },
+    /** Colour filter, intensity and adjustments of one clip (the selected clip or the one under the playhead). */
+    setClipGrade(clipId: string | null, patch: GradePatch, key?: string) {
+      if (!clipId) return
+      this.commitProject(setGrade(this.project, clipId, patch), key)
+    },
+    applyGradeToAllClips(clipId: string) {
+      this.commitProject(applyGradeToAll(this.project, clipId))
     },
     setSelectedClipProps(patch: ClipPatch, key?: string) {
       const clip = this.selectedClip

@@ -20,6 +20,26 @@ void main() {
   o = vec4(c.rgb * c.a, c.a);
 }`
 
+/**
+ * Straight-alpha source with a colour grade (core/filters Grade: out = matrix * rgb + offset, row-major,
+ * one row per uniform). Written premultiplied like FRAGMENT_FRAME, so it blends the same way.
+ */
+export const FRAGMENT_GRADED_FRAME = `#version 300 es
+precision highp float;
+uniform sampler2D u_tex;
+uniform vec3 u_row0;
+uniform vec3 u_row1;
+uniform vec3 u_row2;
+uniform vec3 u_offset;
+in vec2 v_uv;
+out vec4 o;
+void main() {
+  vec4 c = texture(u_tex, v_uv);
+  vec3 rgb = vec3(dot(u_row0, c.rgb), dot(u_row1, c.rgb), dot(u_row2, c.rgb)) + u_offset;
+  rgb = clamp(rgb, 0.0, 1.0);
+  o = vec4(rgb * c.a, c.a);
+}`
+
 /** Premultiplied texture copied unchanged (render targets, pre-premultiplied text). */
 export const FRAGMENT_COPY = `#version 300 es
 precision highp float;

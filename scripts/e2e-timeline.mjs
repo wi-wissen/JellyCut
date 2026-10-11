@@ -7,7 +7,8 @@ import { existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 const PORT = 5196
-const APP_URL = `http://localhost:${PORT}/app/`
+// ?demo=1: the built-in demo project (three clips, 30 s) that these checks are written for.
+const APP_URL = `http://localhost:${PORT}/app/?demo=1`
 const SHOT_DIR =
   process.env.SHOT_DIR ?? '/tmp/claude-0/-home-user-JellyCut/8ac8332d-b077-5711-8558-272fe1bb4e47/scratchpad'
 
@@ -288,6 +289,74 @@ await check('zoomed in, the ruler shows finer ticks and the lanes scroll', async
 })
 
 await page.screenshot({ path: join(mkdir(), 'tl-zoom.png') })
+
+
+// Samples the playhead and the lane scroll once per animation frame for `ms` milliseconds, inside the page.
+const sampleFollow = (page, ms) =>
+  page.evaluate(
+    (ms) =>
+      new Promise((resolve) => {
+        const scroller = document.querySelector('[role="group"][aria-label="Timeline"]')
+        const playhead = document.querySelector('[data-role="playhead"]')
+        const samples = []
+        const t0 = performance.now()
+        const frame = () => {
+          samples.push({ t: performance.now() - t0, left: parseFloat(playhead.style.left), scroll: scroller.scrollLeft, width: scroller.clientWidth })
+          if (performance.now() - t0 < ms) requestAnimationFrame(frame)
+          else resolve(samples)
+        }
+        requestAnimationFrame(frame)
+      }),
+    ms
+  )
+const visibleInLanes = (s) => s.left - s.scroll >= -0.5 && s.left - s.scroll <= s.width + 0.5
+const labelX = (page) => page.locator('span', { hasText: /^Video$/ }).first().boundingBox().then((b) => b.x)
+
+await check('while playing, the lanes follow the playhead: it stays visible, the view turns a page, the labels do not move', async () => {
+  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Zoom in' }).click()
+  const scroller = page.locator('[role="group"][aria-label="Timeline"]')
+  await scroller.evaluate((el) => (el.scrollLeft = 0))
+  await clickRuler(page, 1)
+  const width = await scroller.evaluate((el) => el.clientWidth)
+  const pps = await pxPerSecond(page)
+  assert(pps * 3 > width, `zoom too low for the check: ${pps} px/s in ${width} px`)
+  const labelBefore = await labelX(page)
+  await actionButton(page, 'Play').click()
+  const samples = await sampleFollow(page, 4000)
+  await actionButton(page, 'Pause').click()
+  const hidden = samples.filter((s) => !visibleInLanes(s))
+  assert(hidden.length === 0, `playhead outside the lanes in ${hidden.length} of ${samples.length} frames, e.g. ${JSON.stringify(hidden[0])}`)
+  const jumps = samples.slice(1).map((s, i) => s.scroll - samples[i].scroll).filter((d) => d > 0.5)
+  assert(jumps.length > 0, 'the view never scrolled while playing')
+  assert(Math.max(...jumps) >= 0.3 * width, `largest step ${Math.max(...jumps)} px is not a page turn of at least 30% of ${width} px`)
+  assert(samples.at(-1).scroll > samples[0].scroll, 'scrollLeft did not increase')
+  const labelAfter = await labelX(page)
+  assert(Math.abs(labelAfter - labelBefore) < 0.5, `label column moved from ${labelBefore} to ${labelAfter}`)
+})
+
+await check('a manual scroll pauses following for three seconds; the arrow keys bring the playhead back into view', async () => {
+  const scroller = page.locator('[role="group"][aria-label="Timeline"]')
+  // Scroll the view away from the playhead by hand (wheel), then play: the view must stay where the user left it.
+  await scroller.hover()
+  await page.mouse.wheel(1200, 0)
+  await page.waitForTimeout(150)
+  const scrolled = await scroller.evaluate((el) => el.scrollLeft)
+  const playheadBefore = await playheadPx(page)
+  const outside = await scroller.evaluate((el, x) => x < el.scrollLeft || x > el.scrollLeft + el.clientWidth, playheadBefore)
+  assert(outside, `precondition: playhead ${playheadBefore} should be outside the view after the wheel (scrollLeft ${scrolled})`)
+  await actionButton(page, 'Play').click()
+  const samples = await sampleFollow(page, 1500)
+  await actionButton(page, 'Pause').click()
+  const drift = Math.max(...samples.map((s) => Math.abs(s.scroll - scrolled)))
+  assert(drift < 1, `the view moved by ${drift} px during the pause after a manual scroll`)
+  const advanced = samples.at(-1).left - samples[0].left
+  assert(advanced > 10, `playhead did not move while playing (${advanced} px)`)
+  await scroller.focus()
+  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight')
+  const viewed = await scroller.evaluate((el) => ({ scroll: el.scrollLeft, width: el.clientWidth }))
+  const x = await playheadPx(page)
+  assert(x >= viewed.scroll && x <= viewed.scroll + viewed.width, `playhead ${x} not revealed by the arrow keys (view ${viewed.scroll}..${viewed.scroll + viewed.width})`)
+})
 
 await check('no uncaught page errors', async () => {
   assert(pageErrors.length === 0, pageErrors.join(' | '))

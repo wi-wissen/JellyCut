@@ -8,20 +8,22 @@ import TextPanel from './panels/TextPanel.vue'
 import TextProperties from './panels/TextProperties.vue'
 import MusicProperties from './panels/MusicProperties.vue'
 import TransitionsPanel from './panels/TransitionsPanel.vue'
+import FilterPanel from './panels/FilterPanel.vue'
 import RecordPanel from './panels/RecordPanel.vue'
 import { useEditorStore } from '../stores/editor'
 import type { Clip, MusicItem, TextItem } from '../../core/project/types'
 
-/** What the left column shows; a selected item wins over the tab, except on the transitions tab. */
-type View = 'clip' | 'text-item' | 'music-item' | 'transitions' | 'library' | 'audio' | 'text' | 'record'
+/** What the left column shows; a selected item wins over the tab, except on the transitions and filter tabs. */
+type View = 'clip' | 'text-item' | 'music-item' | 'transitions' | 'filter' | 'library' | 'audio' | 'text' | 'record'
 
 export default defineComponent({
   name: 'LeftPanel',
-  components: { TabBar, LibraryPanel, ClipPanel, TextPanel, TextProperties, MusicProperties, TransitionsPanel, RecordPanel },
+  components: { TabBar, LibraryPanel, ClipPanel, TextPanel, TextProperties, MusicProperties, TransitionsPanel, FilterPanel, RecordPanel },
   computed: {
     ...mapState(useEditorStore, ['activeTab', 'selection', 'selectedItem']),
     view(): View {
       if (this.activeTab === 'transitions') return 'transitions'
+      if (this.activeTab === 'filter') return 'filter'
       const ref = this.selection
       const item = this.selectedItem
       if (ref?.kind === 'clip' && item && 'transitionIn' in item) return 'clip'
@@ -56,6 +58,7 @@ export default defineComponent({
     <TextProperties v-else-if="view === 'text-item' && selectedTextItem" :item="selectedTextItem" />
     <MusicProperties v-else-if="view === 'music-item' && selectedMusicItem" :item="selectedMusicItem" />
     <TransitionsPanel v-else-if="view === 'transitions'" />
+    <FilterPanel v-else-if="view === 'filter'" />
     <TextPanel v-else-if="view === 'text'" />
     <RecordPanel v-else-if="view === 'record'" />
     <LibraryPanel

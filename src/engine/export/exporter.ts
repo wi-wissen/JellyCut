@@ -16,7 +16,7 @@ import { clampSamples, mixSegmentInto, type Pcm } from '../../core/audio/pcm'
 import { planAudioSegments, type AudioSegment } from '../../core/audio/mix'
 import { AUDIO_BITRATE, outputSize, totalFrames, videoBitrate, type ExportOptions } from '../../core/export/presets'
 import type { Project } from '../../core/project/types'
-import { buildScene, planTimeline } from '../../core/render/scene'
+import { buildScene, planTimeline, type PlannedTimeline } from '../../core/render/scene'
 import { frameStart, type Micros } from '../../core/time'
 import { ExactFrameProvider } from '../media/frames'
 import { Compositor, type FrameSource } from '../render/compositor'
@@ -84,9 +84,7 @@ export async function runExport(
   const started = performance.now()
   const { project, options } = req
   const planned = planTimeline(project)
-  const textEnd = project.texts.reduce((end, t) => Math.max(end, t.start + t.duration), 0)
-  const musicEnd = project.music.reduce((end, m) => Math.max(end, m.start + (m.srcOut - m.srcIn)), 0)
-  const duration = Math.max(planned.duration, textEnd, musicEnd)
+  const duration = projectDuration(project, planned)
   if (duration <= 0) throw new ExportUnsupported('The project is empty.')
 
   const { width, height } = outputSize(project.format.ratio, options.resolution)
@@ -112,11 +110,7 @@ export async function runExport(
     output.addAudioTrack(audioSource)
   }
 
-  const provider = new ExactFrameProvider()
-  for (const asset of project.assets) {
-    const file = req.files[asset.id]
-    if (file) provider.setFile(asset.id, file, asset.kind === 'image')
-  }
+  const provider = createFrameProvider(project, req.files)
   const audioReader = new AudioReader(req.files)
   const frameDuration = 1 / fps
 
@@ -136,13 +130,7 @@ export async function runExport(
         }
       }
 
-      const scene = buildScene(project, planned, t)
-      const layerFrames = new Map<string, FrameSource>()
-      for (const [lane, layer] of scene.videos.entries()) {
-        const frame = await provider.getFrame(layer.assetId, layer.srcTime, String(lane))
-        if (frame) layerFrames.set(layer.clipId, frame)
-      }
-      compositor.draw(scene, layerFrames)
+      await drawFrame(compositor, provider, project, planned, t)
       await videoSource.add(t / 1_000_000, frameDuration)
 
       if ((i & 7) === 0 || i === frames - 1) {
@@ -186,6 +174,40 @@ export async function runExport(
     frames,
     elapsedMs: performance.now() - started
   }
+}
+
+/** Length of the export in microseconds: the timeline, the texts or the music, whichever ends last. */
+export function projectDuration(project: Project, planned: PlannedTimeline = planTimeline(project)): Micros {
+  const textEnd = project.texts.reduce((end, t) => Math.max(end, t.start + t.duration), 0)
+  const musicEnd = project.music.reduce((end, m) => Math.max(end, m.start + (m.srcOut - m.srcIn)), 0)
+  return Math.max(planned.duration, textEnd, musicEnd)
+}
+
+/** Frame source for every asset that has a file; assets without one render as background only. */
+export function createFrameProvider(project: Project, files: Record<string, File>): ExactFrameProvider {
+  const provider = new ExactFrameProvider()
+  for (const asset of project.assets) {
+    const file = files[asset.id]
+    if (file) provider.setFile(asset.id, file, asset.kind === 'image')
+  }
+  return provider
+}
+
+/** Draws the scene at time t onto the compositor. Shared by the MP4 and the GIF export. */
+export async function drawFrame(
+  compositor: Compositor,
+  provider: ExactFrameProvider,
+  project: Project,
+  planned: PlannedTimeline,
+  t: Micros
+): Promise<void> {
+  const scene = buildScene(project, planned, t)
+  const layerFrames = new Map<string, FrameSource>()
+  for (const [lane, layer] of scene.videos.entries()) {
+    const frame = await provider.getFrame(layer.assetId, layer.srcTime, String(lane))
+    if (frame) layerFrames.set(layer.clipId, frame)
+  }
+  compositor.draw(scene, layerFrames)
 }
 
 async function writeAudioChunk(

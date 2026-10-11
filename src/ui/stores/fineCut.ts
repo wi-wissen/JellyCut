@@ -17,7 +17,7 @@ import {
 } from '../../core/timeline/fineCut'
 import { projectIds, splitAt } from '../../core/timeline/ops'
 import { frameDuration, frameIndexAt, frameStart, type Micros } from '../../core/time'
-import { getAssetFile, getFrameProvider } from './media'
+import { getAssetFile, getFrameProvider, useMediaStore } from './media'
 import { useEditorStore } from './editor'
 
 export type FineCutError = 'no-file' | 'too-short' | 'cannot-cut' | null
@@ -57,24 +57,32 @@ let audioFile: File | null = null
 let audioUrl: string | null = null
 let audioTimer: ReturnType<typeof setTimeout> | null = null
 
-function readPrefs(): { snap: boolean; sound: boolean } {
-  const fallback = { snap: true, sound: true }
+interface Prefs {
+  snap: boolean
+  sound: boolean
+  /** The one-time explanation inside the view was dismissed. */
+  hintSeen: boolean
+}
+
+function readPrefs(): Prefs {
+  const fallback: Prefs = { snap: true, sound: true, hintSeen: false }
   try {
     const raw = localStorage.getItem(PREFS_KEY)
     if (!raw) return fallback
     const parsed = JSON.parse(raw) as Record<string, unknown>
     return {
       snap: typeof parsed.snap === 'boolean' ? parsed.snap : fallback.snap,
-      sound: typeof parsed.sound === 'boolean' ? parsed.sound : fallback.sound
+      sound: typeof parsed.sound === 'boolean' ? parsed.sound : fallback.sound,
+      hintSeen: parsed.hintSeen === true
     }
   } catch {
     return fallback
   }
 }
 
-function writePrefs(snap: boolean, sound: boolean): void {
+function writePrefs(prefs: Prefs): void {
   try {
-    localStorage.setItem(PREFS_KEY, JSON.stringify({ snap, sound }))
+    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs))
   } catch {
     // Storage may be blocked; the choice then lasts for this page only.
   }
@@ -130,6 +138,8 @@ export const useFineCutStore = defineStore('fineCut', {
     zoom: 0,
     snapKeyframes: initialPrefs.snap,
     soundOnStep: initialPrefs.sound,
+    /** Shown once until dismissed; see dismissHint. */
+    hintVisible: !initialPrefs.hintSeen,
     /** null while the waveform is still being computed. */
     hasAudio: null as boolean | null,
     waveformLoading: false,
@@ -171,6 +181,15 @@ export const useFineCutStore = defineStore('fineCut', {
     canCut(state): boolean {
       const clip = this.clip
       return !!clip && cutBounds(clip, Math.max(1, Math.round(frameDuration(state.fps) / clip.speed))) !== null
+    },
+    /** Whether the open clip's picture can be shown: its file is in this session and was probed as playable. */
+    mediaReady(state): boolean {
+      return !!state.assetId && useMediaStore().statusOf(state.assetId) === 'ready' && getAssetFile(state.assetId) !== undefined
+    },
+    /** Why the picture is not shown, for the message in the view. Null when it is ready. */
+    mediaProblem(state): 'missing' | 'unsupported' | null {
+      if (!state.assetId || this.mediaReady) return null
+      return useMediaStore().statusOf(state.assetId) === 'unsupported' ? 'unsupported' : 'missing'
     }
   },
   actions: {
@@ -321,12 +340,17 @@ export const useFineCutStore = defineStore('fineCut', {
 
     setSnap(on: boolean): void {
       this.snapKeyframes = on
-      writePrefs(on, this.soundOnStep)
+      writePrefs({ snap: on, sound: this.soundOnStep, hintSeen: !this.hintVisible })
     },
 
     setSound(on: boolean): void {
       this.soundOnStep = on
-      writePrefs(this.snapKeyframes, on)
+      writePrefs({ snap: this.snapKeyframes, sound: on, hintSeen: !this.hintVisible })
+    },
+
+    dismissHint(): void {
+      this.hintVisible = false
+      writePrefs({ snap: this.snapKeyframes, sound: this.soundOnStep, hintSeen: true })
     },
 
     /** Waveform data of the open asset, or null while it is not computed. Read it when `waveformRevision` changes. */

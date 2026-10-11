@@ -1,5 +1,6 @@
 import type { Micros } from '../time'
 import type { FormatRatio, Project } from './types'
+import { CREDIT_FIELDS, CREDIT_MAX_LENGTH, isHttpUrl } from '../credits/credits'
 
 export const CURRENT_VERSION = 1
 
@@ -151,8 +152,22 @@ function validateAssets(value: unknown, path: string, errors: Errors): Set<strin
     if (a.width !== undefined) need(errors, isPositiveInt(a.width), `${p}.width`, 'must be a positive integer')
     if (a.height !== undefined) need(errors, isPositiveInt(a.height), `${p}.height`, 'must be a positive integer')
     if (a.fps !== undefined) need(errors, isPositiveNumber(a.fps), `${p}.fps`, POSITIVE_MSG)
+    if (a.credit !== undefined) validateCredit(a.credit, `${p}.credit`, errors)
   })
   return ids
+}
+
+function validateCredit(value: unknown, path: string, errors: Errors): void {
+  const credit = record(value, path, errors)
+  if (!credit) return
+  for (const field of CREDIT_FIELDS) {
+    const v = credit[field]
+    if (v === undefined) continue
+    need(errors, typeof v === 'string', `${path}.${field}`, STRING_MSG)
+    if (typeof v !== 'string') continue
+    need(errors, v.length <= CREDIT_MAX_LENGTH, `${path}.${field}`, `must be at most ${CREDIT_MAX_LENGTH} characters`)
+    if (field === 'url') need(errors, isHttpUrl(v), `${path}.url`, 'must start with http:// or https://')
+  }
 }
 
 function validateClips(value: unknown, path: string, assetIds: Set<string>, errors: Errors): void {
@@ -175,8 +190,18 @@ function validateClips(value: unknown, path: string, assetIds: Set<string>, erro
     need(errors, isVolume(c.volume), `${p}.volume`, `must be a number from 0 to ${MAX_VOLUME}`)
     need(errors, typeof c.muted === 'boolean', `${p}.muted`, BOOL_MSG)
     need(errors, c.filter === null || typeof c.filter === 'string', `${p}.filter`, 'must be a string or null')
+    if (c.filterAmount !== undefined) need(errors, isUnit(c.filterAmount), `${p}.filterAmount`, 'must be a number from 0 to 1')
+    if (c.adjust !== undefined) validateAdjust(c.adjust, `${p}.adjust`, errors)
     validateTransition(c.transitionIn, `${p}.transitionIn`, errors)
   })
+}
+
+function validateAdjust(value: unknown, path: string, errors: Errors): void {
+  const adjust = record(value, path, errors)
+  if (!adjust) return
+  for (const key of ['brightness', 'contrast', 'saturation'] as const) {
+    need(errors, isSigned(adjust[key]), `${path}.${key}`, 'must be a number from -1 to 1')
+  }
 }
 
 function validateTransform(value: unknown, path: string, errors: Errors): void {
@@ -297,6 +322,14 @@ function isPositiveInt(v: unknown): v is number {
 
 function isMicros(v: unknown): v is Micros {
   return typeof v === 'number' && Number.isSafeInteger(v) && v >= 0
+}
+
+function isUnit(v: unknown): v is number {
+  return isFiniteNumber(v) && v >= 0 && v <= 1
+}
+
+function isSigned(v: unknown): v is number {
+  return isFiniteNumber(v) && v >= -1 && v <= 1
 }
 
 function isVolume(v: unknown): v is number {

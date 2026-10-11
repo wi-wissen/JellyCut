@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { validateProject } from '../../core/project/schema'
 import { secondsToMicros } from '../../core/time'
@@ -7,7 +7,12 @@ import { useEditorStore } from './editor'
 const s = (seconds: number) => secondsToMicros(seconds)
 
 describe('editor store: panel actions', () => {
-  beforeEach(() => setActivePinia(createPinia()))
+  beforeEach(() => {
+    // These tests use the demo project's clips, texts and music.
+    vi.stubGlobal('location', { search: '?demo=1' })
+    setActivePinia(createPinia())
+  })
+  afterEach(() => vi.unstubAllGlobals())
 
   it('adds a text at the playhead, selects it, and undoes it in one step', () => {
     const store = useEditorStore()

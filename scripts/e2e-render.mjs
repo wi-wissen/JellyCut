@@ -294,6 +294,111 @@ const pageScenario = async () => {
   d = render(scene(fmt(W_X, H_X), [L('g')]), frames(['g', green]))
   check('(robust) output alpha is opaque (255 everywhere sampled)', px(d, W_X, 0, 0)[3] === 255 && px(d, W_X, 159, 89)[3] === 255, '')
 
+  // (i) colour grade: filters and adjustments, in the picture and in the blurred background
+  const { resolveGrade, applyGrade } = await import('/src/core/filters/filters.ts')
+  const { clipGrade } = await import('/src/core/filters/ops.ts')
+  const grade = (filter, filterAmount, adjust) => resolveGrade(filter, filterAmount, adjust)
+  const G = (over = {}) => ({ clipId: 'g', assetId: 'g', srcTime: 0, transform: T(), transition: null, grade: null, ...over })
+  const gradedScene = (g, w = W_X, h = H_X, videos = null) => scene(fmt(w, h, { type: 'color', color: '#000000' }), videos ?? [G({ grade: g })])
+  const renderSized = (w, h, sc, fr) => {
+    comp.resize(w, h)
+    const data = render(sc, fr)
+    comp.resize(W_X, H_X)
+    return data
+  }
+  const rgbOf = (c) => [c[0], c[1], c[2]]
+  const expectPx = (g, rgb) => applyGrade(g, rgb.map((v) => v / 255)).map((v) => v * 255)
+  const within = (c, e, tol) => c.every((v, i) => Math.abs(v - e[i]) <= tol)
+  const lumaOf = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+  const coloured = solid(W_X, H_X, [200, 60, 30])
+  const greyFrame = solid(W_X, H_X, [128, 128, 128])
+  const greyScene = frames(["g", greyFrame])
+
+  d = render(gradedScene(grade('blackWhite', 1, undefined)), frames(['g', coloured]))
+  const bw = px(d, W_X, 160, 90)
+  check('(i) black & white: a coloured frame is grey (r=g=b within 2)', Math.abs(bw[0] - bw[1]) <= 2 && Math.abs(bw[1] - bw[2]) <= 2, bw)
+  check('(i) black & white: value equals the luma of the source', Math.abs(bw[0] - lumaOf([200, 60, 30])) <= 2, `${bw[0]} vs ${lumaOf([200, 60, 30]).toFixed(1)}`)
+
+  d = render(gradedScene(grade('sepia', 1, undefined)), greyScene)
+  const sep = px(d, W_X, 160, 90)
+  check('(i) sepia: r > g > b on a grey frame', sep[0] > sep[1] && sep[1] > sep[2] + 5, sep)
+
+  d = render(gradedScene(grade(null, 1, { brightness: 0.4, contrast: 0, saturation: 0 })), greyScene)
+  const bright = px(d, W_X, 160, 90)
+  const brightExpected = expectPx(grade(null, 1, { brightness: 0.4, contrast: 0, saturation: 0 }), [128, 128, 128])
+  check('(i) brightness +0.4 raises mid grey by about 25 (+-3)', within(rgbOf(bright), brightExpected, 3) && bright[0] - 128 > 22 && bright[0] - 128 < 29, `${bright[0]} expected ${brightExpected[0].toFixed(1)}`)
+
+  d = render(gradedScene(grade(null, 1, { brightness: 0, contrast: 0.5, saturation: 0 })), frames(['g', coloured]))
+  const con = px(d, W_X, 160, 90)
+  const conExpected = expectPx(grade(null, 1, { brightness: 0, contrast: 0.5, saturation: 0 }), [200, 60, 30])
+  check('(i) contrast +0.5 matches the model (+-3)', within(rgbOf(con), conExpected, 3), `${con} expected ${conExpected.map((v) => v.toFixed(1))}`)
+  d = render(gradedScene(grade(null, 1, { brightness: 0, contrast: 0, saturation: 0 })), greyScene)
+  check('(i) contrast 0 leaves mid grey exact', maxDiff(d, render(scene(fmt(W_X, H_X, { type: 'color', color: '#000000' }), [G()]), greyScene)) === 0 && px(d, W_X, 160, 90)[0] === 128, px(d, W_X, 160, 90))
+
+  d = render(gradedScene(grade(null, 1, { brightness: 0, contrast: 0, saturation: -1 })), frames(['g', coloured]))
+  const desat = px(d, W_X, 160, 90)
+  check('(i) saturation -1 gives a grey (r=g=b within 2)', Math.abs(desat[0] - desat[1]) <= 2 && Math.abs(desat[1] - desat[2]) <= 2, desat)
+
+  const full = render(gradedScene(grade('vivid', 1, undefined)), frames(['g', coloured]))
+  const orig = render(scene(fmt(W_X, H_X, { type: 'color', color: '#000000' }), [G()]), frames(['g', coloured]))
+  const half = render(gradedScene(grade('vivid', 0.5, undefined)), frames(['g', coloured]))
+  const halfErr = Math.max(...[0, 1, 2].map((i) => Math.abs(px(half, W_X, 160, 90)[i] - (px(orig, W_X, 160, 90)[i] + px(full, W_X, 160, 90)[i]) / 2)))
+  check('(i) amount 0.5 is halfway between original and filtered (+-4)', halfErr <= 4, `max error ${halfErr}`)
+
+  const identities = [
+    ['no filter', grade(null, 1, undefined)],
+    ['amount 0', grade('sepia', 0, undefined)],
+    ['neutral adjust', grade(null, 1, { brightness: 0, contrast: 0, saturation: 0 })],
+    ['unknown filter', grade('polaroid', 1, undefined)]
+  ]
+  const plain = render(scene(fmt(W_X, H_X, { type: 'color', color: '#000000' }), [G()]), frames(['g', coloured]))
+  for (const [name, g] of identities) {
+    const out = render(gradedScene(g), frames(['g', coloured]))
+    check(`(i) identity (${name}) leaves pixels unchanged (exact)`, maxDiff(out, plain) === 0, `diff ${maxDiff(out, plain)}`)
+  }
+  check('(i) clipGrade of an ungraded clip is null (no shader work)', clipGrade({ filter: null, transitionIn: null, adjust: undefined, filterAmount: 1 }) === null)
+
+  // Blurred background carries the grade: a 16:9 coloured frame in a 9:16 output, bars must be grey
+  const bars = renderSized(180, 320, scene(fmt(180, 320), [G({ grade: grade('blackWhite', 1, undefined) })]), frames(['g', solid(320, 180, [200, 60, 30])]))
+  const barPx = px(bars, 180, 2, 2)
+  const barBottom = px(bars, 180, 2, 317)
+  check('(i) background bars are graded too (top bar grey, r=g=b within 2)', Math.abs(barPx[0] - barPx[1]) <= 2 && Math.abs(barPx[1] - barPx[2]) <= 2 && barPx[0] > 20, barPx)
+  check('(i) background bars are graded too (bottom bar grey)', Math.abs(barBottom[0] - barBottom[2]) <= 2 && barBottom[0] > 20, barBottom)
+  const picPx = px(bars, 180, 90, 160)
+  check('(i) picture is graded (centre grey)', Math.abs(picPx[0] - picPx[2]) <= 2 && picPx[0] > 20, picPx)
+
+  // Text is not graded: white text over a sepia picture stays white, the picture behind it is sepia
+  const textOn = render(
+    { time: 0, format: fmt(W_X, H_X, { type: 'color', color: '#000000' }), videos: [G({ grade: grade('sepia', 1, undefined) })], texts: [txt({ text: 'Hi', style: textStyle({ size: 200 }) })] },
+    frames(['g', solid(W_X, H_X, [128, 128, 128])])
+  )
+  let whiteText = 0
+  for (let y = 0; y < H_X; y++) for (let x = 0; x < W_X; x++) {
+    const c = px(textOn, W_X, x, y)
+    if (c[0] > 245 && c[1] > 245 && c[2] > 245) whiteText++
+  }
+  check('(i) text is not graded: white text stays white', whiteText > 50, `white pixels ${whiteText}`)
+  const sepiaBg = px(textOn, W_X, 3, 3)
+  check('(i) the picture behind the text is graded (sepia)', sepiaBg[0] > sepiaBg[2] + 5, sepiaBg)
+
+  // Transitions: each side uses its own clip grade
+  const gA = grade('blackWhite', 1, undefined)
+  const transitionScene = (type, progress) =>
+    scene(fmt(W_T, H_T), [
+      G({ clipId: 'A', assetId: 'A', grade: gA, transition: tr(type, progress, 'from') }),
+      G({ clipId: 'B', assetId: 'B', grade: null, transition: tr(type, progress, 'to') })
+    ])
+  const trA = solid(320, 180, [255, 0, 0])
+  const trB = solid(320, 180, [0, 0, 255])
+  const gradedOnly = render(scene(fmt(W_T, H_T), [G({ clipId: 'A', assetId: 'A', grade: gA })]), frames(['A', trA]))
+  const plainB = render(scene(fmt(W_T, H_T), [G({ clipId: 'B', assetId: 'B' })]), frames(['B', trB]))
+  const t0 = render(transitionScene('fade', 0), frames(['A', trA], ['B', trB]))
+  check('(i) transition p=0 shows clip A with its own grade', maxDiff(t0, gradedOnly) <= 2, maxDiff(t0, gradedOnly))
+  const t1 = render(transitionScene('fade', 1), frames(['A', trA], ['B', trB]))
+  check('(i) transition p=1 shows clip B without the grade of A', maxDiff(t1, plainB) <= 2, maxDiff(t1, plainB))
+  const tw = render(transitionScene('wipeLeft', 0.5), frames(['A', trA], ['B', trB]))
+  check('(i) wipe: the graded side is grey, the other side stays blue', Math.abs(px(tw, W_T, 20, 45)[0] - px(tw, W_T, 20, 45)[1]) <= 2 && px(tw, W_T, 140, 45)[2] > 200, `${px(tw, W_T, 20, 45)} ${px(tw, W_T, 140, 45)}`)
+
   // Context-level state
   check('(h) no GL error after any draw', glErrors.every((e) => e === 0), `errors ${glErrors.join(',')}`)
 

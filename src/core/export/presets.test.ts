@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   AUDIO_BITRATE,
+  GIF_DEFAULT_BYTES_PER_PIXEL,
   defaultExportOptions,
+  defaultGifOptions,
   estimateFileSize,
+  estimateGifBytes,
+  gifOutputSize,
+  gifTooLarge,
+  learnGifBytesPerPixel,
   outputSize,
   totalFrames,
   videoBitrate,
@@ -100,5 +106,42 @@ describe('defaultExportOptions', () => {
     expect(defaultExportOptions(p).fps).toBe(60)
     p.format.fps = 25
     expect(defaultExportOptions(p).fps).toBe(24)
+  })
+})
+
+describe('GIF presets', () => {
+  it('defaults to 480 px, 15 fps and looping', () => {
+    expect(defaultGifOptions()).toEqual({ format: 'gif', width: 480, fps: 15, loop: true })
+  })
+  it('gifOutputSize keeps the ratio and rounds the height', () => {
+    expect(gifOutputSize('16:9', 480)).toEqual({ width: 480, height: 270 })
+    expect(gifOutputSize('16:9', 320)).toEqual({ width: 320, height: 180 })
+    expect(gifOutputSize('9:16', 320)).toEqual({ width: 320, height: 569 })
+    expect(gifOutputSize('1:1', 640)).toEqual({ width: 640, height: 640 })
+    expect(gifOutputSize('4:5', 480)).toEqual({ width: 480, height: 600 })
+  })
+  it('estimateGifBytes is pixels times frames times the factor', () => {
+    expect(estimateGifBytes(480, 270, 150)).toBe(Math.round(480 * 270 * 150 * GIF_DEFAULT_BYTES_PER_PIXEL))
+    expect(estimateGifBytes(480, 270, 150, 0.5)).toBe(480 * 270 * 150 / 2)
+    expect(estimateGifBytes(480, 270, 0)).toBe(0)
+  })
+  it('gifTooLarge refuses GIFs over 60 s and over 100 MB', () => {
+    expect(gifTooLarge(60_000_000, 320, 180, 10)).toBe(false)
+    expect(gifTooLarge(60_000_001, 320, 180, 10)).toBe(true)
+    // 60 s at 640x360 and 20 fps: 1200 frames of 230400 pixels times 0.12 is about 33 MB, which is fine.
+    expect(gifTooLarge(60_000_000, 640, 360, 20)).toBe(false)
+    // 60 s of portrait 640 px at 20 fps: 640 x 1138 pixels, about 105 MB.
+    expect(gifTooLarge(60_000_000, 640, 1138, 20)).toBe(true)
+  })
+  it('learnGifBytesPerPixel starts from the sample and then averages', () => {
+    const sample = 1_000_000 / (100 * 100 * 50)
+    expect(learnGifBytesPerPixel(null, 1_000_000, 100, 100, 50)).toBeCloseTo(sample, 12)
+    expect(learnGifBytesPerPixel(0.2, 1_000_000, 100, 100, 50)).toBeCloseTo(0.5 * sample + 0.5 * 0.2, 12)
+  })
+  it('learnGifBytesPerPixel keeps the previous value for unusable samples and clamps extremes', () => {
+    expect(learnGifBytesPerPixel(0.1, 0, 100, 100, 50)).toBe(0.1)
+    expect(learnGifBytesPerPixel(null, 0, 100, 100, 50)).toBeNull()
+    expect(learnGifBytesPerPixel(null, 1e12, 10, 10, 10)).toBe(2)
+    expect(learnGifBytesPerPixel(null, 1, 1000, 1000, 1000)).toBe(0.005)
   })
 })

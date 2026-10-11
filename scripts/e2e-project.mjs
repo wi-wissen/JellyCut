@@ -111,7 +111,8 @@ await check('Firefox-like: rename is autosaved', async () => {
 
 await check('Firefox-like: Ctrl+Z and Ctrl+Shift+Z undo and redo the rename', async () => {
   await fx.keyboard.press('Control+z')
-  await waitForName(fx, 'Summer trip')
+  // The start project is empty and named after the locale (en-US here).
+  await waitForName(fx, 'Untitled project')
   await fx.keyboard.press('Control+Shift+z')
   await waitForName(fx, 'Trip Renamed')
   await waitForAutosaved(fx)

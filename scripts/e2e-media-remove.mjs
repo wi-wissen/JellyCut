@@ -170,6 +170,65 @@ await page.waitForTimeout(400)
 check('dialog row: removing the last missing file closes the dialog', (await dialog.count()) === 0)
 check('dialog row: the project has no assets left', (await read(COUNTS)).assets === 0)
 
+// F: a used file removed and undone comes back as ready and plays; redo removes it again; New project clears the kept files.
+const CACHED = '(ed, me) => me.removedMediaIds()'
+await page.locator('header button[aria-haspopup]').first().click()
+await page.getByRole('menuitem', { name: /New project/ }).click()
+await page.locator('input[type=file]').first().setInputFiles(fixture('frames.webm'))
+await page.getByRole('button', { name: /frames\.webm/ }).first().waitFor()
+await page.getByRole('button', { name: /frames\.webm/ }).first().click()
+await page.waitForTimeout(300)
+const fId = (await read(ASSETS))['frames.webm']
+await removeTile('frames.webm').click()
+await alertDialog().waitFor({ timeout: 3000 })
+await alertDialog().getByRole('button', { name: 'Remove', exact: true }).click()
+await waitUntil(COUNTS, (c) => c.assets === 0 && c.clips === 0)
+check('F: the removed file is kept for undo', (await read(CACHED)).includes(fId))
+await note().getByRole('button', { name: 'Undo' }).click()
+const f1 = await waitUntil(COUNTS, (c) => c.assets === 1 && c.clips === 1)
+check('F: undo brings the asset and its clip back', f1.assets === 1 && f1.clips === 1, JSON.stringify(f1))
+check('F: after undo the asset is ready again with its thumbnail', await read(`(ed, me) => me.statusOf('${fId}') === 'ready' && !!me.thumbnails['${fId}']`))
+check('F: a restored file is no longer kept twice', !(await read(CACHED)).includes(fId))
+
+// The restored clip shows its picture in the fine cut view.
+await read(`(ed) => { ed.setPlayhead(ed.project.clips[0].start + 200000); return true }`)
+await page.locator('#fine-cut-button').click()
+await page.getByRole('dialog', { name: 'Fine cut' }).waitFor({ state: 'visible', timeout: 5000 })
+await page.waitForTimeout(800)
+const framesDrawn = await page.evaluate(() =>
+  [...document.querySelectorAll('[data-testid="fine-frame"]')].map((c) => {
+    if (!c.width) return false
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data
+    const seen = new Set()
+    for (let i = 0; i < d.length && seen.size < 3; i += 4 * 97) seen.add(d[i] + ':' + d[i + 1] + ':' + d[i + 2] + ':' + d[i + 3])
+    return seen.size >= 2
+  })
+)
+check('F: the restored clip shows its frames in the fine cut view', framesDrawn.length === 2 && framesDrawn.every(Boolean), JSON.stringify(framesDrawn))
+await page.keyboard.press('Escape')
+await page.waitForTimeout(200)
+
+// The restored clip plays: the playhead moves on from the clip start.
+const start = (await read(`(ed) => ed.project.clips[0].start`))
+await read(`(ed) => { ed.setPlayhead(${start}); return true }`)
+await page.getByRole('button', { name: 'Play', exact: true }).click()
+await page.waitForTimeout(700)
+await page.getByRole('button', { name: 'Pause', exact: true }).click()
+const moved = await read(`(ed) => ed.playheadMicros`)
+check('F: the restored clip plays (the playhead moves on from its start)', moved - start > 300000, `${start} -> ${moved}`)
+
+// Redo removes the file again, with its clip; the kept copy is there for another undo.
+await page.getByRole('button', { name: 'Redo' }).click()
+const f2 = await waitUntil(COUNTS, (c) => c.assets === 0 && c.clips === 0)
+check('F: redo removes the asset and its clip again', f2.assets === 0 && f2.clips === 0, JSON.stringify(f2))
+check('F: the file is kept again after redo', (await read(CACHED)).includes(fId))
+
+// New project: the document is replaced, so nothing removed from the old one is kept.
+await page.locator('header button[aria-haspopup]').first().click()
+await page.getByRole('menuitem', { name: /New project/ }).click()
+await page.waitForTimeout(300)
+check('F: New project clears the kept files', (await read(CACHED)).length === 0, JSON.stringify(await read(CACHED)))
+
 check('no uncaught page errors', pageErrors.length === 0, pageErrors.join(' | '))
 await page.screenshot({ path: join(SHOT_DIR, 'media-remove-final.png') })
 await browser.close()

@@ -1,5 +1,6 @@
 import type { Micros } from '../time'
 import type { ProjectFormat, TextStyle, Transform } from '../project/types'
+import type { Grade } from '../filters/filters'
 
 /** Transitions the renderer implements. Anything else falls back to 'fade'. */
 export const TRANSITION_TYPES = [
@@ -37,6 +38,8 @@ export interface VideoLayer {
   srcTime: Micros
   transform: Transform
   transition: LayerTransition | null
+  /** Colour grade of this clip; null when the picture is drawn unchanged. Each side of a transition has its own. */
+  grade?: Grade | null
 }
 
 export interface TextLayer {

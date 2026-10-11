@@ -1,5 +1,6 @@
 import type { Clip, Project, TextItem } from '../project/types'
 import type { Micros } from '../time'
+import { clipGrade } from '../filters/ops'
 import { clipEnd } from '../timeline/edit'
 import { planTransitions, type TransitionPlan } from '../timeline/transitions'
 import {
@@ -66,7 +67,8 @@ export function buildScene(project: Project, planned: PlannedTimeline, t: Micros
       assetId: clip.assetId,
       srcTime: clip.srcIn + Math.round((t - clip.start) * clip.speed),
       transform: { ...clip.transform },
-      transition: transition ? { ...transition } : null
+      transition: transition ? { ...transition } : null,
+      grade: clipGrade(clip)
     })
   }
 

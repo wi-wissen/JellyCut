@@ -7,6 +7,7 @@ import ToggleSwitch from './ToggleSwitch.vue'
 import { useEditorStore } from '../../stores/editor'
 import { SPEED_STEPS, speedStepIndex } from '../../../core/timeline/speed'
 import { canHaveTransition } from '../../../core/timeline/transitionOps'
+import { isFilterId } from '../../../core/filters/filters'
 import type { Clip } from '../../../core/project/types'
 import { formatNumber } from '../../numberFormat'
 
@@ -44,6 +45,11 @@ export default defineComponent({
     transitionType(): string | null {
       return this.clip?.transitionIn?.type ?? null
     },
+    filterSummary(): string {
+      const id = this.clip?.filter
+      if (!isFilterId(id) || id === 'none') return this.$t('clip.filterNone')
+      return this.$t('clip.filterSummary', { name: this.$t(`filters.names.${id}`) })
+    },
     transitionSummary(): string {
       const t = this.clip?.transitionIn
       if (!t) return this.$t('clip.noTransition')
@@ -77,6 +83,9 @@ export default defineComponent({
     },
     openTransitions(): void {
       this.setActiveGroup('look', 'transitions')
+    },
+    openFilters(): void {
+      this.setActiveGroup('look', 'filter')
     },
     removeCut(): void {
       if (this.clip) this.removeTransition(this.clip.id)
@@ -137,6 +146,20 @@ export default defineComponent({
         @update="onSpeed"
         @commit="endEdit"
       />
+    </section>
+
+    <section class="flex flex-col gap-1.5 border-t border-line pt-3">
+      <h3 class="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">{{ $t('clip.filter') }}</h3>
+      <p class="text-xs text-muted" data-testid="filter-summary">{{ filterSummary }}</p>
+      <div>
+        <button
+          type="button"
+          class="min-h-11 rounded-lg bg-panel2 px-3 text-xs font-semibold text-fg hover:bg-panel"
+          @click="openFilters"
+        >
+          {{ $t('clip.filterChange') }}
+        </button>
+      </div>
     </section>
 
     <section class="flex flex-col gap-1.5 border-t border-line pt-3">

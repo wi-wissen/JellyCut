@@ -1,9 +1,10 @@
 import { ExportCancelled, ExportUnsupported, runExport, type ExportProgress, type ExportRequest, type ExportResult } from './exporter'
+import { GifTooLarge, isGifRequest, runGifExport, type GifExportRequest, type GifResult } from './gifExporter'
 import { loadFonts, type FontSource } from './fontLoader'
 import type { WorkerIn, WorkerOut } from './export.worker'
 
 export interface RunningExport {
-  promise: Promise<ExportResult>
+  promise: Promise<ExportResult | GifResult>
   cancel(): void
   /** True when the export runs in a worker and therefore keeps going in a background tab. */
   inWorker: boolean
@@ -16,20 +17,23 @@ export function canUseWorker(): boolean {
 /**
  * Starts an export in a worker (so the page stays responsive and a hidden tab is not throttled).
  * Falls back to the main thread where workers or OffscreenCanvas are missing.
+ * A GIF request is recognised by its GIF options (options.format === 'gif').
  */
 export function startExport(
-  request: ExportRequest,
+  request: ExportRequest | GifExportRequest,
   fonts: FontSource[],
   onProgress: (p: ExportProgress) => void
 ): RunningExport {
   if (!canUseWorker()) {
     const controller = new AbortController()
-    const promise = loadFonts(fonts).then(() => runExport(request, onProgress, controller.signal))
+    const run = (): Promise<ExportResult | GifResult> =>
+      isGifRequest(request) ? runGifExport(request, onProgress, controller.signal) : runExport(request, onProgress, controller.signal)
+    const promise = loadFonts(fonts).then(run)
     return { promise, cancel: () => controller.abort(), inWorker: false }
   }
 
   const worker = new Worker(new URL('./export.worker.ts', import.meta.url), { type: 'module' })
-  const promise = new Promise<ExportResult>((resolve, reject) => {
+  const promise = new Promise<ExportResult | GifResult>((resolve, reject) => {
     worker.onmessage = (event: MessageEvent<WorkerOut>) => {
       const message = event.data
       if (message.type === 'progress') {
@@ -40,6 +44,7 @@ export function startExport(
       if (message.type === 'done') resolve(message.result)
       else if (message.kind === 'cancelled') reject(new ExportCancelled())
       else if (message.kind === 'unsupported') reject(new ExportUnsupported(message.message))
+      else if (message.kind === 'too-large') reject(new GifTooLarge())
       else reject(new Error(message.message))
     }
     worker.onerror = (event) => {

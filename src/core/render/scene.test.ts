@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildScene, planTimeline } from './scene'
 import { createProject } from '../project/schema'
 import type { Clip, Project, TextItem } from '../project/types'
+import { resolveGrade } from '../filters/filters'
 
 const S = 1_000_000
 
@@ -84,6 +85,38 @@ describe('buildScene: video layers', () => {
     expect(s.videos[0]!.transform).toEqual({ fit: 'fill', scale: 1.5, x: 0.1, y: -0.2, rotation: 90, flipX: true })
     expect(s.format).toEqual(q.format)
     expect(s.time).toBe(S)
+  })
+})
+
+describe('buildScene: colour grade', () => {
+  const NEUTRAL = { brightness: 0, contrast: 0, saturation: 0 }
+  it('is null for ungraded, amount 0 and neutral clips', () => {
+    const q = project([
+      clip('plain', 'a', 0, S, 0),
+      clip('zero', 'a', 0, S, S, { filter: 'sepia', filterAmount: 0 }),
+      clip('neutral', 'a', 0, S, 2 * S, { adjust: NEUTRAL })
+    ])
+    const planned = planTimeline(q)
+    expect(buildScene(q, planned, 0).videos[0]!.grade).toBeNull()
+    expect(buildScene(q, planned, S).videos[0]!.grade).toBeNull()
+    expect(buildScene(q, planned, 2 * S).videos[0]!.grade).toBeNull()
+  })
+  it('carries the resolved grade of the clip', () => {
+    const q = project([clip('c1', 'a', 0, 4 * S, 0, { filter: 'blackWhite', filterAmount: 0.5, adjust: { brightness: 0.4, contrast: 0, saturation: 0 } })])
+    const grade = buildScene(q, planTimeline(q), S).videos[0]!.grade!
+    expect(grade).toEqual(resolveGrade('blackWhite', 0.5, { brightness: 0.4, contrast: 0, saturation: 0 }))
+  })
+  it('each side of a transition uses its own clip grade', () => {
+    const q = project([
+      clip('c1', 'a', 2 * S, 6 * S, 0, { filter: 'sepia' }),
+      clip('c2', 'a', 8 * S, 12 * S, 4 * S, { transitionIn: { type: 'fade', duration: S }, filter: 'noir' })
+    ])
+    const planned = planTimeline(q)
+    const win = planned.transitions[0]!
+    const s = buildScene(q, planned, win.start + win.duration / 2)
+    expect(s.videos.map((v) => v.clipId)).toEqual(['c1', 'c2'])
+    expect(s.videos[0]!.grade).toEqual(resolveGrade('sepia', 1, undefined))
+    expect(s.videos[1]!.grade).toEqual(resolveGrade('noir', 1, undefined))
   })
 })
 

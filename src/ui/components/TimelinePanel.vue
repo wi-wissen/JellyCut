@@ -4,6 +4,7 @@ import { mapActions, mapState } from 'pinia'
 import Icon from './Icon.vue'
 import TimelineItem from './timeline/TimelineItem.vue'
 import { useEditorStore } from '../stores/editor'
+import { useFineCutStore } from '../stores/fineCut'
 import type { Micros } from '../../core/time'
 import { frameDuration } from '../../core/time'
 import { clipEnd } from '../../core/timeline/edit'
@@ -32,6 +33,12 @@ const DRAG_THRESHOLD_PX = 4
 const SNAP_THRESHOLD_PX = 8
 const ZOOM_FACTOR = 1.5
 const REVEAL_MARGIN_PX = 16
+/** While playing, the view turns a page once the playhead passes this share of the visible width... */
+const FOLLOW_TRIGGER = 0.8
+/** ...and then places the playhead this far from the left edge. An instant jump, not an animation: calm and no jitter. */
+const FOLLOW_TARGET = 0.2
+/** A manual scroll or press in the lanes stops following for this long. */
+const FOLLOW_PAUSE_MS = 3000
 
 type Variant = 'video' | 'text' | 'music' | 'audio'
 type GestureKind = 'scrub' | 'reorder' | 'trim-start' | 'trim-end' | 'move-text'
@@ -86,6 +93,8 @@ function isTextEntry(target: EventTarget | null): boolean {
 
 // Kept outside the component data: Vue must not wrap a ResizeObserver in a proxy.
 const observers = new WeakMap<object, ResizeObserver>()
+/** performance.now() until which playback does not move the view (set by manual scrolling). Not reactive. */
+let followPausedUntil = 0
 
 export default defineComponent({
   name: 'TimelinePanel',
@@ -107,7 +116,8 @@ export default defineComponent({
     }
   },
   computed: {
-    ...mapState(useEditorStore, ['project', 'totalDuration', 'playheadMicros', 'selection']),
+    ...mapState(useEditorStore, ['project', 'totalDuration', 'playheadMicros', 'selection', 'isPlaying']),
+    ...mapState(useFineCutStore, { fineCutOpen: 'isOpen' }),
     fps(): number {
       return this.project.format.fps
     },
@@ -215,6 +225,18 @@ export default defineComponent({
       return RULER_HEIGHT_PX + Math.max(0, index) * LANE_HEIGHT_PX + 4
     }
   },
+  watch: {
+    playheadMicros(): void {
+      if (this.isPlaying) this.followPlayhead()
+      else if (!this.gesture) this.revealPlayhead()
+    },
+    isPlaying(playing: boolean): void {
+      if (playing) this.followPlayhead()
+    },
+    fineCutOpen(open: boolean): void {
+      if (!open) void this.$nextTick(() => this.revealPlayhead())
+    }
+  },
   mounted() {
     const el = this.$refs.scroller as HTMLElement
     this.viewportWidth = el.clientWidth
@@ -226,10 +248,17 @@ export default defineComponent({
     })
     observers.set(this, observer)
     observer.observe(el)
+    el.addEventListener('wheel', this.pauseFollow, { passive: true })
+    el.addEventListener('touchstart', this.pauseFollow, { passive: true })
+    el.addEventListener('pointerdown', this.onScrollerPointerdown)
   },
   beforeUnmount() {
     observers.get(this)?.disconnect()
     observers.delete(this)
+    const el = this.$refs.scroller as HTMLElement | undefined
+    el?.removeEventListener('wheel', this.pauseFollow)
+    el?.removeEventListener('touchstart', this.pauseFollow)
+    el?.removeEventListener('pointerdown', this.onScrollerPointerdown)
   },
   methods: {
     ...mapActions(useEditorStore, [
@@ -286,6 +315,26 @@ export default defineComponent({
       const end = start + el.clientWidth
       if (x >= start + REVEAL_MARGIN_PX && x <= end - REVEAL_MARGIN_PX) return
       el.scrollLeft = Math.max(0, x - el.clientWidth / 2)
+    },
+    /** While playing: turns the page when the playhead reaches the right part of the view or is left of it. */
+    followPlayhead() {
+      if (!this.isPlaying || this.gesture !== null || performance.now() < followPausedUntil) return
+      const el = this.$refs.scroller as HTMLElement | undefined
+      if (!el) return
+      const width = el.clientWidth
+      const x = this.playheadPx
+      const offset = x - el.scrollLeft
+      if (offset >= 0 && offset <= width * FOLLOW_TRIGGER) return
+      const maxScroll = Math.max(0, el.scrollWidth - width)
+      const target = Math.min(Math.max(0, x - width * FOLLOW_TARGET), maxScroll)
+      if (Math.abs(target - el.scrollLeft) >= 1) el.scrollLeft = target
+    },
+    pauseFollow() {
+      followPausedUntil = performance.now() + FOLLOW_PAUSE_MS
+    },
+    /** Pressing the scroller itself (its scrollbar or the empty part) is a manual scroll; pressing the ruler or a clip is not. */
+    onScrollerPointerdown(event: PointerEvent) {
+      if (event.target === event.currentTarget) this.pauseFollow()
     },
 
     // --- pointer: playhead, selection, trims, reorder ---
@@ -450,7 +499,6 @@ export default defineComponent({
           event.preventDefault()
           const frames = event.shiftKey ? 10 : 1
           this.stepFrame(event.key === 'ArrowLeft' ? -frames : frames)
-          this.revealPlayhead()
           break
         }
       }

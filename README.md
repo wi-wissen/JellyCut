@@ -48,9 +48,11 @@ node scripts/e2e-timeline.mjs     # timeline editing
 node scripts/e2e-import.mjs       # media import
 node scripts/e2e-preview.mjs      # frame-exact seeking, playback
 node scripts/e2e-render.mjs       # compositor pixels
+node scripts/e2e-filters.mjs      # colour filters: tiles, preview, export, autosave
 node scripts/e2e-export.mjs       # exported files, frame by frame, audio
 node scripts/e2e-export-worker.mjs
 node scripts/e2e-export-ui.mjs
+node scripts/e2e-gif.mjs          # animated GIF: decoded frames, loop, duration, dialog flow
 node scripts/e2e-panels.mjs
 node scripts/e2e-waveform.mjs
 node scripts/e2e-playback.mjs     # picture follows the playhead, also on a slow CPU

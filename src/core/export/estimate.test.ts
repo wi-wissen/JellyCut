@@ -4,8 +4,11 @@ import type { Asset, Clip, Project } from '../project/types'
 import {
   CODEC_FACTOR,
   DECODE_MP_PER_S,
+  GIF_QUANTIZE_MP_PER_S,
+  GIF_RENDER_MP_PER_S,
   RENDER_MP_PER_S,
   estimateExportSeconds,
+  estimateGifSeconds,
   formatEstimate,
   sourceDecodeLoad,
   updateCalibration,
@@ -265,5 +268,24 @@ describe('formatEstimate', () => {
       expect(shown).toBeGreaterThanOrEqual(last)
       last = shown
     }
+  })
+})
+
+describe('estimateGifSeconds', () => {
+  const base = { width: 480, height: 270, fps: 15, durationMicros: 10_000_000, decodeMegapixels: 0 }
+  it('is the render and quantize time for every frame plus start-up', () => {
+    const frames = 150
+    const megapixels = (480 * 270 * frames) / 1_000_000
+    const expected = megapixels / GIF_RENDER_MP_PER_S + megapixels / GIF_QUANTIZE_MP_PER_S + 1.5
+    expect(estimateGifSeconds(base)).toBeCloseTo(expected, 9)
+  })
+  it('grows with size and frame rate, and applies the calibration factor', () => {
+    expect(estimateGifSeconds({ ...base, width: 640, height: 360 })).toBeGreaterThan(estimateGifSeconds(base))
+    expect(estimateGifSeconds({ ...base, fps: 20 })).toBeGreaterThan(estimateGifSeconds(base))
+    expect(estimateGifSeconds({ ...base, calibration: 2 })).toBeCloseTo(estimateGifSeconds(base) * 2, 9)
+  })
+  it('counts source decoding and treats an empty project as start-up only', () => {
+    expect(estimateGifSeconds({ ...base, decodeMegapixels: 120 })).toBeCloseTo(estimateGifSeconds(base) + 1, 9)
+    expect(estimateGifSeconds({ ...base, durationMicros: 0 })).toBeCloseTo(1.5, 9)
   })
 })

@@ -4,6 +4,7 @@ import { exportFileName } from '../../core/export/filename'
 import { missingAssetsInUse, type AssetStatusMap } from '../../core/export/format'
 import {
   estimateExportSeconds,
+  estimateGifSeconds,
   sourceDecodeLoad,
   updateCalibration,
   type EstimateCodec
@@ -12,15 +13,24 @@ import {
   EXPORT_FPS,
   EXPORT_QUALITIES,
   EXPORT_RESOLUTIONS,
+  GIF_DEFAULT_BYTES_PER_PIXEL,
   defaultExportOptions,
+  defaultGifOptions,
   estimateFileSize,
+  estimateGifBytes,
+  gifOutputSize,
+  gifTooLarge,
+  learnGifBytesPerPixel,
   outputSize,
+  totalFrames,
   videoBitrate,
-  type ExportOptions
+  type ExportOptions,
+  type GifOptions
 } from '../../core/export/presets'
 import type { Project } from '../../core/project/types'
-import { checkEncoders, ExportCancelled, ExportUnsupported, type ExportProgress } from '../../engine/export/exporter'
+import { checkEncoders, ExportCancelled, ExportUnsupported, type ExportProgress, type ExportResult } from '../../engine/export/exporter'
 import { startExport, type RunningExport } from '../../engine/export/exportClient'
+import { GifTooLarge as GifTooLargeError, type GifResult } from '../../engine/export/gifExporter'
 import { FONT_SOURCES } from '../fontUrls'
 import { getAssetFile, useMediaStore } from './media'
 import { useEditorStore } from './editor'
@@ -41,10 +51,20 @@ export interface EncoderInfo {
 export interface ExportResultInfo {
   size: number
   fileName: string
+  extension: 'mp4' | 'gif'
+}
+
+export type ExportFormat = 'mp4' | 'gif'
+
+/** Learned for this computer from finished GIF exports: size per pixel and frame, and speed factor. */
+export interface GifCalibration {
+  bytesPerPixel: number | null
+  speed: number | null
 }
 
 const STORAGE_KEY = 'jellycut.export'
 const CALIBRATION_KEY = 'jellycut.export.calibration'
+const GIF_CALIBRATION_KEY = 'jellycut.export.gif'
 
 /** AVC is the measured hardware path; VP9 and AV1 are software encoders with their own correction. */
 export type CodecFamily = 'avc' | 'software'
@@ -109,6 +129,51 @@ function writeCalibration(calibration: Calibration): void {
   }
 }
 
+function readGifCalibration(): GifCalibration {
+  const empty: GifCalibration = { bytesPerPixel: null, speed: null }
+  try {
+    const raw = localStorage.getItem(GIF_CALIBRATION_KEY)
+    if (!raw) return empty
+    const parsed = JSON.parse(raw) as { bytesPerPixel?: unknown; speed?: unknown }
+    return { bytesPerPixel: usableFactor(parsed.bytesPerPixel), speed: usableFactor(parsed.speed) }
+  } catch {
+    return empty
+  }
+}
+
+function writeGifCalibration(calibration: GifCalibration): void {
+  try {
+    localStorage.setItem(GIF_CALIBRATION_KEY, JSON.stringify(calibration))
+  } catch {
+    // Without storage the correction only lasts for this session.
+  }
+}
+
+/** GIF size estimate: frames at the output size, with the learned or the default size per pixel. */
+function gifBytesFor(project: Project, options: GifOptions, durationMicros: number, bytesPerPixel: number | null): number {
+  const { width, height } = gifOutputSize(project.format.ratio, options.width)
+  return estimateGifBytes(width, height, totalFrames(durationMicros, options.fps), bytesPerPixel ?? GIF_DEFAULT_BYTES_PER_PIXEL)
+}
+
+/** Expected GIF time without the learned speed factor. */
+function gifPredictSeconds(project: Project, options: GifOptions, durationMicros: number, calibration = 1): number {
+  const { width, height } = gifOutputSize(project.format.ratio, options.width)
+  return estimateGifSeconds({
+    width,
+    height,
+    fps: options.fps,
+    durationMicros,
+    decodeMegapixels: sourceDecodeLoad(project),
+    calibration
+  })
+}
+
+/** Too long or too large: the GIF is refused before it starts (same rule in the engine). */
+function gifRefused(project: Project, options: GifOptions, durationMicros: number): boolean {
+  const { width, height } = gifOutputSize(project.format.ratio, options.width)
+  return gifTooLarge(durationMicros, width, height, options.fps)
+}
+
 function familyOf(codec: string | null | undefined): CodecFamily {
   return codec === 'avc' || codec == null ? 'avc' : 'software'
 }
@@ -170,6 +235,9 @@ export const useExportStore = defineStore('export', {
   state: () => ({
     open: false,
     options: readStoredOptions() ?? defaultExportOptions(useEditorStore().project),
+    format: 'mp4' as ExportFormat,
+    gif: defaultGifOptions() as GifOptions,
+    gifCalibration: readGifCalibration() as GifCalibration,
     phase: 'idle' as ExportPhase,
     progress: null as ExportProgress | null,
     result: null as ExportResultInfo | null,
@@ -179,37 +247,45 @@ export const useExportStore = defineStore('export', {
     calibration: readCalibration() as Calibration
   }),
   getters: {
-    /** Estimated file size for the current options and the project length. */
+    /** Estimated file size for the active format and the project length. */
     estimatedBytes(state): number {
       const editor = useEditorStore()
+      if (state.format === 'gif') return gifBytesFor(editor.project, state.gif, editor.totalDuration, state.gifCalibration.bytesPerPixel)
       return estimateFileSize(state.options, editor.project.format.ratio, editor.totalDuration)
     },
     /** Expected export time without the correction learned on this computer. */
     uncalibratedSeconds(state): number {
       const editor = useEditorStore()
+      if (state.format === 'gif') return gifPredictSeconds(editor.project, state.gif, editor.totalDuration)
       return predictSeconds(editor.project, state.options, estimateCodecOf(state.encoders?.video), editor.totalDuration)
     },
     /** Expected export time in seconds, corrected by the factor learned from earlier exports on this computer. */
     estimatedSeconds(state): number {
       const editor = useEditorStore()
+      if (state.format === 'gif') {
+        return gifPredictSeconds(editor.project, state.gif, editor.totalDuration) * (state.gifCalibration.speed ?? 1)
+      }
       const factor = state.calibration[familyOf(state.encoders?.video)] ?? 1
       return predictSeconds(editor.project, state.options, estimateCodecOf(state.encoders?.video), editor.totalDuration) * factor
     },
     /** False until one export on this computer has taught the estimate its speed. */
     hasCalibration(state): boolean {
+      if (state.format === 'gif') return state.gifCalibration.speed !== null || state.gifCalibration.bytesPerPixel !== null
       return state.calibration[familyOf(state.encoders?.video)] !== null
+    },
+    /** A GIF that is too long or too large: the dialog warns and Start stays disabled. */
+    gifTooBig(state): boolean {
+      const editor = useEditorStore()
+      return state.format === 'gif' && gifRefused(editor.project, state.gif, editor.totalDuration)
     },
     missingNames(): string[] {
       return missingInProject(useEditorStore().project)
     },
     canStart(state): boolean {
       const editor = useEditorStore()
-      return (
-        state.phase === 'ready' &&
-        state.encoders?.video != null &&
-        editor.totalDuration > 0 &&
-        missingInProject(editor.project).length === 0
-      )
+      if (state.phase !== 'ready' || editor.totalDuration <= 0 || missingInProject(editor.project).length > 0) return false
+      if (state.format === 'gif') return !gifRefused(editor.project, state.gif, editor.totalDuration)
+      return state.encoders?.video != null
     }
   },
   actions: {
@@ -243,6 +319,18 @@ export const useExportStore = defineStore('export', {
       void this.refreshEncoders()
     },
 
+    setFormat(format: ExportFormat): void {
+      if (this.phase !== 'ready' && this.phase !== 'checking') return
+      if (this.format === format) return
+      this.format = format
+      void this.refreshEncoders()
+    },
+
+    setGifOptions(patch: Partial<Omit<GifOptions, 'format'>>): void {
+      if (this.phase !== 'ready' && this.phase !== 'checking') return
+      this.gif = { ...this.gif, ...patch }
+    },
+
     /** Asks the browser which codecs can encode the current size, bitrate and frame rate. */
     async refreshEncoders(): Promise<void> {
       const id = ++encoderCheck
@@ -268,7 +356,9 @@ export const useExportStore = defineStore('export', {
     },
 
     async start(): Promise<void> {
-      if (this.phase !== 'ready' || activeRun !== null || this.encoders?.video == null) return
+      if (this.phase !== 'ready' || activeRun !== null) return
+      const isGif = this.format === 'gif'
+      if (!isGif && this.encoders?.video == null) return
       const editor = useEditorStore()
       const project = editor.project
       if (editor.totalDuration <= 0) {
@@ -280,16 +370,21 @@ export const useExportStore = defineStore('export', {
         this.fail({ key: 'export.errors.missing', params: { names: missing.join(', ') } })
         return
       }
+      if (isGif && gifRefused(project, this.gif, editor.totalDuration)) {
+        this.fail({ key: 'export.errors.gifTooLarge', params: {} })
+        return
+      }
 
       const files: Record<string, File> = {}
       for (const asset of project.assets) {
         const file = getAssetFile(asset.id)
         if (file) files[asset.id] = file
       }
-      const fileName = exportFileName(project.name, 'mp4')
-      const options = { ...this.options }
+      const fileName = exportFileName(project.name, isGif ? 'gif' : 'mp4')
       // Uncorrected prediction for this run, so the learned factor is measured against the default rates.
-      const predicted = predictSeconds(project, options, estimateCodecOf(this.encoders?.video), editor.totalDuration)
+      const predicted = isGif
+        ? gifPredictSeconds(project, this.gif, editor.totalDuration)
+        : predictSeconds(project, this.options, estimateCodecOf(this.encoders?.video), editor.totalDuration)
       // The state is reactive (Proxy objects cannot be posted to a worker), so the worker gets a plain copy.
       const snapshot = JSON.parse(JSON.stringify(project)) as Project
 
@@ -297,19 +392,28 @@ export const useExportStore = defineStore('export', {
       this.error = null
       this.phase = 'running'
       try {
-        const run = startExport({ project: snapshot, files, options }, FONT_SOURCES, (progress) => {
+        const onProgress = (progress: ExportProgress) => {
           this.progress = progress
-        })
+        }
+        const run = isGif
+          ? startExport({ kind: 'gif', project: snapshot, files, options: { ...this.gif } }, FONT_SOURCES, onProgress)
+          : startExport({ project: snapshot, files, options: { ...this.options } }, FONT_SOURCES, onProgress)
         activeRun = run
         this.inWorker = run.inWorker
-        const result = await run.promise
+        const result: ExportResult | GifResult = await run.promise
         resultBlob = result.blob
-        this.result = { size: result.blob.size, fileName }
+        this.result = { size: result.blob.size, fileName, extension: isGif ? 'gif' : 'mp4' }
         this.phase = 'done'
-        this.learnCalibration(result.videoCodec, predicted, result.elapsedMs)
+        if (isGif) {
+          const { width, height } = gifOutputSize(project.format.ratio, this.gif.width)
+          this.learnGifCalibration(result.blob.size, predicted, result.elapsedMs, width, height, totalFrames(editor.totalDuration, this.gif.fps))
+        } else {
+          this.learnCalibration((result as ExportResult).videoCodec, predicted, result.elapsedMs)
+        }
       } catch (error) {
         if (error instanceof ExportCancelled) this.phase = 'cancelled'
         else if (error instanceof ExportUnsupported) this.fail({ key: 'export.errors.unsupported', params: {} })
+        else if (error instanceof GifTooLargeError) this.fail({ key: 'export.errors.gifTooLarge', params: {} })
         else this.fail({ key: 'export.errors.failed', params: { message: errorMessage(error) } })
       } finally {
         activeRun = null
@@ -329,6 +433,16 @@ export const useExportStore = defineStore('export', {
       writeCalibration(this.calibration)
     },
 
+    /** Takes one finished GIF as a sample of its size per pixel and frame and of this computer's speed. */
+    learnGifCalibration(bytes: number, predictedSeconds: number, elapsedMs: number, width: number, height: number, frames: number): void {
+      const next: GifCalibration = {
+        bytesPerPixel: learnGifBytesPerPixel(this.gifCalibration.bytesPerPixel, bytes, width, height, frames),
+        speed: updateCalibration(this.gifCalibration.speed, predictedSeconds, elapsedMs / 1000)
+      }
+      this.gifCalibration = next
+      writeGifCalibration(next)
+    },
+
     /** Offers the finished file: a save dialog where the browser has one, else a download. */
     async save(): Promise<void> {
       const blob = resultBlob
@@ -338,10 +452,11 @@ export const useExportStore = defineStore('export', {
       const picker = window as unknown as FilePickerWindow
       if (typeof picker.showSaveFilePicker === 'function') {
         try {
-          const handle = await picker.showSaveFilePicker({
-            suggestedName: info.fileName,
-            types: [{ description: 'MP4', accept: { 'video/mp4': ['.mp4'] } }]
-          })
+          const type: { description: string; accept: Record<string, string[]> } =
+            info.extension === 'gif'
+              ? { description: 'GIF', accept: { 'image/gif': ['.gif'] } }
+              : { description: 'MP4', accept: { 'video/mp4': ['.mp4'] } }
+          const handle = await picker.showSaveFilePicker({ suggestedName: info.fileName, types: [type] })
           const writable = await handle.createWritable()
           await writable.write(blob)
           await writable.close()

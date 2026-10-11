@@ -77,3 +77,70 @@ export function defaultExportOptions(project: Project): ExportOptions {
   }
   return { resolution: 1080, fps, quality: 'good', format: 'mp4' }
 }
+
+export const GIF_WIDTHS = [320, 480, 640] as const
+export const GIF_FPS = [10, 15, 20] as const
+export type GifWidth = (typeof GIF_WIDTHS)[number]
+export type GifFps = (typeof GIF_FPS)[number]
+
+export interface GifOptions {
+  format: 'gif'
+  /** Output width in pixels; the height follows the project ratio. */
+  width: GifWidth
+  fps: GifFps
+  loop: boolean
+}
+
+export function defaultGifOptions(): GifOptions {
+  return { format: 'gif', width: 480, fps: 15, loop: true }
+}
+
+/** Starting value for GIF size per pixel and frame, before this computer has made a GIF. */
+export const GIF_DEFAULT_BYTES_PER_PIXEL = 0.12
+/** Above this estimate (decimal megabytes) the GIF export is refused. */
+export const GIF_MAX_BYTES = 100_000_000
+/** Longer GIFs are refused: they get very large and slow to encode. */
+export const GIF_MAX_SECONDS = 60
+const GIF_MIN_BYTES_PER_PIXEL = 0.005
+const GIF_MAX_BYTES_PER_PIXEL = 2
+/** Weight of the newest GIF in the learned size per pixel. */
+const GIF_SAMPLE_WEIGHT = 0.5
+
+/** Output dimensions for a GIF: the width is given, the height follows the ratio (no even rounding needed). */
+export function gifOutputSize(ratio: FormatRatio, width: number): { width: number; height: number } {
+  const [wPart = '1', hPart = '1'] = ratio.split(':')
+  const a = Number(wPart)
+  const b = Number(hPart)
+  return { width, height: Math.max(1, Math.round((width * b) / a)) }
+}
+
+/** Estimated GIF size: every frame at its full pixel count times the size per pixel and frame. */
+export function estimateGifBytes(width: number, height: number, frames: number, bytesPerPixel = GIF_DEFAULT_BYTES_PER_PIXEL): number {
+  if (!(frames > 0) || !(width > 0) || !(height > 0)) return 0
+  return Math.round(width * height * frames * bytesPerPixel)
+}
+
+/** True when a GIF of this length and size must not be started (shared by the dialog and the engine). */
+export function gifTooLarge(durationMicros: number, width: number, height: number, fps: number): boolean {
+  if (durationMicros > GIF_MAX_SECONDS * 1_000_000) return true
+  return estimateGifBytes(width, height, totalFrames(durationMicros, fps)) > GIF_MAX_BYTES
+}
+
+/**
+ * Next size-per-pixel estimate after one finished GIF. Returns the previous value (possibly null) when the
+ * sample is unusable.
+ */
+export function learnGifBytesPerPixel(
+  previous: number | null,
+  bytes: number,
+  width: number,
+  height: number,
+  frames: number
+): number | null {
+  const usable = previous !== null && Number.isFinite(previous) && previous > 0 ? previous : null
+  const pixelFrames = width * height * frames
+  if (!Number.isFinite(bytes) || bytes <= 0 || pixelFrames <= 0) return usable
+  const sample = bytes / pixelFrames
+  const next = usable === null ? sample : GIF_SAMPLE_WEIGHT * sample + (1 - GIF_SAMPLE_WEIGHT) * usable
+  return Math.min(GIF_MAX_BYTES_PER_PIXEL, Math.max(GIF_MIN_BYTES_PER_PIXEL, next))
+}

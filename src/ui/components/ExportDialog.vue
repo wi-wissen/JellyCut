@@ -3,7 +3,7 @@ import { defineComponent, nextTick } from 'vue'
 import { mapActions, mapState } from 'pinia'
 import { useEditorStore } from '../stores/editor'
 import { useExportStore } from '../stores/export'
-import { EXPORT_FPS, EXPORT_QUALITIES, EXPORT_RESOLUTIONS } from '../../core/export/presets'
+import { EXPORT_FPS, EXPORT_QUALITIES, EXPORT_RESOLUTIONS, GIF_FPS, GIF_WIDTHS } from '../../core/export/presets'
 import { formatBytes, formatClock, formatEta } from '../../core/export/format'
 import { formatEstimate } from '../../core/export/estimate'
 
@@ -18,6 +18,9 @@ export default defineComponent({
       resolutions: EXPORT_RESOLUTIONS,
       fpsValues: EXPORT_FPS,
       qualities: EXPORT_QUALITIES,
+      formats: ['mp4', 'gif'] as const,
+      gifWidths: GIF_WIDTHS,
+      gifFpsValues: GIF_FPS,
       titleId: TITLE_ID
     }
   },
@@ -25,6 +28,9 @@ export default defineComponent({
     ...mapState(useExportStore, [
       'open',
       'options',
+      'format',
+      'gif',
+      'gifTooBig',
       'phase',
       'progress',
       'result',
@@ -48,6 +54,10 @@ export default defineComponent({
       return formatBytes(this.estimatedBytes, this.locale)
     },
     /** Quality only changes the size; resolution and frame rate change the time. */
+    /** GIF sizes are rough: the picture decides how well the frames compress. */
+    estimateNoteText(): string {
+      return this.format === 'gif' ? this.$t('export.roughNote') : this.$t('export.estimateNote')
+    },
     estimateTimeText(): string {
       const time = formatEstimate(this.estimatedSeconds)
       if (time.unit === 'seconds') return this.$t('export.time.seconds', { value: time.value })
@@ -81,7 +91,7 @@ export default defineComponent({
       return !!this.encoders?.video && this.encoders.video !== 'avc'
     },
     noEncoder(): boolean {
-      return this.phase === 'ready' && !this.encoders?.video
+      return this.format === 'mp4' && this.phase === 'ready' && !this.encoders?.video
     },
     errorText(): string {
       return this.error ? this.$t(this.error.key, this.error.params) : ''
@@ -114,7 +124,7 @@ export default defineComponent({
     window.removeEventListener('keydown', this.onWindowKeydown, true)
   },
   methods: {
-    ...mapActions(useExportStore, ['show', 'close', 'setOptions', 'start', 'cancel', 'save', 'reset']),
+    ...mapActions(useExportStore, ['show', 'close', 'setOptions', 'setFormat', 'setGifOptions', 'start', 'cancel', 'save', 'reset']),
     panel(): HTMLElement | null {
       return (this.$refs.panel as HTMLElement | undefined) ?? null
     },
@@ -183,6 +193,7 @@ export default defineComponent({
         <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           <!-- Settings: checking, ready and (disabled) running -->
           <template v-if="phase === 'checking' || phase === 'ready' || phase === 'running'">
+            <template v-if="format === 'mp4'">
             <fieldset class="mb-4 min-w-0 border-0 p-0" :disabled="optionsDisabled">
               <legend class="mb-2 text-xs font-semibold text-muted">{{ $t('export.labels.resolution') }}</legend>
               <div class="grid grid-cols-3 gap-1.5 rounded-xl bg-panel2 p-1">
@@ -230,20 +241,65 @@ export default defineComponent({
                 </label>
               </div>
             </fieldset>
+            </template>
+
+            <template v-if="format === 'gif'">
+              <fieldset class="mb-4 min-w-0 border-0 p-0" :disabled="optionsDisabled">
+                <legend class="mb-2 text-xs font-semibold text-muted">{{ $t('export.labels.width') }}</legend>
+                <div class="grid grid-cols-3 gap-1.5 rounded-xl bg-panel2 p-1">
+                  <label v-for="w in gifWidths" :key="w" class="cursor-pointer">
+                    <input
+                      type="radio"
+                      name="export-gif-width"
+                      class="peer sr-only"
+                      :checked="gif.width === w"
+                      @change="setGifOptions({ width: w })"
+                    />
+                    <span class="flex min-h-11 items-center justify-center rounded-lg text-sm font-semibold peer-checked:bg-fill peer-checked:text-fill-fg peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-fill peer-disabled:cursor-default">{{ $t('export.widthValue', { value: w }) }}</span>
+                  </label>
+                </div>
+              </fieldset>
+
+              <fieldset class="mb-4 min-w-0 border-0 p-0" :disabled="optionsDisabled">
+                <legend class="mb-2 text-xs font-semibold text-muted">{{ $t('export.labels.fps') }}</legend>
+                <div class="grid grid-cols-3 gap-1.5 rounded-xl bg-panel2 p-1">
+                  <label v-for="f in gifFpsValues" :key="f" class="cursor-pointer">
+                    <input
+                      type="radio"
+                      name="export-gif-fps"
+                      class="peer sr-only"
+                      :checked="gif.fps === f"
+                      @change="setGifOptions({ fps: f })"
+                    />
+                    <span class="flex min-h-11 items-center justify-center rounded-lg text-sm font-semibold peer-checked:bg-fill peer-checked:text-fill-fg peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-fill peer-disabled:cursor-default">{{ f }}</span>
+                  </label>
+                </div>
+              </fieldset>
+
+              <fieldset class="mb-4 min-w-0 border-0 p-0" :disabled="optionsDisabled">
+                <label class="flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm font-semibold">
+                  <span>{{ $t('export.loop') }}</span>
+                  <span class="relative inline-flex h-6 w-11 shrink-0 items-center">
+                    <input type="checkbox" role="switch" class="peer sr-only" :checked="gif.loop" @change="setGifOptions({ loop: ($event.target as HTMLInputElement).checked })" />
+                    <span class="absolute inset-0 rounded-full border border-line bg-panel2 peer-checked:bg-fill peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-fill peer-disabled:opacity-60" aria-hidden="true" />
+                    <span class="absolute left-0.5 h-5 w-5 rounded-full bg-panel shadow transition-transform peer-checked:translate-x-5" aria-hidden="true" />
+                  </span>
+                </label>
+              </fieldset>
+            </template>
 
             <fieldset class="mb-4 min-w-0 border-0 p-0" :disabled="optionsDisabled">
               <legend class="mb-2 text-xs font-semibold text-muted">{{ $t('export.labels.format') }}</legend>
               <div class="grid grid-cols-2 gap-1.5 rounded-xl bg-panel2 p-1">
-                <label class="cursor-pointer">
-                  <input type="radio" name="export-format" class="peer sr-only" checked disabled />
-                  <span class="flex min-h-11 items-center justify-center rounded-lg text-sm font-semibold peer-checked:bg-fill peer-checked:text-fill-fg peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-fill">{{ $t('export.formats.mp4') }}</span>
-                </label>
-                <label class="cursor-not-allowed">
-                  <input type="radio" name="export-format" class="peer sr-only" disabled />
-                  <span class="flex min-h-11 flex-col items-center justify-center rounded-lg text-sm font-semibold text-muted opacity-60">
-                    <span>{{ $t('export.formats.gif') }}</span>
-                    <span class="text-[11px] font-normal">{{ $t('export.formats.soon') }}</span>
-                  </span>
+                <label v-for="f in formats" :key="f" class="cursor-pointer">
+                  <input
+                    type="radio"
+                    name="export-format"
+                    class="peer sr-only"
+                    :checked="format === f"
+                    @change="setFormat(f)"
+                  />
+                  <span class="flex min-h-11 items-center justify-center rounded-lg text-sm font-semibold peer-checked:bg-fill peer-checked:text-fill-fg peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-fill peer-disabled:cursor-default">{{ $t(`export.formats.${f}`) }}</span>
                 </label>
               </div>
             </fieldset>
@@ -253,10 +309,10 @@ export default defineComponent({
             <template v-else-if="phase === 'ready' || phase === 'running'">
               <p class="mb-1 flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
                 <span>{{ $t('export.estimate', { duration: durationText, size: sizeText, time: estimateTimeText }) }}</span>
-                <small class="text-xs text-muted">{{ $t('export.estimateNote') }}</small>
+                <small class="text-xs text-muted">{{ estimateNoteText }}</small>
               </p>
               <p v-if="!hasCalibration" class="mb-3 text-xs text-muted">{{ $t('export.calibrationHint') }}</p>
-              <p v-if="encoders?.video" class="mb-3 text-xs text-muted">
+              <p v-if="format === 'mp4' && encoders?.video" class="mb-3 text-xs text-muted">
                 {{ $t('export.encoder', { codec: codecLabel }) }}
                 <span v-if="codecFallback" class="block">{{ $t('export.codecNote') }}</span>
               </p>
@@ -268,6 +324,9 @@ export default defineComponent({
             </div>
             <div v-if="phase === 'ready' && missingNames.length > 0" role="alert" class="mb-3 rounded-lg border border-[var(--jc-danger)] bg-panel2 px-3 py-2 text-sm">
               {{ missingText }}
+            </div>
+            <div v-if="phase === 'ready' && gifTooBig" role="alert" class="mb-3 rounded-lg border border-[var(--jc-danger)] bg-panel2 px-3 py-2 text-sm">
+              {{ $t('export.errors.gifTooLarge') }}
             </div>
 
             <div v-if="phase === 'running'" class="mt-1">

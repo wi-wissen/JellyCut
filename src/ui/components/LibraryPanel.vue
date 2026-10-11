@@ -5,6 +5,8 @@ import Icon from './Icon.vue'
 import type { Asset, AssetKind } from '../../core/project/types'
 import { useEditorStore } from '../stores/editor'
 import { useMediaStore } from '../stores/media'
+import { useCreditsStore } from '../stores/credits'
+import { useExampleVideoStore } from '../stores/exampleVideo'
 
 const GRADIENTS = [
   'linear-gradient(135deg, var(--jc-track-video-1), var(--jc-fill))',
@@ -39,6 +41,14 @@ export default defineComponent({
   },
   computed: {
     ...mapState(useEditorStore, ['project', 'caps']),
+    ...mapState(useExampleVideoStore, { exampleStatus: 'status', examplePercent: 'percent', exampleError: 'errorKey' }),
+    /** Nothing imported yet: the card explains how to start, and it goes away as soon as any media exists. */
+    showStart(): boolean {
+      return this.kinds.includes('video') && this.project.assets.length === 0
+    },
+    creatingExample(): boolean {
+      return this.exampleStatus === 'creating'
+    },
     ...mapState(useMediaStore, [
       'statusOf',
       'problems',
@@ -74,6 +84,7 @@ export default defineComponent({
     }
   },
   methods: {
+    ...mapActions(useExampleVideoStore, { createExample: 'create', abortExample: 'abort' }),
     ...mapActions(useMediaStore, [
       'importFiles',
       'importFromWorkFolder',
@@ -95,6 +106,9 @@ export default defineComponent({
     },
     onRelinkTile(asset: Asset): void {
       this.pickFileFor(asset.id)
+    },
+    openCredits(asset: Asset): void {
+      useCreditsStore().show({ assetId: asset.id, returnId: `credit-button-${asset.id}` })
     },
     gradient(index: number): string {
       return GRADIENTS[index % GRADIENTS.length] ?? GRADIENTS[0] ?? ''
@@ -226,7 +240,43 @@ export default defineComponent({
     <input ref="fileInput" type="file" multiple :accept="accept" class="hidden" @change="onPicked" />
 
     <div class="min-h-0 flex-1 overflow-y-auto" :class="dragging ? 'rounded-lg outline-2 outline-dashed outline-fill -outline-offset-4' : ''">
-      <div class="grid grid-cols-2 gap-2.5">
+      <div v-if="showStart" class="mt-4 flex flex-col items-center gap-4 rounded-xl border border-line bg-panel2 px-5 py-8 text-center">
+        <span class="flex size-14 items-center justify-center rounded-full bg-fill text-fill-fg" aria-hidden="true">
+          <Icon name="camera" class="size-7" />
+        </span>
+        <div class="flex flex-col gap-1.5">
+          <h3 class="text-base font-bold text-fg">{{ $t('start.title') }}</h3>
+          <p class="text-xs leading-relaxed text-muted">{{ $t('start.text') }}</p>
+        </div>
+        <button
+          type="button"
+          class="min-h-11 w-full rounded-lg bg-fill px-4 text-sm font-bold text-fill-fg"
+          @click="openPicker"
+        >
+          {{ $t('library.addMedia') }}
+        </button>
+        <p class="text-[11px] text-muted">{{ $t('start.filesStay') }}</p>
+        <div class="h-px w-full bg-line" aria-hidden="true" />
+        <button
+          type="button"
+          class="min-h-11 w-full rounded-lg border border-line px-4 text-sm font-semibold text-fg hover:bg-panel disabled:opacity-60"
+          :disabled="creatingExample"
+          @click="createExample"
+        >
+          {{ creatingExample ? $t('start.creating', { percent: examplePercent }) : $t('start.createExample') }}
+        </button>
+        <div v-if="creatingExample" class="flex w-full items-center gap-2">
+          <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-panel" role="progressbar" :aria-valuenow="examplePercent" aria-valuemin="0" aria-valuemax="100">
+            <div class="h-full bg-fill transition-[width]" :style="{ width: `${examplePercent}%` }" />
+          </div>
+          <button type="button" class="min-h-11 shrink-0 px-2 text-xs font-semibold text-txt underline underline-offset-2" @click="abortExample">
+            {{ $t('start.abort') }}
+          </button>
+        </div>
+        <p v-if="exampleError" role="alert" class="text-xs text-fg">{{ $t(exampleError) }}</p>
+      </div>
+
+      <div v-else class="grid grid-cols-2 gap-2.5">
         <div v-for="(asset, index) in assets" :key="asset.id" class="relative">
           <button
             type="button"
@@ -283,6 +333,16 @@ export default defineComponent({
           </button>
 
           <button
+            :id="`credit-button-${asset.id}`"
+            type="button"
+            class="relative mt-1 flex min-h-7 items-center rounded-md px-1.5 text-[11px] font-semibold text-txt hover:bg-panel2 before:absolute before:-inset-y-2 before:inset-x-0 before:content-['']"
+            :aria-label="$t('credits.tileLabel', { name: asset.name })"
+            @click="openCredits(asset)"
+          >
+            {{ $t('credits.tile') }}
+          </button>
+
+          <button
             type="button"
             class="absolute right-1 top-1 z-10 flex size-11 items-center justify-center rounded-lg text-white"
             :aria-label="$t('relink.removeLabel', { name: asset.name })"
@@ -314,7 +374,7 @@ export default defineComponent({
         </button>
       </div>
 
-      <p v-if="assets.length === 0" class="mt-3 text-center text-xs text-muted">
+      <p v-if="assets.length === 0 && !showStart" class="mt-3 text-center text-xs text-muted">
         {{ $t('library.emptyHint') }}
       </p>
     </div>

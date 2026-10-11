@@ -4,6 +4,17 @@ export type AssetKind = 'video' | 'audio' | 'image'
 export type FormatRatio = '16:9' | '9:16' | '1:1' | '4:5'
 export type FitMode = 'fit' | 'fill'
 
+/** Where a medium comes from and under which licence. Entered by the user; all fields optional. See core/credits. */
+export interface AssetCredit {
+  title?: string
+  author?: string
+  source?: string
+  /** http:// or https:// only. Stored as text, never fetched. */
+  url?: string
+  /** Id of an entry in LICENSES (core/credits), or free text for unknown licences. */
+  license?: string
+}
+
 export interface Asset {
   id: string
   kind: AssetKind
@@ -17,6 +28,7 @@ export interface Asset {
   fps?: number
   /** Whether the file has a usable audio track. Undefined means "assume yes" for video, audio files always have it. */
   hasAudio?: boolean
+  credit?: AssetCredit
 }
 
 export interface Transform {
@@ -26,6 +38,13 @@ export interface Transform {
   y: number
   rotation: number
   flipX: boolean
+}
+
+/** Brightness, contrast and saturation, each -1..1 (0 is neutral). */
+export interface ColorAdjust {
+  brightness: number
+  contrast: number
+  saturation: number
 }
 
 export interface TransitionIn {
@@ -46,7 +65,12 @@ export interface Clip {
   transform: Transform
   volume: number
   muted: boolean
+  /** Id from core/filters FILTERS; null means no filter. */
   filter: string | null
+  /** Strength of the filter, 0..1. Absent means 1. */
+  filterAmount?: number
+  /** Absent means all neutral. */
+  adjust?: ColorAdjust
   transitionIn: TransitionIn | null
 }
 

@@ -108,6 +108,33 @@ export function updateCalibration(previous: number | null, predictedSeconds: num
   return clampFactor(next)
 }
 
+/** Megapixels per second for drawing a GIF frame and reading it back, and for quantizing it. Not measured: rough. */
+export const GIF_RENDER_MP_PER_S = 25
+export const GIF_QUANTIZE_MP_PER_S = 8
+
+export interface GifEstimateInput {
+  width: number
+  height: number
+  fps: number
+  durationMicros: number
+  decodeMegapixels: number
+  /** Learned correction for this computer; 1 means the default rates. */
+  calibration?: number
+}
+
+/** Expected GIF export time in seconds (rough: GIF encoding is CPU bound and has no measurement behind it yet). */
+export function estimateGifSeconds(input: GifEstimateInput): number {
+  const durationMicros = Number.isFinite(input.durationMicros) && input.durationMicros > 0 ? Math.round(input.durationMicros) : 0
+  const frames = Math.ceil((durationMicros * input.fps) / MICROS_PER_SECOND)
+  const megapixels = (input.width * input.height * frames) / 1_000_000
+  const seconds =
+    megapixels / GIF_RENDER_MP_PER_S +
+    megapixels / GIF_QUANTIZE_MP_PER_S +
+    Math.max(0, input.decodeMegapixels) / DECODE_MP_PER_S +
+    STARTUP_SECONDS
+  return seconds * (input.calibration ?? 1)
+}
+
 export interface EstimateFormat {
   unit: 'seconds' | 'minutes' | 'hours'
   value: number

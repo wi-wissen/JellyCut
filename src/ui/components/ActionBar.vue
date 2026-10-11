@@ -153,6 +153,7 @@ export default defineComponent({
       :aria-disabled="!enabled(action.key)"
       :aria-pressed="pressed(action.key)"
       :aria-label="action.key === 'speed' ? `${$t('actions.speed')}: ${speedValue}` : undefined"
+      :title="action.key === 'fineCut' && !enabled(action.key) ? $t('actions.fineCutNeedsClip') : undefined"
       @click="run(action.key)"
     >
       <Icon :name="action.icon" class="size-[18px]" />
