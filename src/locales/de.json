@@ -9,6 +9,32 @@
     "darkMode": "Dunkles Design",
     "lightMode": "Helles Design"
   },
+  "project": {
+    "untitled": "Ohne Titel",
+    "name": "Projektname",
+    "newName": "Neues Projekt",
+    "menu": "Projektaktionen",
+    "new": "Neues Projekt",
+    "open": "Projekt öffnen…",
+    "save": "Projekt speichern",
+    "download": "Als Datei herunterladen",
+    "chooseFolder": "Arbeitsordner wählen…",
+    "folderCurrent": "Arbeitsordner: {name}",
+    "folderNone": "Noch kein Arbeitsordner gewählt",
+    "browserInfo": "Dieser Browser speichert Projekte als Datei. Wer ein Projekt auf einem anderen Computer öffnet, muss die Medien neu verknüpfen. Für einen Arbeitsordner empfehlen wir Chrome oder Edge.",
+    "fileError": "Die Projektdatei konnte nicht verwendet werden.",
+    "dismiss": "Hinweis schließen",
+    "neverSaved": "Noch nicht als Datei gespeichert",
+    "unsaved": "Änderungen seit dem letzten Speichern in der Datei",
+    "autosave": {
+      "idle": "Autosave: bereit",
+      "dirty": "Autosave: ausstehend…",
+      "saving": "Autosave: speichert…",
+      "saved": "Autosave: gespeichert",
+      "error": "Autosave: Fehler"
+    },
+    "confirmDiscard": "Es gibt Änderungen, die noch nicht in einer Datei gespeichert sind. Sie gehen verloren, wenn du fortfährst. Fortfahren?"
+  },
   "groups": {
     "material": "Material",
     "design": "Gestalten",

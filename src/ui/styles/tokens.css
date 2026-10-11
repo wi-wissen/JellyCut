@@ -19,6 +19,7 @@
   --jc-music: #7e6bd6;
   --jc-radius: 10px;
   --jc-touch: 44px;
+  --jc-danger: #b3261e;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -36,6 +37,7 @@
     --jc-track-video-3: #4a4f61;
     --jc-wave: #4fd48a;
     --jc-music: #4a3c99;
+    --jc-danger: #ff8a80;
     color-scheme: dark;
   }
 }
@@ -53,5 +55,6 @@
   --jc-track-video-3: #4a4f61;
   --jc-wave: #4fd48a;
   --jc-music: #4a3c99;
+  --jc-danger: #ff8a80;
   color-scheme: dark;
 }

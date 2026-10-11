@@ -9,14 +9,44 @@ import ActionBar from '../components/ActionBar.vue'
 import TimelinePanel from '../components/TimelinePanel.vue'
 import { useEditorStore } from '../stores/editor'
 
+const TEXT_INPUT_TYPES = /^(text|search|url|tel|email|password|number)$/
+
+function isTextEntry(target: EventTarget | null): boolean {
+  if (target instanceof HTMLTextAreaElement) return true
+  if (target instanceof HTMLInputElement) return TEXT_INPUT_TYPES.test(target.type)
+  return target instanceof HTMLElement && target.isContentEditable
+}
+
 export default defineComponent({
   name: 'EditorView',
   components: { TopBar, TabBar, LibraryPanel, PlayerStage, ActionBar, TimelinePanel },
   mounted() {
     this.applyTheme()
+    document.addEventListener('keydown', this.onKeydown)
+  },
+  beforeUnmount() {
+    document.removeEventListener('keydown', this.onKeydown)
   },
   methods: {
-    ...mapActions(useEditorStore, ['applyTheme'])
+    ...mapActions(useEditorStore, ['applyTheme', 'undo', 'redo', 'saveProject']),
+    onKeydown(event: KeyboardEvent): void {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) return
+      const key = event.key.toLowerCase()
+      // Save has no native meaning in a text field, so it works everywhere; undo and redo leave text fields alone.
+      if (key === 's' && !event.shiftKey) {
+        event.preventDefault()
+        void this.saveProject()
+        return
+      }
+      if (isTextEntry(event.target)) return
+      if (key === 'z' && !event.shiftKey) {
+        event.preventDefault()
+        this.undo()
+      } else if (key === 'y' || (key === 'z' && event.shiftKey)) {
+        event.preventDefault()
+        this.redo()
+      }
+    }
   }
 })
 </script>

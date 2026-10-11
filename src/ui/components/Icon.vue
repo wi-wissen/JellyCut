@@ -2,9 +2,13 @@
 import { defineComponent, type Component, type PropType } from 'vue'
 import {
   Blend,
+  ChevronDown,
   CircleDot,
   Captions,
   Copy,
+  Download,
+  FilePlus,
+  FolderOpen,
   Crosshair,
   FlipHorizontal2,
   Gauge,
@@ -16,6 +20,7 @@ import {
   Pencil,
   Play,
   Plus,
+  Save,
   RectangleHorizontal,
   Redo2,
   RotateCw,
@@ -64,7 +69,12 @@ const ICONS: Record<string, Component> = {
   ratio: RectangleHorizontal,
   sun: Sun,
   moon: Moon,
-  plus: Plus
+  plus: Plus,
+  chevronDown: ChevronDown,
+  filePlus: FilePlus,
+  folderOpen: FolderOpen,
+  save: Save,
+  download: Download
 }
 
 export default defineComponent({

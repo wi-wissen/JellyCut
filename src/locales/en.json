@@ -9,6 +9,32 @@
     "darkMode": "Dark theme",
     "lightMode": "Light theme"
   },
+  "project": {
+    "untitled": "Untitled",
+    "name": "Project name",
+    "newName": "New project",
+    "menu": "Project actions",
+    "new": "New project",
+    "open": "Open project…",
+    "save": "Save project",
+    "download": "Download as file",
+    "chooseFolder": "Choose work folder…",
+    "folderCurrent": "Work folder: {name}",
+    "folderNone": "No work folder chosen yet",
+    "browserInfo": "This browser saves projects as files. When you open a project on another computer, media must be re-linked. For a work folder, we recommend Chrome or Edge.",
+    "fileError": "The project file could not be used.",
+    "dismiss": "Dismiss message",
+    "neverSaved": "Not saved as a file yet",
+    "unsaved": "Changes since the last save to the file",
+    "autosave": {
+      "idle": "Autosave: ready",
+      "dirty": "Autosave: pending…",
+      "saving": "Autosave: saving…",
+      "saved": "Autosave: saved",
+      "error": "Autosave: error"
+    },
+    "confirmDiscard": "There are changes that have not been saved to a file. They will be lost if you continue. Continue?"
+  },
   "groups": {
     "material": "Material",
     "design": "Design",

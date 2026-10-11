@@ -2,19 +2,20 @@
 import { defineComponent } from 'vue'
 import { mapActions, mapState } from 'pinia'
 import Icon from './Icon.vue'
+import ProjectMenu from './ProjectMenu.vue'
 import { useEditorStore } from '../stores/editor'
 
 export default defineComponent({
   name: 'TopBar',
-  components: { Icon },
+  components: { Icon, ProjectMenu },
   data() {
     return { logoUrl: `${import.meta.env.BASE_URL}logo.svg` }
   },
   computed: {
-    ...mapState(useEditorStore, ['project', 'resolvedDark'])
+    ...mapState(useEditorStore, ['project', 'resolvedDark', 'canUndo', 'canRedo'])
   },
   methods: {
-    ...mapActions(useEditorStore, ['toggleTheme'])
+    ...mapActions(useEditorStore, ['toggleTheme', 'undo', 'redo'])
   }
 })
 </script>
@@ -26,12 +27,7 @@ export default defineComponent({
       <span class="text-[15px] font-bold tracking-tight">{{ $t('app.name') }}</span>
     </div>
 
-    <button
-      type="button"
-      class="flex h-8 items-center rounded-full border border-line bg-panel2 px-3 text-xs font-semibold"
-    >
-      {{ project.name }}
-    </button>
+    <ProjectMenu />
     <button
       type="button"
       class="flex h-8 items-center gap-1.5 rounded-full border border-line bg-panel2 px-3 text-xs font-semibold"
@@ -43,15 +39,21 @@ export default defineComponent({
     <div class="ml-1 flex items-center">
       <button
         type="button"
-        class="flex size-11 items-center justify-center rounded-lg text-fg hover:bg-panel2"
+        class="flex size-11 items-center justify-center rounded-lg text-fg enabled:hover:bg-panel2 disabled:opacity-40"
+        :disabled="!canUndo"
+        :aria-disabled="canUndo ? 'false' : 'true'"
         :aria-label="$t('top.undo')"
+        @click="undo"
       >
         <Icon name="undo" class="size-5" />
       </button>
       <button
         type="button"
-        class="flex size-11 items-center justify-center rounded-lg text-fg hover:bg-panel2"
+        class="flex size-11 items-center justify-center rounded-lg text-fg enabled:hover:bg-panel2 disabled:opacity-40"
+        :disabled="!canRedo"
+        :aria-disabled="canRedo ? 'false' : 'true'"
         :aria-label="$t('top.redo')"
+        @click="redo"
       >
         <Icon name="redo" class="size-5" />
       </button>
