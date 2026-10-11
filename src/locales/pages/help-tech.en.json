@@ -13,7 +13,7 @@
       "browserTitle": "Browser features",
       "browserText": "The browser provides these features. Jelly Cut uses them directly.",
       "artworkTitle": "Artwork: stickers",
-      "artworkText": "The picture stickers are the Fluent Emoji (3D style) by Microsoft. They are free to use under the MIT License. The licence asks to keep the copyright notice, \"Copyright (c) Microsoft Corporation\": it is part of the licence text in the source code. The stickers may appear in your videos without any credit.",
+      "artworkText": "The picture stickers are the Fluent Emoji (3D style) by Microsoft. The moving stickers are the animated Fluent Emoji by Microsoft. Both are free to use under the MIT License. The licence asks to keep the copyright notice, \"Copyright (c) Microsoft Corporation\": it is part of the licence text in the source code. The stickers may appear in your videos without any credit.",
       "sourceTitle": "Source code",
       "sourceText": "The source code is public on GitHub. There you can read how everything fits together.",
       "items": {
@@ -38,7 +38,9 @@
         "indexeddb": "A small database in the browser where projects stay saved on your device.",
         "sw": "Keeps the page for use without a network connection. This is called a PWA (Progressive Web App).",
         "fluent": "The sticker pictures in the gallery, designed by Microsoft.",
-        "mit": "The licence of these pictures: free use, as long as the licence text with the copyright notice stays with them."
+        "mit": "The licence of these pictures: free use, as long as the licence text with the copyright notice stays with them.",
+        "fluentAnimated": "The moving stickers in the gallery, also by Microsoft. They are only loaded when you switch on \"Animated\" or use one.",
+        "fluentAnimatedName": "Fluent Emoji (animated)"
       },
       "sourceLink": "Source code on GitHub"
     }

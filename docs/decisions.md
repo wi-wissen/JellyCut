@@ -68,7 +68,7 @@ The background belongs to the project format (one choice for the whole project),
 
 - **Choice: Microsoft Fluent Emoji, 3D style** (github.com/microsoft/fluentui-emoji, MIT, "Copyright (c) Microsoft Corporation"). Obligation: keep the copyright and permission notice with copies, so `src/assets/stickers/LICENSE-FluentEmoji.txt` ships in the repo and the tech help page credits it (name and licence as links). No credit is needed inside exported videos, no ShareAlike.
 - **Rejected:** OpenMoji (CC BY-SA 4.0: ShareAlike on adaptations, and its FAQ asks for a credit in videos), Twemoji (CC BY 4.0 would work but needs a credit line, flatter look), Noto Emoji (Apache 2.0/OFL, plain blobs look), Kenney (CC0 emotes and animal packs: licence ideal, but small, game-style sets without the breadth of categories), Phosphor/Tabler (MIT icons, no colour). The Fluent "Color"/"Flat" SVGs are cleaner but less cute; 3D is colourful, soft and reads on light and dark video.
-- **Files:** 88 stickers at 256 x 256, converted PNG to lossy WebP (q88, alpha kept) because 256-colour PNG banded visibly and the original PNGs are about 40 kB each (3.5 MB); now about 0.5 MB in total, precached by the service worker (adds that much to the first install). Skin-tone-less (yellow default) hands only; the id to Fluent folder mapping is in `src/assets/stickers/SOURCES.txt`.
+- **Files:** (superseded in part: 128 stickers now, see "Animated stickers") 88 stickers at 256 x 256, converted PNG to lossy WebP (q88, alpha kept) because 256-colour PNG banded visibly and the original PNGs are about 40 kB each (3.5 MB); now about 0.5 MB in total, precached by the service worker (adds that much to the first install). Skin-tone-less (yellow default) hands only; the id to Fluent folder mapping is in `src/assets/stickers/SOURCES.txt`.
 - **Model:** `StickerOverlay.imageId` (catalog id, `core/render/stickerImages.ts`) is a third variant of a sticker, next to `emoji` and `shape` (exactly one of the three is set); ids never change; no migration. The engine decodes with fetch + `createImageBitmap` (works in the export worker) and `sceneFrames` waits for them, so paused preview and export frames are complete. Picture stickers have no colour or outline. The 13 plain shapes (star, heart, check, cross, arrows, bubbles, !, ?, badges) stay in the gallery's 'Formen' tab because they take a colour; the other vector shapes are no longer offered but still render in old projects.
 
 ## Overlays 5: true stacking order for blur and pixelate areas (replaces "areas only affect the video")
@@ -88,3 +88,82 @@ The background belongs to the project format (one choice for the whole project),
 - Music is included: imported music and own recordings end with the video too. A music item is shortened by its end (`srcOut`); its start in the file (`srcIn`) stays, so the first part of the audio plays and the fades follow the new end.
 - Why shortening and not muting: a muted item would keep playing its silent length and could not fade out at the video end; a shortened one keeps its fades and its bar shows the real length, as a cut-off item does.
 - Consequence for export: the length is the clips only (`exportDuration()` in core/export/format.ts). Music can no longer extend the video, so a project with music and no clips has nothing to export.
+
+## Animated stickers: Fluent Emoji animated (Overlays 6)
+
+- **Source and licence.** [microsoft/fluentui-emoji-animated](https://github.com/microsoft/fluentui-emoji-animated), MIT, "Copyright (c) Microsoft Corporation" (`src/assets/stickers-animated/LICENSE-FluentEmojiAnimated.txt`). Pinned commit `daa0365c09795789ed2bc6e8b228c97736cb6669`. The upstream repo stores its 256 x 256 animated PNGs (28 to 73 frames of 42 ms, looping) in Git LFS; we do **not** use LFS. The originals are never committed. `scripts/build-animated-stickers.mjs` (dev time only, not shipped, no dependency: node, curl, python3 with Pillow and numpy) downloads the chosen files through media.githubusercontent.com, samples them and writes the small sheets, `catalogue.json`, `SOURCES.txt` (id to upstream path and commit) and the licence file. No credit is needed inside exported videos (MIT); the technology help page names "Fluent Emoji (animated)" with a link, README and `docs/sources-review.md` list it.
+- **Selection by popularity.** Data: the Unicode Consortium's emoji frequency list (https://home.unicode.org/emoji/emoji-frequency/, data labelled 2019 / Unicode 12.0, ranked by the median frequency across several sources; page read on 2026-10-11). It gives a rank and a group per emoji: group g is at most 1/2^g of the frequency of rank 1 (the "frequency" in the table). It is the only public list with a clear provenance that was reachable; it is old, so newer emoji are missing. Steps: (1) map the ranked emoji to the animated set by codepoints (variation selector ignored, default skin tone only): 495 of 1468 have an animation, 67 of the first 76 ranks; (2) drop what does not suit a school app (sexual or suggestive, drugs, alcohol, weapons or violence, offensive gestures, religious or political symbols): 🙏 (6), 😏 (47), 👊 (75) among the first ranks, others further down; (3) drop loops that jump or do not move, measured on the decoded frames at 64 px: the step from the last frame back to the first must be an ordinary step (difference last to first below 3 times the mean frame-to-frame difference) and the mean frame difference must be at least 0.6 of 255: 😘 (9), 💗 (45) and 💓 (50) jump, 💔 (16) hardly moves; (4) the first 60 remain, down to rank 76. The script checks (3) on every build.
+- **Our 88 stickers.** 20 of the 43 that have an animation are in the top 60 (their animation replaces the still one when the switch is on, `laugh` included; the style change is accepted). The other 23 stay still-only, among them rainbow (95), star (93), heart with arrow (105), cake (110), wave (139), dog (148) and the fox (690: rare, so no animation). Adding one later: put it in `scripts/animated-stickers.selection.json` and run the script; about 95 kB each.
+- **New stickers.** 40 popular animated emoji had no still sticker. Their Fluent 3D picture (microsoft/fluentui-emoji, same commit as before) was converted like the others (256 x 256, WebP q88) so every animated sticker has a still tile and a still fallback. They have German and English labels and sit in the new category 'Smileys' (25) or in 'Herzen & Gesten' (13), 'Tiere' (1) and 'Schule & Medien' (1) (the script's selection file names the category of each). The gallery now offers 128 picture stickers; ids never change.
+- **Files.** One WebP sprite sheet per animated sticker: at most 48 frames (stride 2 above 48), 128 px cells in a grid of ceil(sqrt(n)) columns, lossy with alpha (q62, alpha q80). Real total: 5.92 MB for 60 sheets (budget 6 MB; 41 to 207 kB each, mean 96 kB). The file name prefix `sticker-anim-` is what the service worker keys on.
+- **Model.** `StickerOverlay.animated?: boolean`, valid only with an `imageId` that has an animation (schema, ops and tests); absent means the still picture, so old projects are unchanged and no migration is needed. `OverlayPatch.animated` toggles it (one undo step).
+- **Loop semantics.** The catalogue stores per sticker `frames`, `frameMicros` and `loopMicros = frames * frameMicros` in whole microseconds. The frame shown at time t is `floor(((t - start) mod loop) * frames / loop)` in integer arithmetic (`animatedFrameIndex`, `core/render/stickerAnimations.ts`); the scene carries it as `OverlayLayer.frame`, so preview, paused preview and export pick the same cell. An animated sticker's length is always a whole number of loops: 3 loops when added (never fewer than one); a trim, a typed length or a start trim snaps to the nearest count (a start trim keeps the end); a move keeps the length. The video-end invariant (`placeSpan`, `moveSpan`, `fitSpan` in `core/timeline/fit.ts`, now with an optional loop) rounds **down** to whole loops, so the sticker ends a little before the video end and never mid-motion; only when less than one loop fits does it run to the video end. `fitToVideo` also normalises a hand-edited length. Switching the animation on shortens an existing item to whole loops (at least one); switching it off keeps the length. The timeline bar reads "Name · 3 ×".
+- **Engine.** One texture per sheet (uploaded once through a 2D canvas, like every overlay; LRU by pixels, 12 M pixels) and a sub-rectangle of texture coordinates per frame, inset by half a texel so filtering never reads the neighbour cell; the same quad and program as still stickers. Cheaper than rasterising the cell into an overlay texture on every frame change. Until the sheet is decoded, or when it cannot be loaded (offline and never cached), the still picture is drawn.
+- **Lazy loading.** Sheets are separate files, requested only (1) by a gallery tile that is on screen while 'Animated' is on, (2) when an animated sticker is added, (3) when a project with animated stickers is opened or restored (also undo), (4) awaited by `sceneFrames` before a paused preview frame and every export frame (`loadSceneStickers`). During playback the still picture is shown until the sheet is decoded, so nothing stalls. The asset URLs come from an eager `import.meta.glob(..., { query: '?url' })`, which only yields hashed strings; no sheet is fetched on the first page load (`e2e-animstickers.mjs` checks the request log).
+- **Service worker.** Sheets are in `dist` but not in the precache (the first install gains nothing). `serviceWorkerPlugin` injects their list; the worker serves them cache first from a cache of their own (`jellycut-animated-stickers`, not tied to a build because the names carry a content hash, pruned of files a new build no longer has) after the first successful load. Offline and not cached, the request fails and the still picture stays. `e2e-pwa.mjs` checks all of this.
+- **UI.** A switch 'Animiert' / 'Animated' in the sticker panel (kept in localStorage with try/catch, off by default) turns every tile that has an animation into its moving version; tiles with an animation always carry a small play badge and say so to screen readers. The tile animation is drawn from the sheet on a canvas with one shared frame loop and stands still with "reduce motion". For a selected sticker the same switch is in the properties, with a note that the length is whole loops. Tap with the switch on adds an animated sticker.
+
+| Emoji | Rank | Group | Id | Frames | Loop (ms) | kB |
+|---|---:|---:|---|---:|---:|---:|
+| 😂 | 1 | 0 | `laugh` | 48 | 2016 | 122 |
+| ❤️ | 2 | 0 | `heart` | 37 | 3066 | 77 |
+| 😍 | 3 | 1 | `heartEyes` | 36 | 3024 | 94 |
+| 🤣 | 4 | 1 | `rofl` (new) | 36 | 3024 | 109 |
+| 😊 | 5 | 2 | `smile` (new) | 36 | 3024 | 94 |
+| 💕 | 7 | 2 | `twoHearts` (new) | 26 | 2142 | 61 |
+| 😭 | 8 | 2 | `cry` | 37 | 3066 | 99 |
+| 👍 | 10 | 3 | `thumbsUp` | 26 | 2142 | 55 |
+| 😅 | 11 | 3 | `sweatSmile` (new) | 37 | 3066 | 104 |
+| 👏 | 12 | 3 | `clap` | 28 | 1176 | 76 |
+| 😁 | 13 | 3 | `beaming` (new) | 36 | 3024 | 97 |
+| 🔥 | 15 | 3 | `fire` | 48 | 2016 | 95 |
+| 💖 | 17 | 3 | `sparklingHeart` | 40 | 1680 | 82 |
+| 💙 | 18 | 3 | `blueHeart` (new) | 36 | 3024 | 76 |
+| 😢 | 19 | 3 | `cryingFace` (new) | 46 | 3864 | 132 |
+| 🤔 | 20 | 3 | `thinking` | 37 | 3066 | 106 |
+| 😆 | 21 | 3 | `laughSquint` (new) | 36 | 3024 | 101 |
+| 🙄 | 22 | 3 | `eyeRoll` (new) | 29 | 2394 | 76 |
+| 💪 | 23 | 3 | `muscle` | 36 | 3024 | 89 |
+| 😉 | 24 | 3 | `wink` | 28 | 2310 | 81 |
+| ☺️ | 25 | 3 | `smilingFace` (new) | 36 | 3024 | 102 |
+| 👌 | 26 | 3 | `okHand` | 35 | 2940 | 94 |
+| 🤗 | 27 | 3 | `hug` (new) | 37 | 3066 | 109 |
+| 💜 | 28 | 4 | `purpleHeart` (new) | 36 | 3024 | 74 |
+| 😔 | 29 | 4 | `pensive` (new) | 36 | 3024 | 93 |
+| 😎 | 30 | 4 | `cool` | 37 | 3066 | 101 |
+| 😇 | 31 | 4 | `halo` (new) | 36 | 3024 | 118 |
+| 🤦 | 33 | 4 | `facepalm` (new) | 37 | 3066 | 81 |
+| 🎉 | 34 | 4 | `partyPopper` | 31 | 2561 | 93 |
+| 💞 | 36 | 4 | `revolvingHearts` (new) | 47 | 1974 | 140 |
+| ✌️ | 37 | 4 | `victory` | 37 | 1554 | 89 |
+| 🤷 | 39 | 4 | `shrug` (new) | 37 | 3066 | 108 |
+| 😱 | 40 | 4 | `scream` | 28 | 2352 | 79 |
+| 😌 | 41 | 4 | `relieved` (new) | 37 | 3066 | 98 |
+| 🙌 | 43 | 4 | `raisedHands` (new) | 44 | 1848 | 138 |
+| 😋 | 44 | 4 | `yum` (new) | 37 | 3066 | 98 |
+| 💚 | 46 | 4 | `greenHeart` (new) | 36 | 3024 | 72 |
+| 💛 | 48 | 4 | `yellowHeart` (new) | 36 | 3024 | 76 |
+| 🙂 | 49 | 4 | `slightSmile` (new) | 37 | 3066 | 92 |
+| 🤩 | 51 | 4 | `starStruck` | 36 | 2981 | 107 |
+| 😄 | 52 | 4 | `grinEyes` (new) | 36 | 3024 | 98 |
+| 😀 | 53 | 4 | `grin` | 28 | 2352 | 78 |
+| 🖤 | 54 | 4 | `blackHeart` (new) | 36 | 3024 | 67 |
+| 😃 | 55 | 4 | `grinBig` (new) | 36 | 3024 | 101 |
+| 💯 | 56 | 4 | `hundred` | 48 | 2016 | 207 |
+| 🙈 | 57 | 4 | `seeNoEvil` (new) | 35 | 2940 | 96 |
+| 👇 | 58 | 4 | `pointDown` (new) | 47 | 1974 | 100 |
+| 🎶 | 59 | 4 | `notes` (new) | 36 | 3024 | 114 |
+| 😒 | 60 | 4 | `unamused` (new) | 48 | 4032 | 119 |
+| 🤭 | 61 | 4 | `giggle` (new) | 37 | 3066 | 98 |
+| ❣️ | 62 | 4 | `heartExclamation` (new) | 36 | 3024 | 71 |
+| 😜 | 64 | 5 | `winkTongue` (new) | 28 | 2310 | 82 |
+| 👀 | 66 | 5 | `eyes` (new) | 25 | 2058 | 41 |
+| 😪 | 67 | 5 | `sleepy` (new) | 36 | 3024 | 96 |
+| 🙋 | 70 | 5 | `raiseHand` (new) | 36 | 3024 | 117 |
+| 😞 | 71 | 5 | `disappointed` (new) | 46 | 3822 | 116 |
+| 😩 | 72 | 5 | `weary` (new) | 37 | 3066 | 96 |
+| 😡 | 73 | 5 | `angry` (new) | 36 | 3024 | 102 |
+| 🤪 | 74 | 5 | `zany` (new) | 37 | 3066 | 108 |
+| ☀️ | 76 | 5 | `sun` | 36 | 3024 | 85 |
+
+The table lists all 60 (rank and group from the Unicode list; frames and loop from the sampled sheet; kB of the sheet). "new" marks the 40 stickers added with this step.

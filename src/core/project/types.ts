@@ -148,6 +148,8 @@ export interface StickerOverlay extends OverlayBase {
   shape?: StickerShapeId
   /** Id in the picture catalog (core/render/stickerImages). */
   imageId?: string
+  /** Plays the animation of `imageId` (core/render/stickerAnimations). Only set for ids that have one; absent means the still picture. */
+  animated?: boolean
   /** #RRGGBB fill of a vector sticker. */
   color?: string
   /** #RRGGBB outline of a vector sticker, or null for none. */

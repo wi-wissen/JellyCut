@@ -3,12 +3,26 @@ import { defineComponent } from 'vue'
 import { mapActions, mapState } from 'pinia'
 import ChoiceTile from './ChoiceTile.vue'
 import ColorPicker from './ColorPicker.vue'
+import ToggleSwitch from './ToggleSwitch.vue'
+import StickerAnimation from './StickerAnimation.vue'
 import { allMessages } from '../../i18n'
 import { useEditorStore } from '../../stores/editor'
 import { stickerImageUrl } from '../../../engine/render/stickerImages'
 import { STICKER_IMAGES, STICKER_IMAGE_CATEGORIES } from '../../../core/render/stickerImages'
 import { STICKER_SHAPES, type StickerShapeId } from '../../../core/render/stickerShapes'
+import { animatedSticker } from '../../../core/render/stickerAnimations'
 import { BASIC_STICKER_IDS } from '../../../core/timeline/overlayCatalog'
+
+/** The 'Animated' switch is kept per browser; storage can be blocked, then it simply starts off. */
+const ANIMATED_KEY = 'jellycut.animatedStickers'
+
+function readAnimatedChoice(): boolean {
+  try {
+    return localStorage.getItem(ANIMATED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 type Tab = (typeof STICKER_IMAGE_CATEGORIES)[number] | 'basics'
 const TABS: readonly Tab[] = [...STICKER_IMAGE_CATEGORIES, 'basics']
@@ -39,9 +53,9 @@ function lookup(tree: MessageTree, path: string): string {
  */
 export default defineComponent({
   name: 'StickerPanel',
-  components: { ChoiceTile, ColorPicker },
+  components: { ChoiceTile, ColorPicker, ToggleSwitch, StickerAnimation },
   data() {
-    return { tab: 'faces' as Tab, query: '', tabs: TABS }
+    return { tab: 'faces' as Tab, query: '', tabs: TABS, animatedOn: readAnimatedChoice() }
   },
   computed: {
     ...mapState(useEditorStore, ['overlayColor']),
@@ -81,8 +95,20 @@ export default defineComponent({
     shapePath(id: string) {
       return STICKER_SHAPES.find((s) => s.id === id)!
     },
+    /** A tile has a moving version when the sticker has an animation (not for shapes). */
+    hasAnimation(entry: Entry): boolean {
+      return entry.kind === 'image' && animatedSticker(entry.id) !== null
+    },
+    setAnimated(): void {
+      this.animatedOn = !this.animatedOn
+      try {
+        localStorage.setItem(ANIMATED_KEY, this.animatedOn ? '1' : '0')
+      } catch {
+        // Not stored: the choice only lasts until the page closes.
+      }
+    },
     add(entry: Entry): void {
-      if (entry.kind === 'image') this.addImageStickerAtPlayhead(entry.id)
+      if (entry.kind === 'image') this.addImageStickerAtPlayhead(entry.id, this.animatedOn && this.hasAnimation(entry))
       else this.addVectorStickerAtPlayhead(entry.id as StickerShapeId)
     },
     pick(tab: Tab): void {
@@ -107,6 +133,15 @@ export default defineComponent({
   <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
     <h2 class="shrink-0 text-sm font-bold">{{ $t('tabs.sticker') }}</h2>
     <p class="shrink-0 text-xs leading-relaxed text-muted">{{ $t('overlays.stickerHint') }}</p>
+
+    <ToggleSwitch
+      class="shrink-0"
+      :label="$t('stickers.animated.switch')"
+      :state-text="animatedOn ? $t('timeline.on') : $t('timeline.off')"
+      :checked="animatedOn"
+      data-animated-switch
+      @toggle="setAnimated"
+    />
 
     <input
       v-model="query"
@@ -154,7 +189,9 @@ export default defineComponent({
         :key="`${entry.kind}-${entry.id}`"
         :label="label(entry)"
         aspect="aspect-square"
+        :description="hasAnimation(entry) ? $t('stickers.animated.badge') : ''"
         :data-sticker="entry.kind === 'image' ? entry.id : `shape-${entry.id}`"
+        :data-has-animation="hasAnimation(entry) ? 'true' : undefined"
         @choose="add(entry)"
       >
         <img
@@ -168,7 +205,17 @@ export default defineComponent({
           draggable="false"
           class="absolute inset-0 m-auto size-[78%] object-contain"
         />
-        <span v-else class="absolute inset-0 flex items-center justify-center p-[22%]" :style="{ color: overlayColor }" aria-hidden="true">
+        <StickerAnimation v-if="animatedOn && hasAnimation(entry)" :id="entry.id" class="absolute inset-0 m-auto size-[78%] object-contain" />
+        <span
+          v-if="hasAnimation(entry)"
+          class="absolute left-1.5 top-1.5 flex size-5 items-center justify-center rounded-full bg-fill text-fill-fg shadow"
+          :title="$t('stickers.animated.badge')"
+          data-animated-badge
+          aria-hidden="true"
+        >
+          <svg viewBox="0 0 12 12" class="size-2.5" fill="currentColor"><path d="M3.5 2.2v7.6a.6.6 0 0 0 .9.5l6-3.8a.6.6 0 0 0 0-1l-6-3.8a.6.6 0 0 0-.9.5Z" /></svg>
+        </span>
+        <span v-if="entry.kind === 'shape'" class="absolute inset-0 flex items-center justify-center p-[22%]" :style="{ color: overlayColor }" aria-hidden="true">
           <svg viewBox="0 0 24 24" class="size-full">
             <path
               :d="shapePath(entry.id).d"

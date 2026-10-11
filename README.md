@@ -30,7 +30,7 @@ src/platform/   File System Access (project files, work folder), IndexedDB key-v
 src/ui/         components/ and views/ (Vue), stores/ (Pinia), help/ and site/ (static pages), landing/, pwa/, styles/
 src/app/, src/landing/, src/help/   entry points of the editor, the start page and the help pages
 src/locales/    de.json and en.json (editor), pages/ (one file per page and language)
-src/assets/     logo, Fluent Emoji stickers (with licence and sources), help photos
+src/assets/     logo, Fluent Emoji stickers and animated sticker sheets (with licences and sources), help photos
 ```
 
 Preview and export draw through the same `Scene` and the same `Compositor`, so what you see is what you export. All times are whole integer microseconds (`src/core/time.ts`). Cuts land on real source timestamps.
@@ -69,6 +69,7 @@ Nothing is uploaded. Videos, pictures and projects stay on the device:
 - Fonts: Bebas Neue, Caveat, DM Mono, Fredoka, Inter, Lora, Pacifico, Sora, self-hosted through Fontsource, SIL Open Font License 1.1.
 - Photos in `src/assets/photos` (sea turtle, reef background, cut-out turtle): generated with an AI image model (Google Gemini image model via OpenRouter) for this project; no third-party artwork is included. Check the provider's output terms before a commercial release.
 - Sticker pictures: [Fluent Emoji](https://github.com/microsoft/fluentui-emoji), 3D style, by Microsoft, MIT licence. The licence text with the copyright notice is `src/assets/stickers/LICENSE-FluentEmoji.txt`; the source of each file is listed in `src/assets/stickers/SOURCES.txt`. The technology help page credits them.
+- Animated stickers: [Fluent Emoji (animated)](https://github.com/microsoft/fluentui-emoji-animated) by Microsoft, MIT licence, pinned commit `daa0365c09795789ed2bc6e8b228c97736cb6669`. Only the small WebP sprite sheets in `src/assets/stickers-animated` are in this repo (not the Git LFS originals); the licence text is `src/assets/stickers-animated/LICENSE-FluentEmojiAnimated.txt`, the source of each file is in `SOURCES.txt` there. `node scripts/build-animated-stickers.mjs` rebuilds them (dev time only; needs curl and python3 with Pillow and numpy, adds no dependency; see "Animated stickers" in `docs/decisions.md`).
 - Help photos in `src/assets/photos`: origin and licence still to be recorded (open item in the release checklist).
 - Libraries (licences read from `node_modules`): Mediabunny MPL-2.0, lucide-vue-next ISC, Vue, Vue I18n, Pinia, Tailwind, Vite and Vitest MIT, Playwright (development only) Apache-2.0. The technology help page names them.
 
@@ -126,6 +127,7 @@ The scripts in `scripts/e2e-*.mjs` drive Chromium with Playwright (`playwright-c
 | `e2e-overlays3.mjs` | 5250 | vector stickers, directions, stacking, marker, picture timing |
 | `e2e-zorder.mjs` | 5340 | true stacking order of areas and other overlays |
 | `e2e-stickers.mjs` | 5360 | picture stickers: gallery, preview and export pixels, save and load |
+| `e2e-animstickers.mjs` | 5390 | animated stickers: no sheet on first load, lazy sheets, whole loops, loop pixels in preview and export, snapping, save and load, fallback |
 | `e2e-design.mjs` | 5310 | design tabs: shared sections, no position fields, arrow keys (`E2E_PORT`) |
 | `e2e-fitend.mjs` | 5380 | overlays, texts and music end with the video: new items, drag, trim, delete the last clip, undo |
 | **Export** | | |
@@ -141,7 +143,7 @@ The scripts in `scripts/e2e-*.mjs` drive Chromium with Playwright (`playwright-c
 | `e2e-credits.mjs` | 5175 | credits dialog, licence texts, sources guide links |
 | **Production build** (after `npm run build`) | | |
 | `e2e-build.mjs` | 5177 | smoke test of `dist/`: real pages, relative paths, worker export |
-| `e2e-pwa.mjs` | 5260 | manifest, service worker, update toast, offline use |
+| `e2e-pwa.mjs` | 5260 | manifest, service worker, update toast, offline use, animated sheets not precached but cached on use |
 
 `(E2E_PORT)` in the table means the port can be changed with the environment variable `E2E_PORT`; the default is the port shown.
 

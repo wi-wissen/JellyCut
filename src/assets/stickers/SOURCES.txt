@@ -88,3 +88,43 @@ globe	Globe showing europe-africa
 rocket	Rocket
 magnifier	Magnifying glass tilted left
 school	School
+rofl	Rolling on the floor laughing
+smile	Smiling face with smiling eyes
+twoHearts	Two hearts
+sweatSmile	Grinning face with sweat
+beaming	Beaming face with smiling eyes
+blueHeart	Blue heart
+cryingFace	Crying face
+laughSquint	Grinning squinting face
+eyeRoll	Face with rolling eyes
+smilingFace	Smiling face
+hug	Hugging face
+purpleHeart	Purple heart
+pensive	Pensive face
+halo	Smiling face with halo
+facepalm	Person facepalming/Default
+revolvingHearts	Revolving hearts
+shrug	Person shrugging/Default
+relieved	Relieved face
+raisedHands	Raising hands/Default
+yum	Face savoring food
+greenHeart	Green heart
+yellowHeart	Yellow heart
+slightSmile	Slightly smiling face
+grinEyes	Grinning face with smiling eyes
+blackHeart	Black heart
+grinBig	Grinning face with big eyes
+seeNoEvil	See-no-evil monkey
+pointDown	Backhand index pointing down/Default
+notes	Musical notes
+unamused	Unamused face
+giggle	Face with hand over mouth
+heartExclamation	Heart exclamation
+winkTongue	Winking face with tongue
+eyes	Eyes
+sleepy	Sleepy face
+raiseHand	Person raising hand/Default
+disappointed	Disappointed face
+weary	Weary face
+angry	Pouting face
+zany	Zany face

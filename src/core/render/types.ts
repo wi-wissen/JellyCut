@@ -71,6 +71,8 @@ export interface OverlayLayer extends OverlayPose {
   alpha: number
   /** Source time of a picture-in-picture video frame (microseconds); 0 for everything else. */
   srcTime: Micros
+  /** Cell of the sprite sheet to draw for an animated sticker (core/render/stickerAnimations); absent for everything else. */
+  frame?: number
 }
 
 /** Everything needed to draw one output frame. Pure data, identical for preview and export. */

@@ -19,6 +19,7 @@ import { formatNumber } from '../numberFormat'
 import type { ItemRef } from '../../core/timeline/ops'
 import { collectSnapPoints, snapTime } from '../../core/timeline/snap'
 import { OVERLAY_ROW_LIMIT, packRows } from '../../core/timeline/overlayRows'
+import { itemLoopMicros, loopCount } from '../../core/render/stickerAnimations'
 import {
   clampPxPerSecond,
   DEFAULT_PX_PER_SECOND,
@@ -499,7 +500,13 @@ export default defineComponent({
     },
     /** Short label of an overlay bar: the emoji for stickers, the kind for shapes and strokes. */
     overlayName(item: OverlayItem): string {
-      if (item.kind === 'sticker') return item.imageId !== undefined ? this.$t(`stickers.image.${item.imageId}`) : item.emoji ?? this.$t(`overlays3.sticker.${item.shape}`)
+      if (item.kind === 'sticker' && item.imageId !== undefined) {
+        const name = this.$t(`stickers.image.${item.imageId}`)
+        // An animated sticker is a whole number of loops long; the bar says how many.
+        const loop = itemLoopMicros(item)
+        return loop === undefined ? name : `${name} · ${this.$t('stickers.loops', { count: loopCount(item.duration, loop) })}`
+      }
+      if (item.kind === 'sticker') return item.emoji ?? this.$t(`overlays3.sticker.${item.shape}`)
       if (item.kind === 'shape') return this.$t(`overlays.shape.${item.shape}`)
       if (item.kind === 'region') return this.$t(`overlays2.effects.${item.effect}`)
       if (item.kind === 'media') return this.project.assets.find((a) => a.id === item.assetId)?.name ?? ''

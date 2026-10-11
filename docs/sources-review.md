@@ -42,7 +42,8 @@ For every site, read the licence or terms page itself and confirm the statements
 - [ ] German and English texts say the same thing.
 - [ ] The school note (rules also apply when publishing outside school) still reflects the school's policy.
 - [ ] The "what not to use" list and the rights notes live on `/help/rights/`. Check them against the same sources (no legal advice claims).
-- [ ] Sticker artwork: https://github.com/microsoft/fluentui-emoji is still MIT (LICENSE file text unchanged), and `/help/tech/` still credits it.
+- [ ] Sticker artwork: https://github.com/microsoft/fluentui-emoji and https://github.com/microsoft/fluentui-emoji-animated (pinned commit in `scripts/build-animated-stickers.mjs`) are still MIT (LICENSE file text unchanged), and `/help/tech/` still credits both.
+- [ ] Emoji popularity: the selection of animated stickers follows the Unicode Consortium's emoji frequency list (https://home.unicode.org/emoji/emoji-frequency/, data of 2019). Check the page for a newer list when stickers are added.
 - [ ] `/help/tech/`: each library or browser link still points to the project's official site, package homepage or MDN, and the version statements still match `package.json`.
 
 ## 5. Technical

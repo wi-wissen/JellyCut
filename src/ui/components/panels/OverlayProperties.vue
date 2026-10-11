@@ -5,6 +5,7 @@ import BackLink from './BackLink.vue'
 import RangeField from './RangeField.vue'
 import ColorPicker from './ColorPicker.vue'
 import ToggleSwitch from './ToggleSwitch.vue'
+import StickerAnimation from './StickerAnimation.vue'
 import DesignSection from './design/DesignSection.vue'
 import TimeFields from './design/TimeFields.vue'
 import AnimationFields from './design/AnimationFields.vue'
@@ -16,7 +17,9 @@ import type { OverlayPatch } from '../../../core/timeline/overlayOps'
 import { REFERENCE_HEIGHT, REGION_EFFECTS, REGION_SHAPES, SHAPE_KINDS } from '../../../core/timeline/overlayCatalog'
 import type { Asset } from '../../../core/project/types'
 import { STICKER_SHAPES } from '../../../core/render/stickerShapes'
+import { formatNumber } from '../../numberFormat'
 import { stickerImageUrl } from '../../../engine/render/stickerImages'
+import { animatedSticker, type AnimatedSticker } from '../../../core/render/stickerAnimations'
 import { PICTURE_SHAPES, pictureShapeOf, pictureShapePatch, type PictureShape } from '../../../core/timeline/mediaShape'
 
 const DEFAULT_OUTLINE = '#14121f'
@@ -29,7 +32,7 @@ const SPEED_MAX = 200
  */
 export default defineComponent({
   name: 'OverlayProperties',
-  components: { BackLink, RangeField, ColorPicker, ToggleSwitch, DesignSection, TimeFields, AnimationFields, OrderFields, ItemActions },
+  components: { BackLink, RangeField, ColorPicker, ToggleSwitch, StickerAnimation, DesignSection, TimeFields, AnimationFields, OrderFields, ItemActions },
   props: {
     item: { type: Object as PropType<OverlayItem>, required: true }
   },
@@ -60,6 +63,18 @@ export default defineComponent({
       if (item.kind === 'region') return this.$t('overlays2.regionHeader', { name: this.$t(`overlays2.effects.${item.effect}`) })
       if (item.kind === 'media') return this.$t('overlays2.pictureHeader', { name: this.asset?.name ?? '' })
       return this.$t('overlays.header.stroke')
+    },
+    /** The animation of a picture sticker that has one, whether or not it is switched on. */
+    animation(): AnimatedSticker | null {
+      const item = this.item
+      return item.kind === 'sticker' ? animatedSticker(item.imageId) : null
+    },
+    animatedOn(): boolean {
+      const item = this.item
+      return item.kind === 'sticker' && item.animated === true
+    },
+    loopSeconds(): string {
+      return this.animation ? formatNumber(Math.round(this.animation.loopMicros / 100_000) / 10) : ''
     },
     /** A vector sticker (not a legacy emoji) can change its shape and outline. */
     isVectorSticker(): boolean {
@@ -155,13 +170,10 @@ export default defineComponent({
     <DesignSection :title="$t('design.content')" first>
       <!-- Stickers: the shape picker and the outline. Legacy emoji stickers only show their emoji. -->
       <template v-if="item.kind === 'sticker'">
-        <img
-          v-if="item.imageId !== undefined"
-          :src="imageUrl(item.imageId)"
-          alt=""
-          class="size-16 object-contain"
-          aria-hidden="true"
-        />
+        <span v-if="item.imageId !== undefined" class="relative block size-16" aria-hidden="true">
+          <img :src="imageUrl(item.imageId)" alt="" class="absolute inset-0 size-full object-contain" />
+          <StickerAnimation v-if="animatedOn" :id="item.imageId" class="absolute inset-0 size-full object-contain" />
+        </span>
         <p v-else-if="!isVectorSticker" class="text-2xl leading-none" aria-hidden="true">{{ item.emoji }}</p>
         <template v-else>
           <div class="grid grid-cols-6 gap-1.5" role="group" :aria-label="$t('tabs.sticker')">
@@ -202,6 +214,16 @@ export default defineComponent({
             @update="(hex: string) => patch({ outline: hex }, 'outline')"
             @commit="commit"
           />
+        </template>
+        <template v-if="animation">
+          <ToggleSwitch
+            :label="$t('stickers.animatedFor')"
+            :state-text="animatedOn ? $t('timeline.on') : $t('timeline.off')"
+            :checked="animatedOn"
+            data-animated-switch
+            @toggle="patch({ animated: !animatedOn })"
+          />
+          <p v-if="animatedOn" class="text-[11px] leading-snug text-muted">{{ $t('stickers.loopInfo', { seconds: loopSeconds }) }}</p>
         </template>
       </template>
 

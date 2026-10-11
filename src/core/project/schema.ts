@@ -3,6 +3,7 @@ import type { FormatRatio, Project } from './types'
 import { CREDIT_FIELDS, CREDIT_MAX_LENGTH, isHttpUrl } from '../credits/credits'
 import { canonicalAnimation } from '../render/animations'
 import { isStickerImageId } from '../render/stickerImages'
+import { animatedSticker } from '../render/stickerAnimations'
 import { stickerShape } from '../render/stickerShapes'
 
 export const CURRENT_VERSION = 1
@@ -338,6 +339,9 @@ function validateOverlays(value: unknown, path: string, errors: Errors): void {
         need(errors, typeof o.shape === 'string' && stickerShape(o.shape) !== null, `${p}.shape`, 'must be a known sticker shape (or give an emoji or imageId)')
         need(errors, typeof o.color === 'string' && HEX_COLOR.test(o.color), `${p}.color`, 'must be #RRGGBB')
         need(errors, o.outline === undefined || o.outline === null || (typeof o.outline === 'string' && HEX_COLOR.test(o.outline)), `${p}.outline`, 'must be #RRGGBB or null')
+      }
+      if (o.animated !== undefined) {
+        need(errors, typeof o.animated === 'boolean' && animatedSticker(typeof o.imageId === 'string' ? o.imageId : undefined) !== null, `${p}.animated`, 'is only valid for a picture sticker whose id has an animation')
       }
       need(errors, isPositiveNumber(o.size), `${p}.size`, POSITIVE_MSG)
     } else if (o.kind === 'shape') {

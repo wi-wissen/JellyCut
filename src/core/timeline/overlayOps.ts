@@ -11,6 +11,7 @@ import type {
 import type { Micros } from '../time'
 import { canonicalAnimation, type InAnimation, type OutAnimation } from '../render/animations'
 import { isStickerImageId } from '../render/stickerImages'
+import { DEFAULT_ANIMATED_LOOPS, animatedSticker, itemLoopMicros, loopCount } from '../render/stickerAnimations'
 import { stickerShape, type StickerShapeId } from '../render/stickerShapes'
 import {
   DEFAULT_MEDIA_BORDER_COLOR,
@@ -29,7 +30,7 @@ import {
   SHAPE_KINDS,
   type LineWidthId
 } from './overlayCatalog'
-import { editedSpan, fitSpan, placeSpan, videoEnd, type Span } from './fit'
+import { editedSpan, fitSpan, placeSpan, videoEnd, wholeLoops, type Span } from './fit'
 
 export const MIN_OVERLAY_DURATION: Micros = 100_000
 const MIN_SCALE = 0.1
@@ -83,12 +84,14 @@ export interface OverlayPatch {
   borderColor?: string
   srcIn?: Micros
   speed?: number
+  /** Picture stickers that have an animation: plays it (true) or shows the still picture (false). */
+  animated?: boolean
 }
 
 /** Fields every overlay has, and the fields each kind adds. Anything else rejects a patch. */
 const COMMON_FIELDS: readonly (keyof OverlayPatch)[] = ['start', 'duration', 'pos', 'scale', 'rotation', 'opacity', 'animIn', 'animOut', 'loop']
 const KIND_FIELDS: Record<OverlayItem['kind'], readonly (keyof OverlayPatch)[]> = {
-  sticker: ['size', 'shape', 'color', 'outline'],
+  sticker: ['size', 'shape', 'color', 'outline', 'animated'],
   shape: ['shape', 'width', 'height', 'lineWidth', 'color'],
   stroke: ['lineWidth', 'color', 'cap'],
   region: ['shape', 'width', 'height', 'effect', 'strength', 'radius'],
@@ -148,19 +151,33 @@ export function addVectorSticker(
   return { ...project, overlays: [...project.overlays, item] }
 }
 
-/** Adds a picture sticker of the catalog (core/render/stickerImages). Refused for unknown ids and reused ids. */
-export function addImageSticker(project: Project, newId: string, start: Micros, imageId: string, pos = { x: 0.5, y: 0.5 }): Project {
+/**
+ * Adds a picture sticker of the catalog (core/render/stickerImages). Refused for unknown ids and reused ids.
+ * `animated` plays the sticker's animation (ignored for ids without one); its length is then whole loops.
+ */
+export function addImageSticker(
+  project: Project,
+  newId: string,
+  start: Micros,
+  imageId: string,
+  pos = { x: 0.5, y: 0.5 },
+  animated = false
+): Project {
   if (!validId(project, newId) || !Number.isFinite(start) || !isStickerImageId(imageId)) return project
+  const animation = animated ? animatedSticker(imageId) : null
   const item: StickerOverlay = {
     id: newId,
     kind: 'sticker',
-    ...placedAt(project, start),
+    ...(animation
+      ? placeSpan(start, DEFAULT_ANIMATED_LOOPS * animation.loopMicros, videoEnd(project), animation.loopMicros)
+      : placedAt(project, start)),
     pos: clampPos(pos),
     scale: 1,
     rotation: 0,
     size: DEFAULT_IMAGE_STICKER_SIZE,
     imageId
   }
+  if (animation) item.animated = true
   return { ...project, overlays: [...project.overlays, item] }
 }
 
@@ -304,10 +321,30 @@ export function updateOverlay(project: Project, id: string, patch: OverlayPatch)
   if (!target) return project
   const next = applyPatch(target, patch)
   if (!next) return project
-  const span = editedSpan(next, patch, videoEnd(project))
+  const span = patchedSpan(target, next, patch, videoEnd(project))
   const fitted = { ...next, ...span } as OverlayItem
   const overlays = project.overlays.map((o) => (o.id === id ? fitted : o))
   return JSON.stringify(overlays) === JSON.stringify(project.overlays) ? project : { ...project, overlays }
+}
+
+/**
+ * Span of an item after a patch. Animated stickers always end up with whole loops: a trim or typed length snaps to
+ * the nearest count, a start trim keeps the end, and switching the animation on shortens to whole loops.
+ */
+function patchedSpan(before: OverlayItem, next: OverlayItem, patch: OverlayPatch, end: Micros): Span {
+  const loop = itemLoopMicros(next)
+  if (loop === undefined) return editedSpan(next, patch, end)
+  const timing = patch.start !== undefined || patch.duration !== undefined
+  if (itemLoopMicros(before) === undefined && !timing) {
+    return fitSpan(next.start, Math.max(loop, wholeLoops(next.duration, loop)), end, loop)
+  }
+  if (patch.start !== undefined && patch.duration !== undefined) {
+    const last = next.start + next.duration
+    const count = Math.min(loopCount(next.duration, loop), Math.max(1, Math.floor(last / loop)))
+    const duration = count * loop
+    return fitSpan(Math.max(0, last - duration), duration, end, loop)
+  }
+  return editedSpan(next, patch, end, loop)
 }
 
 export function moveOverlay(project: Project, id: string, newStart: Micros): Project {
@@ -338,7 +375,7 @@ export function duplicateOverlay(project: Project, id: string, newId: string): P
   const original = project.overlays[index]
   if (!original) return project
   // Items are never mutated, so the copy may share the points array.
-  const span = fitSpan(original.start + original.duration, original.duration, videoEnd(project))
+  const span = fitSpan(original.start + original.duration, original.duration, videoEnd(project), itemLoopMicros(original))
   const copy: OverlayItem = { ...original, id: newId, ...span, pos: { ...original.pos } }
   return { ...project, overlays: [...project.overlays.slice(0, index + 1), copy, ...project.overlays.slice(index + 1)] }
 }
@@ -460,6 +497,15 @@ function applyPatch(item: OverlayItem, patch: OverlayPatch): OverlayItem | null 
   if (patch.speed !== undefined) {
     if (next.kind !== 'media' || !Number.isFinite(patch.speed)) return null
     next.speed = clamp(patch.speed, MIN_SPEED, MAX_SPEED)
+  }
+  if (patch.animated !== undefined) {
+    if (next.kind !== 'sticker' || typeof patch.animated !== 'boolean') return null
+    if (patch.animated) {
+      if (!animatedSticker(next.imageId)) return null
+      next.animated = true
+    } else {
+      delete next.animated
+    }
   }
   if (patch.effect !== undefined) {
     if (next.kind !== 'region' || !REGION_EFFECTS.includes(patch.effect)) return null

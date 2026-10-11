@@ -1,0 +1,62 @@
+# Sticker id -> file in https://github.com/microsoft/fluentui-emoji-animated, commit daa0365c09795789ed2bc6e8b228c97736cb6669
+# Animated PNG (256 x 256) -> at most 48 frames, 128 px cells, one lossy WebP sheet (quality 62). Built by scripts/build-animated-stickers.mjs.
+laugh	assets/Face with tears of joy/animated/face_with_tears_of_joy_animated.png
+heart	assets/Red heart/animated/red_heart_animated.png
+heartEyes	assets/Smiling face with heart-eyes/animated/smiling_face_with_heart-eyes_animated.png
+rofl	assets/Rolling on the floor laughing/animated/rolling_on_the_floor_laughing_animated.png
+smile	assets/Smiling face with smiling eyes/animated/smiling_face_with_smiling_eyes_animated.png
+twoHearts	assets/Two hearts/animated/two_hearts_animated.png
+cry	assets/Loudly crying face/animated/loudly_crying_face_animated.png
+thumbsUp	assets/Thumbs up/Default/animated/thumbs_up_animated_default.png
+sweatSmile	assets/Grinning face with sweat/animated/grinning_face_with_sweat_animated.png
+clap	assets/Clapping hands/Default/animated/clapping_hands_animated_default.png
+beaming	assets/Beaming face with smiling eyes/animated/beaming_face_with_smiling_eyes_animated.png
+fire	assets/Fire/animated/fire_animated.png
+sparklingHeart	assets/Sparkling heart/animated/sparkling_heart_animated.png
+blueHeart	assets/Blue heart/animated/blue_heart_animated.png
+cryingFace	assets/Crying face/animated/crying_face_animated.png
+thinking	assets/Thinking face/animated/thinking_face_animated.png
+laughSquint	assets/Grinning squinting face/animated/grinning_squinting_face_animated.png
+eyeRoll	assets/Face with rolling eyes/animated/face_with_rolling_eyes_animated.png
+muscle	assets/Flexed biceps/Default/animated/flexed_biceps_animated_default.png
+wink	assets/Winking face/animated/winking_face_animated.png
+smilingFace	assets/Smiling face/animated/smiling_face_animated.png
+okHand	assets/Ok hand/Default/animated/ok_hand_animated_default.png
+hug	assets/Hugging face/animated/hugging_face_animated.png
+purpleHeart	assets/Purple heart/animated/purple_heart_animated.png
+pensive	assets/Pensive face/animated/pensive_face_animated.png
+cool	assets/Smiling face with sunglasses/animated/smiling_face_with_sunglasses_animated.png
+halo	assets/Smiling face with halo/animated/smiling_face_with_halo_animated.png
+facepalm	assets/Person facepalming/Default/animated/person_facepalming_animated_default.png
+partyPopper	assets/Party popper/animated/party_popper_animated.png
+revolvingHearts	assets/Revolving hearts/animated/revolving_hearts_animated.png
+victory	assets/Victory hand/Default/animated/victory_hand_animated_default.png
+shrug	assets/Person shrugging/Default/animated/person_shrugging_animated_default.png
+scream	assets/Face screaming in fear/animated/face_screaming_in_fear_animated.png
+relieved	assets/Relieved face/animated/relieved_face_animated.png
+raisedHands	assets/Raising hands/Default/animated/raising_hands_animated_default.png
+yum	assets/Face savoring food/animated/face_savoring_food_animated.png
+greenHeart	assets/Green heart/animated/green_heart_animated.png
+yellowHeart	assets/Yellow heart/animated/yellow_heart_animated.png
+slightSmile	assets/Slightly smiling face/animated/slightly_smiling_face_animated.png
+starStruck	assets/Star-struck/animated/star-struck_animated.png
+grinEyes	assets/Grinning face with smiling eyes/animated/grinning_face_with_smiling_eyes_animated.png
+grin	assets/Grinning face/animated/grinning_face_animated.png
+blackHeart	assets/Black heart/animated/black_heart_animated.png
+grinBig	assets/Grinning face with big eyes/animated/grinning_face_with_big_eyes_animated.png
+hundred	assets/Hundred points/animated/hundred_points_animated.png
+seeNoEvil	assets/See-no-evil monkey/animated/see-no-evil_monkey_animated.png
+pointDown	assets/Backhand index pointing down/Default/animated/backhand_index_pointing_down_animated_default.png
+notes	assets/Musical notes/animated/musical_notes_animated.png
+unamused	assets/Unamused face/animated/unamused_face_animated.png
+giggle	assets/Face with hand over mouth/animated/face_with_hand_over_mouth_animated.png
+heartExclamation	assets/Heart exclamation/animated/heart_exclamation_animated.png
+winkTongue	assets/Winking face with tongue/animated/winking_face_with_tongue_animated.png
+eyes	assets/Eyes/animated/eyes_animated.png
+sleepy	assets/Sleepy face/animated/sleepy_face_animated.png
+raiseHand	assets/Person raising hand/Default/animated/person_raising_hand_animated_default.png
+disappointed	assets/Disappointed face/animated/disappointed_face_animated.png
+weary	assets/Weary face/animated/weary_face_animated.png
+angry	assets/Pouting face/animated/pouting_face_animated.png
+zany	assets/Zany face/animated/zany_face_animated.png
+sun	assets/Sun/animated/sun_animated.png

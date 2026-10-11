@@ -7,8 +7,10 @@ import { isDrawnOverlay, overlayBox, regionBlurSigma, regionCellSize } from '../
 import { isIdentity, type Grade } from '../../core/filters/filters'
 import { FRAGMENT_BLUR, FRAGMENT_COPY, FRAGMENT_FRAME, FRAGMENT_GRADED_FRAME, FRAGMENT_MEDIA, FRAGMENT_MIX, FRAGMENT_REGION, FRAGMENT_TEXT } from './shaders'
 import { Program, createTarget, createTexture, type Target } from './gl'
-import { parseCssColor, rasterizeText, textPixelSize, type Rgb } from './text'
+import { createCanvas, parseCssColor, rasterizeText, textPixelSize, type Rgb } from './text'
 import { overlayRasterKey, rasterizeOverlay, type DrawnOverlay } from './overlays'
+import { animatedSheetBitmap } from './stickerAnimations'
+import { animatedSticker, sheetCell, type AnimatedSticker } from '../../core/render/stickerAnimations'
 
 /** Anything texImage2D accepts that also reports its size. */
 export type FrameSource = CanvasImageSource & { width?: number; height?: number }
@@ -23,6 +25,8 @@ const TEXT_CACHE_LIMIT = 96
 const OVERLAY_CACHE_LIMIT = 64
 /** About 64 MB of RGBA textures for overlays. */
 const OVERLAY_PIXEL_BUDGET = 16_000_000
+/** Sprite sheets of animated stickers: about 48 MB of RGBA textures (a sheet is up to 896 x 896 pixels). */
+const SHEET_PIXEL_BUDGET = 12_000_000
 
 type Vec2 = readonly [number, number]
 type Quad = readonly [Vec2, Vec2, Vec2, Vec2]
@@ -150,6 +154,9 @@ export class Compositor {
   private readonly textTextures = new Map<string, FrameTexture>()
   private readonly overlayTextures = new Map<string, FrameTexture>()
   private overlayPixels = 0
+  /** One texture per animated sticker's sprite sheet (insertion order is LRU order); uploaded once, a frame is a sub-rectangle. */
+  private readonly sheetTextures = new Map<string, FrameTexture>()
+  private sheetPixels = 0
   private explicitSize: { w: number; h: number } | null = null
   private outW = 1
   private outH = 1
@@ -169,6 +176,8 @@ export class Compositor {
     this.textTextures.clear()
     this.overlayTextures.clear()
     this.overlayPixels = 0
+    this.sheetTextures.clear()
+    this.sheetPixels = 0
     this.pages = [null, null, null, null]
     this.blurTargets = null
     this.lost = false
@@ -274,12 +283,14 @@ export class Compositor {
       for (const entry of this.frameTextures.values()) this.gl.deleteTexture(entry.tex)
       for (const entry of this.textTextures.values()) this.gl.deleteTexture(entry.tex)
       for (const entry of this.overlayTextures.values()) this.gl.deleteTexture(entry.tex)
+      for (const entry of this.sheetTextures.values()) this.gl.deleteTexture(entry.tex)
       if (this.programs) for (const p of Object.values(this.programs)) p.delete()
       if (this.vbo) this.gl.deleteBuffer(this.vbo)
       if (this.vao) this.gl.deleteVertexArray(this.vao)
     }
     this.frameTextures.clear()
     this.textTextures.clear()
+    this.sheetTextures.clear()
     this.programs = null
     this.vbo = null
     this.vao = null
@@ -584,7 +595,9 @@ export class Compositor {
         continue
       }
       if (!isDrawnOverlay(item)) continue
-      const texture = this.overlayTexture(item, target.h)
+      // An animated sticker draws one cell of its sheet; until the sheet is decoded (or when it cannot be loaded) the still picture is drawn.
+      const cell = layer.frame !== undefined && item.kind === 'sticker' ? this.animatedCell(item.imageId, layer.frame) : null
+      const texture = cell ? cell.texture : this.overlayTexture(item, target.h)
       if (!texture) continue
       const box = overlayBox(item, target.w, target.h, layer)
       const [a, b, c, d] = rectCorners(box)
@@ -592,7 +605,7 @@ export class Compositor {
       p.use()
       gl.uniform1f(p.uniform('u_alpha'), layer.alpha)
       this.bindTexture(texture.tex)
-      this.drawQuad(corners, UV_UPRIGHT)
+      this.drawQuad(corners, cell ? cell.uv : UV_UPRIGHT)
     }
   }
 
@@ -695,6 +708,63 @@ export class Compositor {
     this.blurPass(blur.cover, blur.tmp, [1 / blur.cover.w, 0], (sigmaPx * blur.cover.w) / src.w, 1)
     this.blurPass(blur.tmp, blur.out, [0, 1 / blur.tmp.h], (sigmaPx * blur.tmp.h) / src.h, 1)
     return blur.out
+  }
+
+  /**
+   * Texture and texture coordinates of one cell of an animated sticker's sheet, or null while the sheet is not
+   * decoded. The coordinates are inset by half a texel so linear filtering never reads a neighbouring cell.
+   */
+  private animatedCell(imageId: string | undefined, frame: number): { texture: FrameTexture; uv: Quad } | null {
+    const animation = animatedSticker(imageId)
+    if (!animation || imageId === undefined) return null
+    const texture = this.sheetTexture(imageId, animation)
+    if (!texture) return null
+    const { col, row } = sheetCell(animation, Math.min(Math.max(0, frame), animation.frames - 1))
+    const x0 = col * animation.cell
+    const y0 = row * animation.cell
+    const u0 = (x0 + 0.5) / texture.w
+    const u1 = (x0 + animation.cell - 0.5) / texture.w
+    // The upload flips the image, so row 0 of the sheet is at v = 1.
+    const vTop = 1 - (y0 + 0.5) / texture.h
+    const vBottom = 1 - (y0 + animation.cell - 0.5) / texture.h
+    return { texture, uv: [[u0, vTop], [u1, vTop], [u1, vBottom], [u0, vBottom]] }
+  }
+
+  private sheetTexture(id: string, animation: AnimatedSticker): FrameTexture | null {
+    const hit = this.sheetTextures.get(id)
+    if (hit) {
+      this.sheetTextures.delete(id)
+      this.sheetTextures.set(id, hit)
+      return hit
+    }
+    const bitmap = animatedSheetBitmap(id)
+    if (!bitmap) return null
+    const gl = this.gl
+    // Through a 2D canvas, like every overlay: the upload then premultiplies exactly as it does for the still pictures.
+    const canvas = createCanvas(bitmap.width, bitmap.height)
+    const ctx = (canvas as HTMLCanvasElement).getContext('2d')
+    if (!ctx) return null
+    ctx.drawImage(bitmap, 0, 0)
+    const tex = createTexture(gl)
+    gl.bindTexture(gl.TEXTURE_2D, tex)
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas)
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false)
+    const entry: FrameTexture = { tex, w: bitmap.width, h: bitmap.height }
+    this.sheetTextures.set(id, entry)
+    this.sheetPixels += entry.w * entry.h
+    while (this.sheetTextures.size > 1 && this.sheetPixels > SHEET_PIXEL_BUDGET) {
+      const oldest = this.sheetTextures.keys().next().value
+      if (oldest === undefined || oldest === id) break
+      const evicted = this.sheetTextures.get(oldest)
+      if (evicted) {
+        gl.deleteTexture(evicted.tex)
+        this.sheetPixels -= evicted.w * evicted.h
+      }
+      this.sheetTextures.delete(oldest)
+    }
+    return entry
   }
 
   private overlayTexture(item: DrawnOverlay, outH: number): FrameTexture | null {

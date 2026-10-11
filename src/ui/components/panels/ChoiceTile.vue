@@ -9,7 +9,9 @@ export default defineComponent({
     selected: { type: Boolean, default: false },
     disabled: { type: Boolean, default: false },
     /** Tailwind aspect class of the picture area. */
-    aspect: { type: String, default: 'aspect-video' }
+    aspect: { type: String, default: 'aspect-video' },
+    /** Extra words for screen readers, read after the label. */
+    description: { type: String, default: '' }
   },
   emits: ['choose']
 })
@@ -38,6 +40,6 @@ export default defineComponent({
         </svg>
       </span>
     </span>
-    <span class="flex items-center text-xs font-semibold text-fg">{{ label }}</span>
+    <span class="flex items-center text-xs font-semibold text-fg">{{ label }}<span v-if="description" class="sr-only">, {{ description }}</span></span>
   </button>
 </template>

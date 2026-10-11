@@ -14,6 +14,7 @@ import {
 } from './types'
 import { clamp01, easeOutBack, easeOutCubic } from './easing'
 import { canonicalAnimation, parseAnimation, type Side } from './animations'
+import { animatedFrameIndex, itemAnimation } from './stickerAnimations'
 
 export interface PlannedTimeline {
   clips: Clip[]
@@ -177,7 +178,8 @@ function overlayLayer(item: OverlayItem, t: Micros, format: ProjectFormat, asset
   const wiggle = item.loop === 'wiggle' ? WIGGLE_DEG * Math.sin((2 * Math.PI * (t - item.start)) / WIGGLE_PERIOD) : 0
   // pos.x is a fraction of the width, so the horizontal offset (a height fraction) is converted.
   const aspect = format.width / format.height
-  return {
+  const animation = itemAnimation(item)
+  const layer: OverlayLayer = {
     item,
     x: item.pos.x + (aspect > 0 ? anim.offsetX / aspect : 0),
     y: item.pos.y + anim.offsetY,
@@ -186,6 +188,8 @@ function overlayLayer(item: OverlayItem, t: Micros, format: ProjectFormat, asset
     alpha: clamp01((item.opacity ?? 1) * anim.alpha),
     srcTime: item.kind === 'media' ? pictureTime(item, t, assets) : 0
   }
+  if (animation) layer.frame = animatedFrameIndex(t - item.start, animation.loopMicros, animation.frames)
+  return layer
 }
 
 /**

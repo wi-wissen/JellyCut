@@ -1,0 +1,565 @@
+{
+ "_comment": "Input of scripts/build-animated-stickers.mjs. rank/group: Unicode Consortium emoji frequency 2019 (https://home.unicode.org/emoji/emoji-frequency/, read 2026-10-11; rank = position in the published order, group g = at most 1/2^g of the frequency of rank 1). upstream: path in microsoft/fluentui-emoji-animated. staticFrom (new stickers only): folder with the 3D PNG in microsoft/fluentui-emoji.",
+ "entries": [
+  {
+   "id": "laugh",
+   "glyph": "😂",
+   "unicode": "1f602",
+   "rank": 1,
+   "group": 0,
+   "upstream": "assets/Face with tears of joy/animated/face_with_tears_of_joy_animated.png"
+  },
+  {
+   "id": "heart",
+   "glyph": "❤️",
+   "unicode": "2764",
+   "rank": 2,
+   "group": 0,
+   "upstream": "assets/Red heart/animated/red_heart_animated.png"
+  },
+  {
+   "id": "heartEyes",
+   "glyph": "😍",
+   "unicode": "1f60d",
+   "rank": 3,
+   "group": 1,
+   "upstream": "assets/Smiling face with heart-eyes/animated/smiling_face_with_heart-eyes_animated.png"
+  },
+  {
+   "id": "rofl",
+   "glyph": "🤣",
+   "unicode": "1f923",
+   "rank": 4,
+   "group": 1,
+   "upstream": "assets/Rolling on the floor laughing/animated/rolling_on_the_floor_laughing_animated.png",
+   "category": "moreFaces",
+   "staticFrom": "assets/Rolling on the floor laughing/3D"
+  },
+  {
+   "id": "smile",
+   "glyph": "😊",
+   "unicode": "1f60a",
+   "rank": 5,
+   "group": 2,
+   "upstream": "assets/Smiling face with smiling eyes/animated/smiling_face_with_smiling_eyes_animated.png",
+   "category": "moreFaces",
+   "staticFrom": "assets/Smiling face with smiling eyes/3D"
+  },
+  {
+   "id": "twoHearts",
+   "glyph": "💕",
+   "unicode": "1f495",
+   "rank": 7,
+   "group": 2,
+   "upstream": "assets/Two hearts/animated/two_hearts_animated.png",
+   "category": "hearts",
+   "staticFrom": "assets/Two hearts/3D"
+  },
+  {
+   "id": "cry",
+   "glyph": "😭",
+   "unicode": "1f62d",
+   "rank": 8,
+   "group": 2,
+   "upstream": "assets/Loudly crying face/animated/loudly_crying_face_animated.png"
+  },
+  {
+   "id": "thumbsUp",
+   "glyph": "👍",
+   "unicode": "1f44d",
+   "rank": 10,
+   "group": 3,
+   "upstream": "assets/Thumbs up/Default/animated/thumbs_up_animated_default.png"
+  },
+  {
+   "id": "sweatSmile",
+   "glyph": "😅",
+   "unicode": "1f605",
+   "rank": 11,
+   "group": 3,
+   "upstream": "assets/Grinning face with sweat/animated/grinning_face_with_sweat_animated.png",
+   "category": "moreFaces",
+   "staticFrom": "assets/Grinning face with sweat/3D"
+  },
+  {
+   "id": "clap",
+   "glyph": "👏",
+   "unicode": "1f44f",
+   "rank": 12,
+   "group": 3,
+   "upstream": "assets/Clapping hands/Default/animated/clapping_hands_animated_default.png"
+  },
+  {
+   "id": "beaming",
+   "glyph": "😁",
+   "unicode": "1f601",
+   "rank": 13,
+   "group": 3,
+   "upstream": "assets/Beaming face with smiling eyes/animated/beaming_face_with_smiling_eyes_animated.png",
+   "category": "moreFaces",
+   "staticFrom": "assets/Beaming face with smiling eyes/3D"
+  },
+  {
+   "id": "fire",
+   "glyph": "🔥",
+   "unicode": "1f525",
+   "rank": 15,
+   "group": 3,
+   "upstream": "assets/Fire/animated/fire_animated.png"
+  },
+  {
+   "id": "sparklingHeart",
+   "glyph": "💖",
+   "unicode": "1f496",
+   "rank": 17,
+   "group": 3,
+   "upstream": "assets/Sparkling heart/animated/sparkling_heart_animated.png"
+  },
+  {
+   "id": "blueHeart",
+   "glyph": "💙",
+   "unicode": "1f499",
+   "rank": 18,
+   "group": 3,
+   "upstream": "assets/Blue heart/animated/blue_heart_animated.png",
+   "category": "hearts",
+   "staticFrom": "assets/Blue heart/3D"
+  },
+  {
+   "id": "cryingFace",
+   "glyph": "😢",
+   "unicode": "1f622",
+   "rank": 19,
+   "group": 3,
+   "upstream": "assets/Crying face/animated/crying_face_animated.png",
+   "category": "moreFaces",
+   "staticFrom": "assets/Crying face/3D"
+  },
+  {
+   "id": "thinking",
+   "glyph": "🤔",
+   "unicode": "1f914",
+   "rank": 20,
+   "group": 3,
+   "upstream": "assets/Thinking face/animated/thinking_face_animated.png"
+  },
+  {
+   "id": "laughSquint",
+   "glyph": "😆",
+   "unicode": "1f606",
+   "rank": 21,
+   "group": 3,
+   "upstream": "assets/Grinning squinting face/animated/grinning_squinting_face_animated.png",
+   "category": "moreFaces",
+   "staticFrom": "assets/Grinning squinting face/3D"
+  },
+  {
+   "id": "eyeRoll",
+   "glyph": "🙄",
+   "unicode": "1f644",
+   "rank": 22,
+   "group": 3,
+   "upstream": "assets/Face with rolling eyes/animated/face_with_rolling_eyes_animated.png",
+   "category": "moreFaces",
+   "staticFrom": "assets/Face with rolling eyes/3D"
+  },
+  {
+   "id": "muscle",
+   "glyph": "💪",
+   "unicode": "1f4aa",
+   "rank": 23,
+   "group": 3,
+   "upstream": "assets/Flexed biceps/Default/animated/flexed_biceps_animated_default.png"
+  },
+  {
+   "id": "wink",
+   "glyph": "😉",
+   "unicode": "1f609",
+   "rank": 24,
+   "group": 3,
+   "upstream": "assets/Winking face/animated/winking_face_animated.png"
+  },
+  {
+   "id": "smilingFace",
+   "glyph": "☺️",
+   "unicode": "263a",
+   "rank": 25,
+   "group": 3,
+   "upstream": "assets/Smiling face/animated/smiling_face_animated.png",
+   "category": "moreFaces",
+   "staticFrom": "assets/Smiling face/3D"
+  },
+  {
+   "id": "okHand",
+   "glyph": "👌",
+   "unicode": "1f44c",
+   "rank": 26,
+   "group": 3,
+   "upstream": "assets/Ok hand/Default/animated/ok_hand_animated_default.png"
+  },
+  {
+   "id": "hug",
+   "glyph": "🤗",
+   "unicode": "1f917",
+   "rank": 27,
+   "group": 3,
+   "upstream": "assets/Hugging face/animated/hugging_face_animated.png",
+   "category": "moreFaces",
+   "staticFrom": "assets/Hugging face/3D"
+  },
+  {
+   "id": "purpleHeart",
+   "glyph": "💜",
+   "unicode": "1f49c",
+   "rank": 28,
+   "group": 4,
+   "upstream": "assets/Purple heart/animated/purple_heart_animated.png",
+   "category": "hearts",
+   "staticFrom": "assets/Purple heart/3D"
+  },
+  {
+   "id": "pensive",
+   "glyph": "😔",
+   "unicode": "1f614",
+   "rank": 29,
+   "group": 4,
+   "upstream": "assets/Pensive face/animated/pensive_face_animated.png",
+   "category": "moreFaces",
+   "staticFrom": "assets/Pensive face/3D"
+  },
+  {
+   "id": "cool",
+   "glyph": "😎",
+   "unicode": "1f60e",
+   "rank": 30,
+   "group": 4,
+   "upstream": "assets/Smiling face with sunglasses/animated/smiling_face_with_sunglasses_animated.png"
+  },
+  {
+   "id": "halo",
+   "glyph": "😇",
+   "unicode": "1f607",
+   "rank": 31,
+   "group": 4,
+   "upstream": "assets/Smiling face with halo/animated/smiling_face_with_halo_animated.png",
+   "category": "moreFaces",
+   "staticFrom": "assets/Smiling face with halo/3D"
+  },
+  {
+   "id": "facepalm",
+   "glyph": "🤦",
+   "unicode": "1f926",
+   "rank": 33,
+   "group": 4,
+   "upstream": "assets/Person facepalming/Default/animated/person_facepalming_animated_default.png",
+   "category": "hearts",
+   "staticFrom": "assets/Person facepalming/Default/3D"
+  },
+  {
+   "id": "partyPopper",
+   "glyph": "🎉",
+   "unicode": "1f389",
+   "rank": 34,
+   "group": 4,
+   "upstream": "assets/Party popper/animated/party_popper_animated.png"
+  },
+  {
+   "id": "revolvingHearts",
+   "glyph": "💞",
+   "unicode": "1f49e",
+   "rank": 36,
+   "group": 4,
+   "upstream": "assets/Revolving hearts/animated/revolving_hearts_animated.png",
+   "category": "hearts",
+   "staticFrom": "assets/Revolving hearts/3D"
+  },
+  {
+   "id": "victory",
+   "glyph": "✌️",
+   "unicode": "270c",
+   "rank": 37,
+   "group": 4,
+   "upstream": "assets/Victory hand/Default/animated/victory_hand_animated_default.png"
+  },
+  {
+   "id": "shrug",
+   "glyph": "🤷",
+   "unicode": "1f937",
+   "rank": 39,
+   "group": 4,
+   "upstream": "assets/Person shrugging/Default/animated/person_shrugging_animated_default.png",
+   "category": "hearts",
+   "staticFrom": "assets/Person shrugging/Default/3D"
+  },
+  {
+   "id": "scream",
+   "glyph": "😱",
+   "unicode": "1f631",
+   "rank": 40,
+   "group": 4,
+   "upstream": "assets/Face screaming in fear/animated/face_screaming_in_fear_animated.png"
+  },
+  {
+   "id": "relieved",
+   "glyph": "😌",
+   "unicode": "1f60c",
+   "rank": 41,
+   "group": 4,
+   "upstream": "assets/Relieved face/animated/relieved_face_animated.png",
+   "category": "moreFaces",
+   "staticFrom": "assets/Relieved face/3D"
+  },
+  {
+   "id": "raisedHands",
+   "glyph": "🙌",
+   "unicode": "1f64c",
+   "rank": 43,
+   "group": 4,
+   "upstream": "assets/Raising hands/Default/animated/raising_hands_animated_default.png",
+   "category": "hearts",
+   "staticFrom": "assets/Raising hands/Default/3D"
+  },
+  {
+   "id": "yum",
+   "glyph": "😋",
+   "unicode": "1f60b",
+   "rank": 44,
+   "group": 4,
+   "upstream": "assets/Face savoring food/animated/face_savoring_food_animated.png",
+   "category": "moreFaces",
+   "staticFrom": "assets/Face savoring food/3D"
+  },
+  {
+   "id": "greenHeart",
+   "glyph": "💚",
+   "unicode": "1f49a",
+   "rank": 46,
+   "group": 4,
+   "upstream": "assets/Green heart/animated/green_heart_animated.png",
+   "category": "hearts",
+   "staticFrom": "assets/Green heart/3D"
+  },
+  {
+   "id": "yellowHeart",
+   "glyph": "💛",
+   "unicode": "1f49b",
+   "rank": 48,
+   "group": 4,
+   "upstream": "assets/Yellow heart/animated/yellow_heart_animated.png",
+   "category": "hearts",
+   "staticFrom": "assets/Yellow heart/3D"
+  },
+  {
+   "id": "slightSmile",
+   "glyph": "🙂",
+   "unicode": "1f642",
+   "rank": 49,
+   "group": 4,
+   "upstream": "assets/Slightly smiling face/animated/slightly_smiling_face_animated.png",
+   "category": "moreFaces",
+   "staticFrom": "assets/Slightly smiling face/3D"
+  },
+  {
+   "id": "starStruck",
+   "glyph": "🤩",
+   "unicode": "1f929",
+   "rank": 51,
+   "group": 4,
+   "upstream": "assets/Star-struck/animated/star-struck_animated.png"
+  },
+  {
+   "id": "grinEyes",
+   "glyph": "😄",
+   "unicode": "1f604",
+   "rank": 52,
+   "group": 4,
+   "upstream": "assets/Grinning face with smiling eyes/animated/grinning_face_with_smiling_eyes_animated.png",
+   "category": "moreFaces",
+   "staticFrom": "assets/Grinning face with smiling eyes/3D"
+  },
+  {
+   "id": "grin",
+   "glyph": "😀",
+   "unicode": "1f600",
+   "rank": 53,
+   "group": 4,
+   "upstream": "assets/Grinning face/animated/grinning_face_animated.png"
+  },
+  {
+   "id": "blackHeart",
+   "glyph": "🖤",
+   "unicode": "1f5a4",
+   "rank": 54,
+   "group": 4,
+   "upstream": "assets/Black heart/animated/black_heart_animated.png",
+   "category": "hearts",
+   "staticFrom": "assets/Black heart/3D"
+  },
+  {
+   "id": "grinBig",
+   "glyph": "😃",
+   "unicode": "1f603",
+   "rank": 55,
+   "group": 4,
+   "upstream": "assets/Grinning face with big eyes/animated/grinning_face_with_big_eyes_animated.png",
+   "category": "moreFaces",
+   "staticFrom": "assets/Grinning face with big eyes/3D"
+  },
+  {
+   "id": "hundred",
+   "glyph": "💯",
+   "unicode": "1f4af",
+   "rank": 56,
+   "group": 4,
+   "upstream": "assets/Hundred points/animated/hundred_points_animated.png"
+  },
+  {
+   "id": "seeNoEvil",
+   "glyph": "🙈",
+   "unicode": "1f648",
+   "rank": 57,
+   "group": 4,
+   "upstream": "assets/See-no-evil monkey/animated/see-no-evil_monkey_animated.png",
+   "category": "animals",
+   "staticFrom": "assets/See-no-evil monkey/3D"
+  },
+  {
+   "id": "pointDown",
+   "glyph": "👇",
+   "unicode": "1f447",
+   "rank": 58,
+   "group": 4,
+   "upstream": "assets/Backhand index pointing down/Default/animated/backhand_index_pointing_down_animated_default.png",
+   "category": "hearts",
+   "staticFrom": "assets/Backhand index pointing down/Default/3D"
+  },
+  {
+   "id": "notes",
+   "glyph": "🎶",
+   "unicode": "1f3b6",
+   "rank": 59,
+   "group": 4,
+   "upstream": "assets/Musical notes/animated/musical_notes_animated.png",
+   "category": "school",
+   "staticFrom": "assets/Musical notes/3D"
+  },
+  {
+   "id": "unamused",
+   "glyph": "😒",
+   "unicode": "1f612",
+   "rank": 60,
+   "group": 4,
+   "upstream": "assets/Unamused face/animated/unamused_face_animated.png",
+   "category": "moreFaces",
+   "staticFrom": "assets/Unamused face/3D"
+  },
+  {
+   "id": "giggle",
+   "glyph": "🤭",
+   "unicode": "1f92d",
+   "rank": 61,
+   "group": 4,
+   "upstream": "assets/Face with hand over mouth/animated/face_with_hand_over_mouth_animated.png",
+   "category": "moreFaces",
+   "staticFrom": "assets/Face with hand over mouth/3D"
+  },
+  {
+   "id": "heartExclamation",
+   "glyph": "❣️",
+   "unicode": "2763",
+   "rank": 62,
+   "group": 4,
+   "upstream": "assets/Heart exclamation/animated/heart_exclamation_animated.png",
+   "category": "hearts",
+   "staticFrom": "assets/Heart exclamation/3D"
+  },
+  {
+   "id": "winkTongue",
+   "glyph": "😜",
+   "unicode": "1f61c",
+   "rank": 64,
+   "group": 5,
+   "upstream": "assets/Winking face with tongue/animated/winking_face_with_tongue_animated.png",
+   "category": "moreFaces",
+   "staticFrom": "assets/Winking face with tongue/3D"
+  },
+  {
+   "id": "eyes",
+   "glyph": "👀",
+   "unicode": "1f440",
+   "rank": 66,
+   "group": 5,
+   "upstream": "assets/Eyes/animated/eyes_animated.png",
+   "category": "moreFaces",
+   "staticFrom": "assets/Eyes/3D"
+  },
+  {
+   "id": "sleepy",
+   "glyph": "😪",
+   "unicode": "1f62a",
+   "rank": 67,
+   "group": 5,
+   "upstream": "assets/Sleepy face/animated/sleepy_face_animated.png",
+   "category": "moreFaces",
+   "staticFrom": "assets/Sleepy face/3D"
+  },
+  {
+   "id": "raiseHand",
+   "glyph": "🙋",
+   "unicode": "1f64b",
+   "rank": 70,
+   "group": 5,
+   "upstream": "assets/Person raising hand/Default/animated/person_raising_hand_animated_default.png",
+   "category": "hearts",
+   "staticFrom": "assets/Person raising hand/Default/3D"
+  },
+  {
+   "id": "disappointed",
+   "glyph": "😞",
+   "unicode": "1f61e",
+   "rank": 71,
+   "group": 5,
+   "upstream": "assets/Disappointed face/animated/disappointed_face_animated.png",
+   "category": "moreFaces",
+   "staticFrom": "assets/Disappointed face/3D"
+  },
+  {
+   "id": "weary",
+   "glyph": "😩",
+   "unicode": "1f629",
+   "rank": 72,
+   "group": 5,
+   "upstream": "assets/Weary face/animated/weary_face_animated.png",
+   "category": "moreFaces",
+   "staticFrom": "assets/Weary face/3D"
+  },
+  {
+   "id": "angry",
+   "glyph": "😡",
+   "unicode": "1f621",
+   "rank": 73,
+   "group": 5,
+   "upstream": "assets/Pouting face/animated/pouting_face_animated.png",
+   "category": "moreFaces",
+   "staticFrom": "assets/Pouting face/3D"
+  },
+  {
+   "id": "zany",
+   "glyph": "🤪",
+   "unicode": "1f92a",
+   "rank": 74,
+   "group": 5,
+   "upstream": "assets/Zany face/animated/zany_face_animated.png",
+   "category": "moreFaces",
+   "staticFrom": "assets/Zany face/3D"
+  },
+  {
+   "id": "sun",
+   "glyph": "☀️",
+   "unicode": "2600",
+   "rank": 76,
+   "group": 5,
+   "upstream": "assets/Sun/animated/sun_animated.png"
+  }
+ ]
+}

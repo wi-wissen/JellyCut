@@ -1,8 +1,9 @@
 /**
  * Picture stickers: Fluent Emoji (3D) by Microsoft, MIT licence. One file per id in src/assets/stickers; the
  * engine loads them (engine/render/stickerImages). Ids are stored in projects, so they never change.
+ * Some ids also have an animation (core/render/stickerAnimations); the still picture stays the fallback.
  */
-export const STICKER_IMAGE_CATEGORIES = ['faces', 'hearts', 'animals', 'celebrate', 'nature', 'food', 'symbols', 'school'] as const
+export const STICKER_IMAGE_CATEGORIES = ['faces', 'moreFaces', 'hearts', 'animals', 'celebrate', 'nature', 'food', 'symbols', 'school'] as const
 export type StickerImageCategory = (typeof STICKER_IMAGE_CATEGORIES)[number]
 
 export interface StickerImage {
@@ -22,6 +23,31 @@ export const STICKER_IMAGES: readonly StickerImage[] = [
   { id: 'scream', category: 'faces' },
   { id: 'cry', category: 'faces' },
   { id: 'exploding', category: 'faces' },
+  { id: 'rofl', category: 'moreFaces' },
+  { id: 'smile', category: 'moreFaces' },
+  { id: 'sweatSmile', category: 'moreFaces' },
+  { id: 'beaming', category: 'moreFaces' },
+  { id: 'cryingFace', category: 'moreFaces' },
+  { id: 'laughSquint', category: 'moreFaces' },
+  { id: 'eyeRoll', category: 'moreFaces' },
+  { id: 'smilingFace', category: 'moreFaces' },
+  { id: 'hug', category: 'moreFaces' },
+  { id: 'pensive', category: 'moreFaces' },
+  { id: 'halo', category: 'moreFaces' },
+  { id: 'relieved', category: 'moreFaces' },
+  { id: 'yum', category: 'moreFaces' },
+  { id: 'slightSmile', category: 'moreFaces' },
+  { id: 'grinEyes', category: 'moreFaces' },
+  { id: 'grinBig', category: 'moreFaces' },
+  { id: 'unamused', category: 'moreFaces' },
+  { id: 'giggle', category: 'moreFaces' },
+  { id: 'winkTongue', category: 'moreFaces' },
+  { id: 'eyes', category: 'moreFaces' },
+  { id: 'sleepy', category: 'moreFaces' },
+  { id: 'disappointed', category: 'moreFaces' },
+  { id: 'weary', category: 'moreFaces' },
+  { id: 'angry', category: 'moreFaces' },
+  { id: 'zany', category: 'moreFaces' },
   { id: 'heart', category: 'hearts' },
   { id: 'sparklingHeart', category: 'hearts' },
   { id: 'heartArrow', category: 'hearts' },
@@ -31,6 +57,19 @@ export const STICKER_IMAGES: readonly StickerImage[] = [
   { id: 'victory', category: 'hearts' },
   { id: 'okHand', category: 'hearts' },
   { id: 'muscle', category: 'hearts' },
+  { id: 'twoHearts', category: 'hearts' },
+  { id: 'blueHeart', category: 'hearts' },
+  { id: 'purpleHeart', category: 'hearts' },
+  { id: 'facepalm', category: 'hearts' },
+  { id: 'revolvingHearts', category: 'hearts' },
+  { id: 'shrug', category: 'hearts' },
+  { id: 'raisedHands', category: 'hearts' },
+  { id: 'greenHeart', category: 'hearts' },
+  { id: 'yellowHeart', category: 'hearts' },
+  { id: 'blackHeart', category: 'hearts' },
+  { id: 'pointDown', category: 'hearts' },
+  { id: 'heartExclamation', category: 'hearts' },
+  { id: 'raiseHand', category: 'hearts' },
   { id: 'dog', category: 'animals' },
   { id: 'cat', category: 'animals' },
   { id: 'panda', category: 'animals' },
@@ -43,6 +82,7 @@ export const STICKER_IMAGES: readonly StickerImage[] = [
   { id: 'butterfly', category: 'animals' },
   { id: 'owl', category: 'animals' },
   { id: 'dino', category: 'animals' },
+  { id: 'seeNoEvil', category: 'animals' },
   { id: 'partyPopper', category: 'celebrate' },
   { id: 'balloon', category: 'celebrate' },
   { id: 'cake', category: 'celebrate' },
@@ -99,6 +139,7 @@ export const STICKER_IMAGES: readonly StickerImage[] = [
   { id: 'rocket', category: 'school' },
   { id: 'magnifier', category: 'school' },
   { id: 'school', category: 'school' },
+  { id: 'notes', category: 'school' },
 ]
 
 const IMAGE_IDS: ReadonlySet<string> = new Set(STICKER_IMAGES.map((s) => s.id))

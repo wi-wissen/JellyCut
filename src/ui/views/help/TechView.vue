@@ -8,6 +8,8 @@ interface TechLink {
   /** Key of the description under help.tech.items.<key>. */
   key: string
   name: string
+  /** Message key for a name that is translated; replaces `name`. */
+  nameKey?: string
   href: string
 }
 
@@ -33,6 +35,7 @@ const BUILD: TechLink[] = [
 
 const ARTWORK: TechLink[] = [
   { key: 'fluent', name: 'Fluent Emoji', href: 'https://github.com/microsoft/fluentui-emoji' },
+  { key: 'fluentAnimated', name: 'Fluent Emoji (animated)', nameKey: 'help.tech.items.fluentAnimatedName', href: 'https://github.com/microsoft/fluentui-emoji-animated' },
   { key: 'mit', name: 'MIT License', href: 'https://github.com/microsoft/fluentui-emoji/blob/main/LICENSE' }
 ]
 
@@ -117,7 +120,7 @@ export default defineComponent({
       <ul>
         <li v-for="item in artwork" :key="item.key">
           <a :href="item.href" target="_blank" rel="noopener noreferrer" class="inline-flex min-h-11 items-center gap-1 font-semibold text-fg no-underline">
-            {{ item.name }}<span class="sr-only"> ({{ $t('help.common.newTab') }})</span>
+            {{ item.nameKey ? $t(item.nameKey) : item.name }}<span class="sr-only"> ({{ $t('help.common.newTab') }})</span>
             <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" class="size-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9" /></svg>
           </a>
           <p class="text-base text-muted">{{ $t(`help.tech.items.${item.key}`) }}</p>

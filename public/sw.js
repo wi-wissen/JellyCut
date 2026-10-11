@@ -1,9 +1,14 @@
-// Service worker. The build fills in BUILD_ID and PRECACHE (see vite.config.ts).
+// Service worker. The build fills in BUILD_ID, PRECACHE and ANIMATED (see vite.config.ts).
 const BUILD_ID = '__BUILD_ID__'
 const PRECACHE = __PRECACHE__
+// Sprite sheets of the animated stickers: not precached, cached on first use in a cache of their own.
+const ANIMATED = __ANIMATED__
 const CACHE_PREFIX = 'jellycut-'
 const CACHE = `${CACHE_PREFIX}${BUILD_ID}`
+// Not tied to a build: sheet names carry a content hash, so an entry stays valid until a build drops the file.
+const ANIMATED_CACHE = `${CACHE_PREFIX}animated-stickers`
 const SCOPE = new URL('./', self.location.href)
+const ANIMATED_URLS = new Set(ANIMATED.map((path) => new URL(path, SCOPE).href))
 const MEDIA = /\.(mp4|webm|mov|m4v|mkv|mp3|m4a|aac|wav|ogg|oga|opus|flac)$/i
 
 self.addEventListener('install', (event) => {
@@ -19,7 +24,8 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k.startsWith(CACHE_PREFIX) && k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith(CACHE_PREFIX) && k !== CACHE && k !== ANIMATED_CACHE).map((k) => caches.delete(k))))
+      .then(pruneAnimated)
       .then(() => self.clients.claim())
   )
 })
@@ -40,6 +46,8 @@ self.addEventListener('fetch', (event) => {
 
   if (request.mode === 'navigate') {
     event.respondWith(networkFirst(url))
+  } else if (ANIMATED_URLS.has(url.href)) {
+    event.respondWith(animatedFirst(request))
   } else if (url.pathname.startsWith(new URL('assets/', SCOPE).pathname)) {
     event.respondWith(cacheFirst(request, true))
   } else {
@@ -55,6 +63,25 @@ async function cacheFirst(request, store) {
   const response = await fetch(request)
   if (store && response.ok) void cache.put(request.url, response.clone())
   return response
+}
+
+// Animated sticker sheets: cache first, stored after the first successful load. Offline and not stored yet, the request
+// fails and the page keeps showing the still picture.
+async function animatedFirst(request) {
+  const cache = await caches.open(ANIMATED_CACHE)
+  const cached = await cache.match(request.url, { ignoreVary: true })
+  if (cached) return cached
+  const response = await fetch(request)
+  if (response.ok) void cache.put(request.url, response.clone())
+  return response
+}
+
+// Drops stored sheets that this build no longer has (a changed sheet gets a new hashed name).
+async function pruneAnimated() {
+  if (!(await caches.has(ANIMATED_CACHE))) return
+  const cache = await caches.open(ANIMATED_CACHE)
+  const stored = await cache.keys()
+  await Promise.all(stored.filter((request) => !ANIMATED_URLS.has(request.url)).map((request) => cache.delete(request)))
 }
 
 // Pages are stored without query string and with a trailing slash instead of index.html, so /app/ and /app/?demo=1 both hit.

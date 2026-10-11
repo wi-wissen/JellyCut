@@ -54,8 +54,8 @@ const context = await browser.newContext({ viewport: { width: 1440, height: 900 
 const page = await context.newPage()
 const errors = []
 page.on('pageerror', (e) => errors.push(e.message))
-// The 404 checks below request an unknown path on purpose; its console error is expected.
-page.on('console', (m) => m.type() === 'error' && !/favicon|does-not-exist/.test(m.location().url) && errors.push(m.text()))
+// The 404 checks below request an unknown path on purpose, and the offline check asks for a sheet that was never cached; their console errors are expected.
+page.on('console', (m) => m.type() === 'error' && !/favicon|does-not-exist|sticker-anim-/.test(m.location().url) && errors.push(m.text()))
 
 let failed = 0
 const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${ok ? '' : ' ' + detail}`); if (!ok) failed++ }
@@ -81,7 +81,7 @@ check('service worker is registered and active with scope at the site root', reg
 await page.reload()
 await page.waitForFunction(() => navigator.serviceWorker.controller !== null)
 const precached = await page.evaluate(async () => {
-  const names = (await caches.keys()).filter((k) => k.startsWith('jellycut-'))
+  const names = (await caches.keys()).filter((k) => k.startsWith('jellycut-') && k !== 'jellycut-animated-stickers')
   const keys = (await caches.open(names[0])).keys().then((ks) => ks.map((k) => new URL(k.url).pathname))
   return { names, keys: await keys }
 })
@@ -89,12 +89,37 @@ check('exactly one versioned cache holds the precache', precached.names.length =
 check('precache holds pages, the editor worker and icons', ['/', '/app/', ...HELP_PATHS, '/404.html', '/manifest.webmanifest'].every((p) => precached.keys.includes(p)) && precached.keys.some((p) => /export\.worker-.*\.js$/.test(p)) && precached.keys.some((p) => p.endsWith('icon-maskable-512.png')), String(precached.keys.length))
 check('no media files are precached', !precached.keys.some((p) => /\.(webm|mp4|mp3|wav|m4a)$/i.test(p)))
 
+// The animated sticker sheets (about 6 MB) are in dist but not in the precache; the worker knows them by name.
+const swSource = readFileSync(join(dist, 'sw.js'), 'utf8')
+const animatedList = JSON.parse(swSource.match(/const ANIMATED = (\[.*?\])\n/s)?.[1] ?? '[]')
+const distSheets = readdirSync(join(dist, 'assets')).filter((f) => f.startsWith('sticker-anim-'))
+check('dist holds the animated sheets and the worker lists exactly them', distSheets.length >= 55 && animatedList.length === distSheets.length && animatedList.every((p) => p.startsWith('assets/sticker-anim-')), `${distSheets.length} / ${animatedList.length}`)
+check('no animated sheet is precached', !precached.keys.some((p) => p.includes('sticker-anim-')) && !JSON.parse(swSource.match(/const PRECACHE = (\[.*?\])\n/s)[1]).some((p) => p.includes('sticker-anim-')))
+check('no animated cache exists before a sheet was used', !(await page.evaluate(async () => caches.has('jellycut-animated-stickers'))))
+
 // 3) Online: the editor page works, unknown paths show the 404 page with status 404.
 await page.goto(`${origin}/app/`)
 await page.waitForSelector('header')
 check('/app/ renders online and is controlled by the worker', await page.evaluate(() => navigator.serviceWorker.controller !== null))
 const notFound = await page.goto(`${origin}/does-not-exist/`)
 check('unknown path online: status 404 with the 404 page', notFound?.status() === 404 && (await page.content()).includes('Seite nicht gefunden'))
+
+// 3b) Using an animated sticker caches its sheet (cache first from then on); a sheet nobody used is not stored.
+const usedSheet = animatedList[0]
+const unusedSheet = animatedList[1]
+const sheetBytes = await page.evaluate(async (path) => (await (await fetch(new URL(path, location.origin + '/')).then((r) => (r.ok ? r : Promise.reject(new Error(String(r.status)))))).arrayBuffer()).byteLength, usedSheet)
+check('a sheet is served online through the worker', sheetBytes > 10000, String(sheetBytes))
+await page.waitForTimeout(500)
+const animatedStored = await page.evaluate(async () => {
+  const cache = await caches.open('jellycut-animated-stickers')
+  return (await cache.keys()).map((k) => new URL(k.url).pathname)
+})
+check('after the first use exactly that sheet is cached, in its own cache', animatedStored.length === 1 && animatedStored[0] === `/${usedSheet}`, JSON.stringify(animatedStored))
+const versionedHasNone = await page.evaluate(async () => {
+  const names = (await caches.keys()).filter((k) => k.startsWith('jellycut-') && k !== 'jellycut-animated-stickers')
+  return (await (await caches.open(names[0])).keys()).some((k) => k.url.includes('sticker-anim-'))
+})
+check('the versioned cache never takes a sheet', !versionedHasNone)
 
 // 4) Update: a new build waiting shows the toast; accepting it reloads into the new worker.
 await fetch(`${origin}/__e2e/bump-sw`)
@@ -107,8 +132,10 @@ check('update toast appears when a new worker waits', await page.getByRole('stat
 await Promise.all([page.waitForEvent('load'), reloadButton.click()])
 await page.waitForSelector('header')
 await page.waitForFunction(() => navigator.serviceWorker.controller !== null)
-const after = await page.evaluate(async () => (await caches.keys()).filter((k) => k.startsWith('jellycut-')))
+const after = await page.evaluate(async () => (await caches.keys()).filter((k) => k.startsWith('jellycut-') && k !== 'jellycut-animated-stickers'))
 check('after the update the old cache is removed', after.length === 1 && after[0] === 'jellycut-e2e-bumped', JSON.stringify(after))
+const keptSheets = await page.evaluate(async () => (await (await caches.open('jellycut-animated-stickers')).keys()).length)
+check('the cached sheet survives the update (it is not tied to a build)', keptSheets === 1, String(keptSheets))
 check('toast is gone after the reload', (await page.getByRole('button', { name: 'Reload' }).count()) === 0)
 
 // 5) Offline: the server is gone and the network is off; everything comes from the worker.
@@ -120,6 +147,15 @@ await page.locator('header button[aria-haspopup]').first().click()
 check('/app/ opens offline and the editor script runs', await page.getByRole('menuitem', { name: /New project/ }).isVisible())
 await page.keyboard.press('Escape')
 await page.goto(`${origin}/`)
+const offlineSheets = await page.evaluate(
+  async ([used, unused]) => {
+    const get = (path) => fetch(new URL(path, location.origin + '/')).then((r) => r.status, () => 'network error')
+    return { used: await get(used), unused: await get(unused) }
+  },
+  [usedSheet, unusedSheet]
+)
+check('offline: a sheet that was used before still loads from the worker', offlineSheets.used === 200, JSON.stringify(offlineSheets))
+check('offline: a sheet that was never loaded fails, so the app keeps the still picture', offlineSheets.unused === 'network error', JSON.stringify(offlineSheets))
 check('landing page opens offline', (await page.locator('h1').innerText()).trim().length > 0 && (await page.locator('a[href*="app/"]').count()) > 0)
 for (const path of HELP_PATHS) {
   await page.goto(`${origin}${path}`)

@@ -42,6 +42,7 @@ Stop `npm run dev` first (it uses port 5173, which `e2e-gif.mjs` needs). Run the
 - [ ] `e2e-overlays3.mjs` (5250)
 - [ ] `e2e-zorder.mjs` (5340)
 - [ ] `e2e-stickers.mjs` (5360)
+- [ ] `e2e-animstickers.mjs` (5390)
 - [ ] `e2e-design.mjs` (5310)
 - [ ] `e2e-fitend.mjs` (5380)
 - [ ] `e2e-export-worker.mjs` (5187)
@@ -59,7 +60,8 @@ Screenshots written by the scripts (light and dark, desktop and phone) are looke
 ## 3. Sources and licences
 
 - [ ] [`sources-review.md`](sources-review.md) checklist done: links, licence statements, Jelly Cut defaults, wording.
-- [ ] `src/assets/stickers/LICENSE-FluentEmoji.txt` is the MIT text with the Microsoft copyright line; `/help/tech/` still credits Fluent Emoji.
+- [ ] `src/assets/stickers/LICENSE-FluentEmoji.txt` and `src/assets/stickers-animated/LICENSE-FluentEmojiAnimated.txt` are the MIT text with the Microsoft copyright line; `/help/tech/` still credits Fluent Emoji and Fluent Emoji (animated).
+- [ ] Animated sticker sheets: the total in `src/assets/stickers-animated/catalogue.json` is at most 6 MB, `dist` has no `sticker-anim-` file in the `PRECACHE` list of `dist/sw.js` (the first install must not grow), and `e2e-pwa.mjs` passes.
 - [ ] Fonts (Fontsource, SIL OFL 1.1) and npm dependencies (licences in the README) unchanged, or the README updated.
 - [ ] Open: the photos in `src/assets/photos` (turtle, reef plate) have no recorded origin or licence. Record them (and their credit line, if one is needed) before the release.
 
@@ -113,7 +115,8 @@ Taken from the code comments, [`decisions.md`](decisions.md) and [`performance.m
 - Overlays and areas have no keyframes: each keeps its position and size for its whole length.
 - Overlay and text rasters are capped at 4096 px per side; the output at 8192 px.
 - Text in an export can only use the fonts bundled for the export worker (`src/ui/fontUrls.ts`); emoji typed into a text item use the system emoji font, so they look different per system.
-- The gallery offers 88 picture stickers and 13 plain shapes. Pictures have no colour or outline. Older vector and emoji stickers still render but are no longer offered.
+- The gallery offers 128 picture stickers and 13 plain shapes; 60 of the pictures also have an animation (switch 'Animated'). Pictures have no colour or outline. Older vector and emoji stickers still render but are no longer offered.
+- An animated sticker is always a whole number of loops long (about 1 to 4 s each) and ends before the video end by less than one loop; an animation sheet is about 100 kB and is loaded the first time it is needed. Offline and not loaded before, the still picture is shown instead.
 - A "mirrored edges" background is not part of version 1.
 
 **Files, storage and browsers**

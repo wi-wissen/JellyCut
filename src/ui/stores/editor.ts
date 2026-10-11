@@ -36,6 +36,7 @@ import { nextId } from '../../core/timeline/ids'
 import { freezeFrameAt } from '../../core/timeline/freezeOps'
 import { timelineLength } from '../../core/timeline/speed'
 import { fitToVideo, videoEnd } from '../../core/timeline/fit'
+import { warmAnimatedSheets } from '../../engine/render/stickerAnimations'
 import {
   moveMusic as moveMusicInTime,
   splitMusicAt,
@@ -532,6 +533,7 @@ export const useEditorStore = defineStore('editor', {
     moveHistory(next: HistoryState<Project>) {
       if (next === this.history) return
       this.history = next
+      warmAnimatedSheets(next.present.overlays)
       // Undo and redo can take an asset out of the project or back in; the media store follows the document.
       useMediaStore().reconcileWith(next.present)
       if (!this.dirtySinceFileSave) this.unsavedSince = Date.now()
@@ -560,6 +562,7 @@ export const useEditorStore = defineStore('editor', {
     replaceDocument(project: Project, file: { handle: FsFileHandle | null; name: string | null }) {
       // Quietly: a loaded project that hangs over its video is fitted, but not marked dirty.
       this.history = createHistory(fitToVideo(project))
+      warmAnimatedSheets(this.history.present.overlays)
       useMediaStore().markMissingFor(project)
       this.fileHandle = file.handle
       this.fileName = file.name
@@ -652,6 +655,7 @@ export const useEditorStore = defineStore('editor', {
       const result = parseProjectJson(record.text)
       if (result.ok) {
         this.history = createHistory(fitToVideo(result.project))
+        warmAnimatedSheets(this.history.present.overlays)
         useMediaStore().markMissingFor(result.project)
       }
     },
@@ -887,10 +891,10 @@ export const useEditorStore = defineStore('editor', {
       if (next !== project) this.commitProject(next)
     },
     /** Adds a picture sticker of the catalog at the playhead and selects it. */
-    addImageStickerAtPlayhead(imageId: string) {
+    addImageStickerAtPlayhead(imageId: string, animated = false) {
       const project = this.project
       const id = freshId(project, ID_PREFIX.overlay)
-      const next = addImageSticker(project, id, this.playheadMicros, imageId)
+      const next = addImageSticker(project, id, this.playheadMicros, imageId, undefined, animated)
       if (next === project) return
       this.commitProject(next)
       this.selection = { kind: 'overlay', id }
