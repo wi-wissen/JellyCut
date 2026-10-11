@@ -9,7 +9,6 @@ import type {
   StrokeOverlay
 } from '../project/types'
 import type { Micros } from '../time'
-import { editedSpan, fitSpan, placeSpan, videoEnd, type Span } from './fit'
 import { canonicalAnimation, type InAnimation, type OutAnimation } from '../render/animations'
 import { isStickerImageId } from '../render/stickerImages'
 import { stickerShape, type StickerShapeId } from '../render/stickerShapes'
@@ -30,6 +29,7 @@ import {
   SHAPE_KINDS,
   type LineWidthId
 } from './overlayCatalog'
+import { editedSpan, fitSpan, placeSpan, videoEnd, type Span } from './fit'
 
 export const MIN_OVERLAY_DURATION: Micros = 100_000
 const MIN_SCALE = 0.1
