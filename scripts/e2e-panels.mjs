@@ -226,7 +226,8 @@ await check('typing in the content field updates the text; a typing burst is one
 })
 
 await check('font select changes style.font', async () => {
-  await page.getByRole('combobox', { name: 'Font' }).selectOption('Pacifico')
+  await page.getByRole('button', { name: 'Font', exact: true }).click()
+  await page.getByRole('option', { name: /Pacifico/ }).click()
   assert((await project(page)).texts.at(-1).style.font === 'Pacifico', 'font not changed')
 })
 
@@ -240,7 +241,7 @@ await check('size drag changes style.size in one undo step', async () => {
 })
 
 await check('colour swatch and outline switch', async () => {
-  await page.getByRole('button', { name: 'Text colour #c6f432' }).click()
+  await page.getByRole('button', { name: 'Colour #c6f432' }).first().click()
   assert((await project(page)).texts.at(-1).style.color === '#c6f432', 'colour not set')
   const sw = page.getByRole('switch', { name: 'Outline' })
   await sw.click()
@@ -287,7 +288,7 @@ await check('ratio popover: 9:16 sets 1080x1920; colour background is stored', a
   const format = (await project(page)).format
   assert(format.ratio === '9:16' && format.width === 1080 && format.height === 1920, `format ${JSON.stringify(format)}`)
   await dialog.getByRole('radio', { name: 'Colour', exact: true }).click()
-  await dialog.getByLabel('Background colour').fill('#336699')
+  await dialog.getByRole('textbox', { name: 'Hex colour' }).fill('#336699')
   const bg = (await project(page)).format.background
   assert(bg.type === 'color' && bg.color === '#336699', `background ${JSON.stringify(bg)}`)
   await page.screenshot({ path: join(SHOT_DIR, 'panel-ratio-light.png') })
