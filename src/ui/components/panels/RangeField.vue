@@ -12,7 +12,9 @@ export default defineComponent({
     max: { type: Number, required: true },
     step: { type: Number, default: 1 },
     /** Text shown next to the label and announced as the slider's value. */
-    display: { type: String, required: true }
+    display: { type: String, required: true },
+    /** One row: the label is only for screen readers and the value sits at the end of the slider. */
+    inline: { type: Boolean, default: false }
   },
   emits: {
     update: (value: number) => Number.isFinite(value),
@@ -39,7 +41,24 @@ export default defineComponent({
 </script>
 
 <template>
-  <div class="flex flex-col gap-0.5">
+  <div v-if="inline" class="flex min-w-0 items-center gap-2">
+    <label :for="uid" class="sr-only">{{ label }}</label>
+    <input
+      :id="uid"
+      type="range"
+      class="jc-range h-11 min-w-0 flex-1"
+      :min="min"
+      :max="max"
+      :step="step"
+      :value="modelValue"
+      :aria-valuetext="display"
+      :style="{ '--jc-p': percent + '%' }"
+      @input="onInput"
+      @change="$emit('commit')"
+    />
+    <span class="w-9 shrink-0 text-right text-xs [font-variant-numeric:tabular-nums] text-muted">{{ display }}</span>
+  </div>
+  <div v-else class="flex flex-col gap-0.5">
     <div class="flex items-baseline justify-between gap-2">
       <label :for="uid" class="text-[13px] font-semibold">{{ label }}</label>
       <span class="shrink-0 text-xs [font-variant-numeric:tabular-nums] text-muted">{{ display }}</span>

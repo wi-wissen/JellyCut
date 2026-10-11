@@ -61,9 +61,6 @@ export default defineComponent({
     allLinked(): boolean {
       return this.listed.length > 0 && this.listed.every((a) => this.rowState(a) === 'matched')
     },
-    hasChoices(): boolean {
-      return Object.keys(this.relinkChoices).length > 0
-    },
     dragging(): boolean {
       return this.dragDepth > 0
     },
@@ -319,7 +316,7 @@ export default defineComponent({
           <button
             type="button"
             class="min-h-11 rounded-lg bg-fill px-4 text-sm font-semibold text-fill-fg disabled:opacity-50"
-            :disabled="relinkBusy || !hasChoices"
+            :disabled="relinkBusy"
             @click="onApply"
           >
             {{ $t('relink.apply') }}

@@ -5,6 +5,7 @@ import { clipEnd } from './edit'
 import {
   FINE_CUT_MAX_PX_PER_FRAME,
   clampCut,
+  nominalFps,
   clipForFineCut,
   cutBounds,
   frameIndexLabel,
@@ -127,6 +128,19 @@ describe('frameIndexLabel', () => {
     expect(frameIndexLabel(33_000, 30)).toBe(1)
     expect(frameIndexLabel(s(1), 30)).toBe(30)
     expect(frameIndexLabel(s(11) + 8_000, 30)).toBe(330)
+  })
+})
+
+describe('nominalFps', () => {
+  it('snaps probed averages to the frame rate they stand for', () => {
+    expect(nominalFps(29.996)).toBe(30)
+    expect(nominalFps(30.001)).toBe(30)
+    expect(nominalFps(24)).toBe(24)
+  })
+
+  it('keeps NTSC rates exact', () => {
+    expect(nominalFps(29.97)).toBe(29.97)
+    expect(nominalFps(23.976)).toBe(23.976)
   })
 })
 

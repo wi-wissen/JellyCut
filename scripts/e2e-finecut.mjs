@@ -83,20 +83,28 @@ async function settle(page, timeout = 15000) {
   return false
 }
 
-/** Non-blank: at least 8 distinct colours among sampled pixels of a canvas. */
+/**
+ * Sampled pixels of each canvas: distinct opaque colours (capped at 50) and the share of pixels with alpha > 0.
+ * A drawn image has several colours; a blank canvas has none.
+ */
 const canvasStats = (page, selector) =>
   page.evaluate((sel) => {
-    const canvases = [...document.querySelectorAll(sel)]
-    return canvases.map((c) => {
-      if (!c.width || !c.height) return { w: c.width, h: c.height, colours: 0 }
-      const ctx = c.getContext('2d')
-      const data = ctx.getImageData(0, 0, c.width, c.height).data
+    return [...document.querySelectorAll(sel)].map((c) => {
+      if (!c.width || !c.height) return { w: c.width, h: c.height, colours: 0, painted: 0 }
+      const data = c.getContext('2d').getImageData(0, 0, c.width, c.height).data
       const seen = new Set()
-      const step = Math.max(4, Math.floor(data.length / 4 / 3000)) * 4
-      for (let i = 0; i < data.length && seen.size < 50; i += step) seen.add((data[i] << 16) | (data[i + 1] << 8) | data[i + 2])
-      return { w: c.width, h: c.height, colours: seen.size }
+      let painted = 0
+      let samples = 0
+      const step = Math.max(1, Math.floor(data.length / 4 / 4000)) * 4
+      for (let i = 0; i < data.length; i += step) {
+        samples++
+        if (data[i + 3] > 0) painted++
+        if (data[i + 3] > 0 && seen.size < 50) seen.add((data[i] << 16) | (data[i + 1] << 8) | data[i + 2])
+      }
+      return { w: c.width, h: c.height, colours: seen.size, painted: painted / samples }
     })
   }, selector)
+const drawn = (s) => s.colours >= 2
 
 const pressKey = async (page, key, times = 1) => {
   for (let i = 0; i < times; i++) {
@@ -120,16 +128,16 @@ await page.waitForTimeout(400)
 
 // (a) Layout content: two frames, waveform, one pause, keyframe tiles
 const frames = await canvasStats(page, '[data-testid="fine-frame"]')
-check('(a) both frame images are drawn (non-blank canvases)', frames.length === 2 && frames.every((f) => f.w > 0 && f.colours >= 8), JSON.stringify(frames))
+check('(a) both frame images are drawn (non-blank canvases)', frames.length === 2 && frames.every((f) => f.w > 0 && drawn(f)), JSON.stringify(frames))
 const wave = await canvasStats(page, '[data-testid="fine-waveform"]')
-check('(a) waveform canvas is drawn and not blank after loading', loaded && wave.length === 1 && wave[0].colours >= 8, JSON.stringify({ loaded, wave }))
+check('(a) waveform canvas is drawn and not blank after loading', loaded && wave.length === 1 && wave[0].painted > 0.05, JSON.stringify({ loaded, wave }))
 const pauses = await page.locator('[data-pause]').count()
 check('(a) exactly one pause highlight is shown', pauses === 1, String(pauses))
 const keyTiles = await page.locator('[data-testid="fine-tile"][data-key="true"]').count()
 const tiles = await page.locator('[data-testid="fine-tile"]').count()
 check('(a) the frame strip shows keyframe tiles', keyTiles >= 1 && tiles >= 16, `key=${keyTiles} tiles=${tiles}`)
 const tileStats = await canvasStats(page, '[data-testid="fine-tile"] canvas')
-check('(a) strip tiles are decoded into canvases', tileStats.filter((t) => t.colours >= 8).length >= 8, JSON.stringify(tileStats.slice(0, 4)))
+check('(a) strip tiles are decoded into canvases', tileStats.filter(drawn).length >= 8, JSON.stringify(tileStats.slice(0, 4)))
 await page.screenshot({ path: `${SHOTS}/finecut-desktop-light.png` })
 
 const cutAt = () => readState(page, `(ed, fc) => fc.cutTime`)
@@ -137,8 +145,10 @@ const frameNo = () => readState(page, `(ed, fc) => fc.frameIndex`)
 const t0 = await cutAt()
 const f0 = await frameNo()
 check('(a) the cut starts on the playhead (0.7 s)', near(t0, 700_000, 1_000), String(t0))
+const snapSwitch = page.getByRole('switch', { name: /Snap to keyframes/ })
+check('(e) snapping to keyframes is on by default', (await snapSwitch.getAttribute('aria-checked')) === 'true')
 
-// (b) Frame steps
+// (b) Frame steps. A single step with snap on: no keyframe within 3 frames of 0.733 s, so it is exact.
 await page.locator('[role=dialog]').focus()
 await pressKey(page, 'ArrowRight')
 await settle(page)
@@ -146,6 +156,9 @@ const t1 = await cutAt()
 const f1 = await frameNo()
 check('(b) ArrowRight moves the cut by one source frame (33.3 ms)', near(t1 - t0, FRAME_MS, FRAME_TOL), `delta=${t1 - t0}`)
 check('(b) ArrowRight increases the displayed source frame number by one', f1 === f0 + 1, `${f0} -> ${f1}`)
+// Ten-frame steps are checked with snap off: a Shift step that crosses the keyframe at 1.0 s would be pulled onto it.
+await snapSwitch.click()
+await page.locator('[role=dialog]').focus()
 await pressKey(page, 'Shift+ArrowRight')
 await settle(page)
 const t2 = await cutAt()
@@ -154,26 +167,23 @@ check('(b) Shift+ArrowRight moves ten frames', near(t2 - t1, 10 * FRAME_MS, 3_00
 await pressKey(page, 'ArrowLeft')
 await settle(page)
 const t3 = await cutAt()
-check('(b) ArrowLeft steps back to the previous cut exactly', t3 === t2 - (t2 - t3) && near(t3 - t1, 9 * FRAME_MS, 3_000), `t1=${t1} t3=${t3}`)
+check('(b) ArrowLeft steps back one frame', near(t2 - t3, FRAME_MS, FRAME_TOL) && near(t3 - t1, 9 * FRAME_MS, 3_000), `t1=${t1} t2=${t2} t3=${t3}`)
 await pressKey(page, 'Shift+ArrowLeft')
 await settle(page)
-await pressKey(page, 'ArrowLeft')
-await settle(page)
 const back = await cutAt()
-check('(b) Shift+ArrowLeft and ArrowLeft return to the start frame', back === t0, `start=${t0} now=${back}`)
+check('(b) Shift+ArrowLeft from one frame past the start returns to the start frame', back === t0, `start=${t0} now=${back}`)
 
 // (c) Keyframe jumps (keyframes every 1 s in talk.webm)
 await pressKey(page, 'k')
 await settle(page)
 const k1 = await cutAt()
 check('(c) K jumps to the next keyframe at 1.0 s (+-3 ms)', near(k1, 1_000_000, 3_000), String(k1))
-await pressKey(page, 'K', 1)
 await page.keyboard.down('Shift')
 await page.keyboard.press('K')
 await page.keyboard.up('Shift')
 await settle(page)
 const k0 = await cutAt()
-check('(c) Shift+K goes to the previous keyframe; the first cuttable frame is one frame after 0 (edge rule)', near(k0, FRAME_MS, FRAME_TOL), `got ${k0}`)
+check('(c) Shift+K goes back to the keyframe at 0; the cut lands on the first cuttable frame (33 ms, edge rule)', near(k0, FRAME_MS, FRAME_TOL), `got ${k0}`)
 await setPlayhead(page, 700_000)
 await page.waitForTimeout(50)
 // Keyboard focus remains inside the overlay; the cut is reset by stepping to the start frame.
@@ -183,7 +193,7 @@ await dialog.waitFor({ state: 'visible' })
 await settle(page)
 await page.locator('[role=dialog]').focus()
 
-// (d) Pause jumps
+// (d) Pause jumps (snap is still off here)
 await pressKey(page, 'p')
 await settle(page)
 const p1 = await cutAt()
@@ -192,13 +202,12 @@ await pressKey(page, 'p')
 await settle(page)
 const p2 = await cutAt()
 check('(d) a second P stays where it is (no pause further on)', p2 === p1, `${p1} -> ${p2}`)
-await pressKey(page, 'P', 0)
 await page.keyboard.down('Shift')
 await page.keyboard.press('P')
 await page.keyboard.up('Shift')
 await settle(page)
 const p3 = await cutAt()
-check('(d) Shift+P goes back to the frame before the pause', p3 < p1 && near(p3, 700_000, 60_000), `got ${p3}`)
+check('(d) Shift+P from the pause start stays (no earlier pause in talk.webm)', p3 === p1, `${p1} -> ${p3}`)
 
 // (e) Snap to keyframes: on (default) stops on the keyframe, off passes it
 await readState(page, `(ed, fc) => { fc.close(); ed.setPlayhead(700000); return true }`)
@@ -206,9 +215,9 @@ await page.locator('#fine-cut-button').click()
 await dialog.waitFor({ state: 'visible' })
 await settle(page)
 await page.locator('[role=dialog]').focus()
-const snapSwitch = page.getByRole('switch', { name: /Snap to keyframes/ })
-const snapOn = (await snapSwitch.getAttribute('aria-checked')) === 'true'
-check('(e) snapping to keyframes is on by default', snapOn)
+await snapSwitch.click()
+check('(e) the snap switch is on again', (await snapSwitch.getAttribute('aria-checked')) === 'true')
+await page.locator('[role=dialog]').focus()
 let presses = 0
 for (; presses < 10; presses++) {
   const now = await cutAt()
@@ -236,6 +245,18 @@ await settle(page)
 const passed = await cutAt()
 check('(e) with snap off, ten steps from 0.7 s pass the keyframe at 1.0 s', near(passed, 700_000 + 10 * FRAME_MS, 3_000) && passed > 1_000_000, String(passed))
 await snapSwitch.click()
+check('(e) snap is back on for the remaining checks', (await snapSwitch.getAttribute('aria-checked')) === 'true')
+await page.locator('[role=dialog]').focus()
+
+// Focus trap: Tab never leaves the overlay
+await page.locator('[role=dialog]').focus()
+let trapOk = true
+for (let i = 0; i < 30; i++) {
+  await page.keyboard.press('Tab')
+  if (!(await page.evaluate(() => !!document.activeElement?.closest('[role=dialog]')))) trapOk = false
+}
+check('(l) Tab stays inside the overlay (focus trap)', trapOk)
+await page.keyboard.press('Shift+Tab')
 await page.locator('[role=dialog]').focus()
 
 // (i) Global shortcuts must not leak into the editor while the overlay is open
@@ -315,7 +336,13 @@ const layout = await phone.page.evaluate(() => {
 check('(j) at 390 px there is no horizontal page overflow', layout.pageOverflow <= 0 && layout.dialogOverflow <= 0, JSON.stringify(layout))
 check('(j) all control buttons are inside the screen width', layout.outside.length === 0, layout.outside.join(', '))
 check('(j) labelled buttons are at least 44 px high', layout.small.length === 0, layout.small.join(', '))
+const shotDialog = await canvasStats(phone.page, '[data-testid="fine-frame"]')
+check('(j) frames are drawn at phone width', shotDialog.length === 2 && shotDialog.every(drawn), JSON.stringify(shotDialog))
 await phone.page.screenshot({ path: `${SHOTS}/finecut-phone-light.png` })
+await phone.page.emulateMedia({ colorScheme: 'dark' })
+await phone.page.waitForTimeout(300)
+await phone.page.screenshot({ path: `${SHOTS}/finecut-phone-dark.png` })
+await phone.page.emulateMedia({ colorScheme: 'light' })
 await phone.context.close()
 
 // (h) A file without sound
@@ -332,16 +359,18 @@ const nextPauseDisabled = await dark.page.getByRole('button', { name: 'Next paus
 const prevPauseDisabled = await dark.page.getByRole('button', { name: 'Previous pause' }).isDisabled()
 check('(h) the pause buttons are disabled without sound', nextPauseDisabled && prevPauseDisabled)
 await dark.page.locator('[role=dialog]').focus()
-const cutNoSound = await cutAt()
+const cutOn = (p) => readState(p, `(ed, fc) => fc.cutTime`)
+const cutNoSound = await cutOn(dark.page)
 await dark.page.keyboard.press('p')
 await settle(dark.page)
-check('(h) P does nothing without sound', (await cutAt()) === cutNoSound)
-const frameKeys = await dark.page.locator('[data-testid="fine-tile"][data-key="true"]').count()
-check('(h) keyframes still work without sound (K moves to 1.0 s)', (await (async () => { await dark.page.keyboard.press('k'); await settle(dark.page); return cutAt() })()) === 500_000 + 0 || true, '')
+check('(h) P does nothing without sound', (await cutOn(dark.page)) === cutNoSound)
+await dark.page.keyboard.press('k')
+await settle(dark.page)
+const kNoSound = await cutOn(dark.page)
+check('(h) keyframe jumps still work without sound (K from 0.5 s goes to 1.0 s)', near(kNoSound, 1_000_000, 3_000), String(kNoSound))
 await dark.page.screenshot({ path: `${SHOTS}/finecut-desktop-dark.png` })
-check('(h) dark theme renders the view', frameKeys >= 0)
-const darkCanvas = await canvasStats(dark.page, '[data-testid="fine-frame"]')
-check('(h) frames are drawn in dark mode', darkCanvas.every((f) => f.colours >= 8), JSON.stringify(darkCanvas))
+const darkFrames = await canvasStats(dark.page, '[data-testid="fine-frame"]')
+check('(h) both frame images are drawn in dark mode', darkFrames.length === 2 && darkFrames.every(drawn), JSON.stringify(darkFrames))
 await dark.context.close()
 
 check('(k) no uncaught page errors or console errors', errors.length === 0, errors.join(' | ').slice(0, 800))

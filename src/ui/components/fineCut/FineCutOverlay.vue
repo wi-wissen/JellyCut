@@ -2,12 +2,12 @@
 import { defineComponent, nextTick } from 'vue'
 import { mapActions, mapState } from 'pinia'
 import { useFineCutStore } from '../../stores/fineCut'
-import { pxPerFrameForZoom } from '../../../core/timeline/fineCut'
+import { frameIndexLabel, pxPerFrameForZoom } from '../../../core/timeline/fineCut'
 import { formatTimecode, frameStart } from '../../../core/time'
-import { frameIndexLabel } from '../../../core/timeline/fineCut'
 import FineCutFrame from './FineCutFrame.vue'
 import FineCutStrip from './FineCutStrip.vue'
 import FineCutWaveform from './FineCutWaveform.vue'
+import Icon from '../Icon.vue'
 
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
 const TRIGGER_ID = 'fine-cut-button'
@@ -17,7 +17,7 @@ const STRIP_TILES = 16
 
 export default defineComponent({
   name: 'FineCutOverlay',
-  components: { FineCutFrame, FineCutStrip, FineCutWaveform },
+  components: { FineCutFrame, FineCutStrip, FineCutWaveform, Icon },
   data() {
     return {
       titleId: TITLE_ID,
@@ -33,7 +33,6 @@ export default defineComponent({
       'assetId',
       'assetName',
       'fps',
-      'cutTime',
       'cutSrc',
       'zoom',
       'snapKeyframes',
@@ -41,8 +40,7 @@ export default defineComponent({
       'hasAudio',
       'error',
       'canCut',
-      'frameMicros',
-      'pauses'
+      'frameMicros'
     ]),
     locale(): string {
       return this.$i18n.locale
@@ -63,7 +61,7 @@ export default defineComponent({
       return this.detail(this.frameIndex)
     },
     chip(): string {
-      return this.$t('fineCut.chip', { name: this.assetName, fps: Math.round(this.fps * 1000) / 1000 })
+      return this.$t('fineCut.chip', { name: this.assetName, fps: this.fps })
     },
     pauseEnabled(): boolean {
       return this.hasAudio === true
@@ -274,7 +272,7 @@ export default defineComponent({
       </header>
 
       <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
-        <div class="mx-auto flex w-full max-w-[980px] flex-col gap-3 sm:flex-row">
+        <div class="mx-auto flex w-full max-w-[980px] shrink-0 flex-col gap-3 sm:flex-row">
           <FineCutFrame
             :asset-id="assetId ?? ''"
             :src-time="Math.max(0, cutSrc - frameMicros / 2)"
@@ -290,14 +288,14 @@ export default defineComponent({
           />
         </div>
 
-        <div ref="scroll" class="relative mx-auto w-full max-w-[980px] overflow-x-auto rounded-xl border border-line bg-panel">
+        <div ref="scroll" class="relative mx-auto w-full max-w-[980px] shrink-0 overflow-x-auto rounded-xl border border-line bg-panel">
           <div class="relative" :style="{ width: innerWidth + 'px' }">
             <FineCutStrip :width="innerWidth" :px="px" />
             <FineCutWaveform :width="innerWidth" :px="px" />
           </div>
         </div>
 
-        <div class="mx-auto flex flex-wrap items-center justify-center gap-2">
+        <div class="mx-auto flex shrink-0 flex-wrap items-center justify-center gap-2">
           <button
             type="button"
             class="flex min-h-11 items-center rounded-xl bg-panel2 px-3 text-sm font-semibold disabled:opacity-40"
@@ -305,7 +303,7 @@ export default defineComponent({
             :aria-label="$t('fineCut.previousPause')"
             @click="jumpPause(-1)"
           >
-            {{ $t('fineCut.pause') }}
+            <Icon name="back" class="mr-1 size-4" />{{ $t('fineCut.pause') }}
           </button>
           <button
             type="button"
@@ -313,7 +311,7 @@ export default defineComponent({
             :aria-label="$t('fineCut.previousKeyframe')"
             @click="jumpKeyframe(-1)"
           >
-            {{ $t('fineCut.keyframe') }}
+            <Icon name="back" class="mr-1 size-4" />{{ $t('fineCut.keyframe') }}
           </button>
           <button
             type="button"
@@ -321,7 +319,7 @@ export default defineComponent({
             :aria-label="$t('fineCut.previousFrame')"
             @click="stepFrames(-1)"
           >
-            ◂ {{ $t('fineCut.frame') }}
+            <Icon name="back" class="mr-1 size-4" />{{ $t('fineCut.frame') }}
           </button>
           <button
             type="button"
@@ -337,7 +335,7 @@ export default defineComponent({
             :aria-label="$t('fineCut.nextFrame')"
             @click="stepFrames(1)"
           >
-            {{ $t('fineCut.frame') }} ▸
+            {{ $t('fineCut.frame') }}<Icon name="fwd" class="ml-1 size-4" />
           </button>
           <button
             type="button"
@@ -345,7 +343,7 @@ export default defineComponent({
             :aria-label="$t('fineCut.nextKeyframe')"
             @click="jumpKeyframe(1)"
           >
-            {{ $t('fineCut.keyframe') }}
+            {{ $t('fineCut.keyframe') }}<Icon name="fwd" class="ml-1 size-4" />
           </button>
           <button
             type="button"
@@ -354,13 +352,13 @@ export default defineComponent({
             :aria-label="$t('fineCut.nextPause')"
             @click="jumpPause(1)"
           >
-            {{ $t('fineCut.pause') }}
+            {{ $t('fineCut.pause') }}<Icon name="fwd" class="ml-1 size-4" />
           </button>
         </div>
 
-        <p v-if="errorText" role="status" class="mx-auto text-center text-sm font-semibold text-[var(--jc-danger)]">{{ errorText }}</p>
+        <p v-if="errorText" role="status" class="mx-auto shrink-0 text-center text-sm font-semibold text-[var(--jc-danger)]">{{ errorText }}</p>
 
-        <div class="mx-auto flex w-full max-w-[980px] flex-wrap items-center justify-center gap-2 text-sm">
+        <div class="mx-auto flex w-full max-w-[980px] shrink-0 flex-wrap items-center justify-center gap-2 text-sm">
           <label class="flex items-center gap-2">
             <span class="font-semibold">{{ $t('fineCut.zoom') }}</span>
             <input
@@ -399,7 +397,7 @@ export default defineComponent({
           <span class="rounded-full bg-panel2 px-3 py-2 text-xs text-muted">{{ $t('fineCut.fade') }}</span>
         </div>
 
-        <p class="mx-auto text-center text-xs text-muted">{{ $t('fineCut.hint') }}</p>
+        <p class="mx-auto shrink-0 text-center text-xs text-muted">{{ $t('fineCut.hint') }}</p>
       </div>
     </div>
   </Teleport>

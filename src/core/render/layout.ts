@@ -43,6 +43,22 @@ export interface Point {
   y: number
 }
 
+/**
+ * Measurements of one line, taken with textAlign 'center' and textBaseline 'middle' at the anchor
+ * (the middle of the line), the same way the rasteriser draws it. Distances are in px; left and
+ * right are measured from the anchor, ascent and descent from the middle baseline.
+ */
+export interface LineMetrics {
+  width: number
+  left: number
+  right: number
+  ascent: number
+  descent: number
+}
+
+/** Metrics of one line of text at a font size in px. */
+export type MeasureLine = (line: string, px: number) => LineMetrics
+
 export interface TextLayerInput {
   text: string
   style: { size: number; outline: string | null }
@@ -50,9 +66,6 @@ export interface TextLayerInput {
   scale?: number
   offsetY?: number
 }
-
-/** Ink box of a text without outline padding, in px at the given font size. */
-export type TextMeasure = (text: string, px: number) => Size
 
 /** Text boxes are never rotated. */
 export interface TextBox extends Box {
@@ -137,23 +150,52 @@ export function pointInRotatedRect(p: Point, box: Box): boolean {
 }
 
 /**
- * Where the compositor draws a text layer: the texture is the rasterised text plus padding,
- * scaled by the layer scale and centred on pos (plus offsetY). Returns null for empty text.
+ * The box around the ink of a text layer, as the compositor draws it: the rasterised text (with
+ * padding) is centred on pos plus offsetY and scaled by the layer scale. Only the glyphs are
+ * boxed, not the line box, so the frame sits exactly around what is visible. Null for empty text.
  */
-export function textRect(outW: number, outH: number, layer: TextLayerInput, measure: TextMeasure): TextBox | null {
+export function textRect(outW: number, outH: number, layer: TextLayerInput, measure: MeasureLine): TextBox | null {
   if (layer.text.length === 0) return null
   const px = textFontPx(layer.style.size, outH)
-  const ink = measure(layer.text, px)
-  if (!(ink.width > 0)) return null
+  const lines = layer.text.split('\n')
+  const metrics = lines.map((line) => measure(line, px))
+  const advance = Math.max(0, ...metrics.map((m) => m.width))
+  if (!(advance > 0)) return null
+
+  // Raster geometry, mirroring engine/render/text.ts: line i is drawn at pad + lineHeight * (i + 0.5).
   const pad = textPadPx(px, layer.style.outline)
-  const texW = Math.min(MAX_TEXT_SIDE, Math.ceil(ink.width + 2 * pad))
-  const texH = Math.min(MAX_TEXT_SIDE, Math.ceil(ink.height + 2 * pad))
+  const lineHeight = textLineHeightPx(px)
+  const texW = Math.min(MAX_TEXT_SIDE, Math.ceil(advance + 2 * pad))
+  const texH = Math.min(MAX_TEXT_SIDE, Math.ceil(lines.length * lineHeight + 2 * pad))
+
+  let left = Infinity
+  let right = -Infinity
+  let top = Infinity
+  let bottom = -Infinity
+  lines.forEach((_, i) => {
+    const m = metrics[i]!
+    if (!(m.width > 0)) return
+    const y = pad + lineHeight * (i + 0.5)
+    left = Math.min(left, texW / 2 - m.left)
+    right = Math.max(right, texW / 2 + m.right)
+    top = Math.min(top, y - m.ascent)
+    bottom = Math.max(bottom, y + m.descent)
+  })
+  // The outline stroke is centred on the glyph edge, so it reaches half its width outside.
+  const grow = (layer.style.outline ? px / 8 : 0) / 2
+  left -= grow
+  right += grow
+  top -= grow
+  bottom += grow
+
   const scale = finiteOr(layer.scale, 1) > 0 ? finiteOr(layer.scale, 1) : 1
+  const anchorX = finiteOr(layer.pos.x, 0.5) * outW
+  const anchorY = (finiteOr(layer.pos.y, 0.5) + finiteOr(layer.offsetY, 0)) * outH
   return {
-    cx: finiteOr(layer.pos.x, 0.5) * outW,
-    cy: (finiteOr(layer.pos.y, 0.5) + finiteOr(layer.offsetY, 0)) * outH,
-    w: texW * scale,
-    h: texH * scale,
+    cx: anchorX + ((left + right) / 2 - texW / 2) * scale,
+    cy: anchorY + ((top + bottom) / 2 - texH / 2) * scale,
+    w: (right - left) * scale,
+    h: (bottom - top) * scale,
     rotationDeg: 0
   }
 }

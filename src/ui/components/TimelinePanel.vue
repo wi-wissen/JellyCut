@@ -53,6 +53,8 @@ interface Lane {
   id: string
   icon: string
   label: string
+  /** Colour key of the lane's items, shown as a small swatch in the label column. */
+  swatch: string
   items: LaneItem[]
 }
 
@@ -201,11 +203,11 @@ export default defineComponent({
       })
 
       return [
-        { id: 'text', icon: 'text', label: 'timeline.text', items: textItems },
-        { id: 'overlay', icon: 'sticker', label: 'timeline.overlay', items: [] },
-        { id: 'video', icon: 'media', label: 'timeline.video', items: videoItems },
-        { id: 'originalAudio', icon: 'audio', label: 'timeline.originalAudio', items: originalAudioItems },
-        { id: 'music', icon: 'audio', label: 'timeline.music', items: musicItems }
+        { id: 'text', icon: 'text', label: 'timeline.text', swatch: 'var(--jc-track-text)', items: textItems },
+        { id: 'overlay', icon: 'sticker', label: 'timeline.overlay', swatch: 'var(--jc-panel2)', items: [] },
+        { id: 'video', icon: 'media', label: 'timeline.video', swatch: 'var(--jc-track-video-1)', items: videoItems },
+        { id: 'originalAudio', icon: 'audio', label: 'timeline.originalAudio', swatch: 'var(--jc-wave)', items: originalAudioItems },
+        { id: 'music', icon: 'audio', label: 'timeline.music', swatch: 'var(--jc-track-music)', items: musicItems }
       ]
     },
     dropTop(): number {
@@ -520,6 +522,7 @@ export default defineComponent({
           class="flex items-center gap-1.5 border-b border-line/60 px-2.5 text-[11px] text-muted"
           :style="{ height: laneHeight + 'px' }"
         >
+          <span class="size-2.5 shrink-0 rounded-sm" :style="{ background: lane.swatch }" aria-hidden="true" />
           <Icon :name="lane.icon" class="size-3.5 shrink-0" />
           <span class="truncate">{{ $t(lane.label) }}</span>
         </div>

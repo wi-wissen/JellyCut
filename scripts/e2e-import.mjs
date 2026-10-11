@@ -20,7 +20,7 @@ const MSG = {
   cannotDecode: 'This browser cannot read this file. Please use Chrome or Edge.',
   unsupportedFormat: 'This file type is not supported.',
   noMedia: 'This file has no picture or sound.',
-  missing: 'File not linked. Open it again to re-link.'
+  missing: 'File missing.'
 }
 
 const outcomes = []
@@ -263,6 +263,9 @@ await page.waitForTimeout(1500)
 await page.getByRole('img', { name: 'Autosave: saved' }).waitFor({ timeout: 8000 })
 await page.reload()
 await page.locator('#project-menu-trigger').waitFor()
+// The re-link dialog opens once after a restore with missing media and would cover the tabs.
+const relinkDialog = page.getByRole('dialog', { name: /Missing files|Dateien fehlen/ })
+if (await relinkDialog.isVisible({ timeout: 3000 }).catch(() => false)) await page.keyboard.press('Escape')
 
 await check('after a reload the assets are shown as missing with the re-link message', async () => {
   for (const name of ['clip-a.webm', 'music.webm', 'still.png', 'frames.webm']) {

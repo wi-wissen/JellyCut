@@ -66,7 +66,7 @@
       "cannotDecode": "This browser cannot read this file. Please use Chrome or Edge.",
       "unsupportedFormat": "This file type is not supported.",
       "noMedia": "This file has no picture or sound.",
-      "missing": "File not linked. Open it again to re-link."
+      "missing": "File missing."
     },
     "audio": "Audio"
   },
@@ -170,7 +170,7 @@
   },
   "clip": {
     "header": "Clip · {name}",
-    "picture": "Picture in format",
+    "picture": "Picture",
     "fit": "Fit",
     "fill": "Fill",
     "zoom": "Zoom",
@@ -395,7 +395,7 @@
     "waveform": "Waveform",
     "waveformLoading": "Computing waveform",
     "strip": "Frame strip",
-    "keyTile": "KEY {n}",
+    "keyTile": "KEY",
     "frameTile": "#{n}"
   },
   "relink": {

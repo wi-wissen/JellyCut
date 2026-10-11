@@ -449,7 +449,7 @@ export const useMediaStore = defineStore('media', {
             })
           }
         }
-        await this.applyAutomatically(true)
+        await this.applyAutomatically()
       } finally {
         this.relinkBusy = false
         this.relinkScanned = null
@@ -513,12 +513,12 @@ export const useMediaStore = defineStore('media', {
     async applyManualMatch(assetId: string, file: File): Promise<string | null> {
       const asset = useEditorStore().project.assets.find((a) => a.id === assetId)
       if (!asset) return 'relink.errors.unknown'
-      this.relinkRejected = { ...this.relinkRejected, [assetId]: '' }
       delete this.relinkRejected[assetId]
       const info = await probeFile(file)
       const error = mismatchFor(asset, info)
       if (error) {
         this.relinkRejected = { ...this.relinkRejected, [assetId]: error }
+        this.openIfStillMissing()
         return error
       }
       await this.commitBatch([{ asset, file, basis: 'manual' }])
@@ -553,8 +553,7 @@ export const useMediaStore = defineStore('media', {
     },
 
     /** Applies matches until none is left; each round consumes at least one candidate. */
-    async applyAutomatically(fromFolder = false): Promise<void> {
-      void fromFolder
+    async applyAutomatically(): Promise<void> {
       for (let round = 0; round < MAX_ROUNDS; round++) {
         const plan = this.replan()
         const ids = Object.keys(plan.matches)
@@ -568,7 +567,8 @@ export const useMediaStore = defineStore('media', {
           if (!match || !asset || !entry) continue
           pool.delete(match.candidateKey)
           const result = await verifyEntry(asset, entry)
-          if (result.ok) batch.push({ asset, file: result.file, basis: match.reason })
+          const relPath = entry.fromFolder ? entry.candidate.key : undefined
+          if (result.ok) batch.push({ asset, file: result.file, basis: match.reason, relPath })
           else this.relinkRejected[assetId] = result.error
         }
         await this.commitBatch(batch)

@@ -4,6 +4,7 @@ import { mapActions, mapState } from 'pinia'
 import Icon from './Icon.vue'
 import { useEditorStore } from '../stores/editor'
 import type { AutosaveStatus } from '../../core/io/autosave'
+import { useMediaStore } from '../stores/media'
 
 const DOT_CLASSES: Record<AutosaveStatus, string> = {
   idle: 'bg-[var(--jc-muted)]/40',
@@ -20,7 +21,8 @@ export default defineComponent({
     return { open: false }
   },
   computed: {
-    ...mapState(useEditorStore, ['project', 'caps', 'fileName', 'workFolderName', 'saveStatus', 'loadError', 'dirtySinceFileSave']),
+    ...mapState(useEditorStore, ['project', 'caps', 'fileName', 'saveStatus', 'loadError', 'dirtySinceFileSave']),
+    ...mapState(useMediaStore, ['folder']),
     displayName(): string {
       return this.project.name.trim() === '' ? this.$t('project.untitled') : this.project.name
     },
@@ -60,12 +62,18 @@ export default defineComponent({
       'chooseFolder',
       'dismissLoadError'
     ]),
+    ...mapActions(useMediaStore, ['refreshWorkFolder', 'grantWorkFolderAccess', 'forgetWorkFolder']),
+    async chooseWorkFolderItem(): Promise<void> {
+      await this.chooseFolder()
+      await this.refreshWorkFolder()
+    },
     menuItems(): HTMLElement[] {
       const panel = this.$refs.panel as HTMLElement | undefined
       return Array.from(panel?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])
     },
     openMenu(): void {
       this.open = true
+      void this.refreshWorkFolder()
     },
     closeMenu(restoreFocus: boolean): void {
       this.open = false
@@ -199,14 +207,38 @@ export default defineComponent({
           type="button"
           role="menuitem"
           class="flex min-h-11 w-full items-center gap-3 rounded-lg px-2.5 text-left text-sm text-fg hover:bg-panel2 focus-visible:bg-panel2"
-          @click="run(() => chooseFolder())"
+          @click="run(() => chooseWorkFolderItem())"
         >
           <Icon name="folderOpen" class="size-4 shrink-0 text-muted" />
           {{ $t('project.chooseFolder') }}
         </button>
+        <template v-if="caps.directoryPicker && folder">
+          <button
+            v-if="folder.permission !== 'granted'"
+            type="button"
+            role="menuitem"
+            class="flex min-h-11 w-full items-center gap-3 rounded-lg px-2.5 text-left text-sm font-semibold text-txt hover:bg-panel2 focus-visible:bg-panel2"
+            @click="run(() => grantWorkFolderAccess())"
+          >
+            <Icon name="folderOpen" class="size-4 shrink-0" />
+            {{ $t('relink.folder.grant') }}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            class="flex min-h-11 w-full items-center gap-3 rounded-lg px-2.5 text-left text-sm text-fg hover:bg-panel2 focus-visible:bg-panel2"
+            @click="run(() => forgetWorkFolder())"
+          >
+            <Icon name="trash" class="size-4 shrink-0 text-muted" />
+            {{ $t('relink.folder.forget') }}
+          </button>
+        </template>
       </div>
       <p v-if="caps.directoryPicker" class="px-2.5 pb-1 text-xs text-muted">
-        {{ workFolderName ? $t('project.folderCurrent', { name: workFolderName }) : $t('project.folderNone') }}
+        {{ folder ? $t('project.folderCurrent', { name: folder.name }) : $t('project.folderNone') }}
+      </p>
+      <p v-if="caps.directoryPicker && folder && folder.permission !== 'granted'" class="px-2.5 pb-1 text-xs text-muted">
+        {{ $t('relink.folder.needsAccess') }}
       </p>
       <p v-else class="mt-2 border-t border-line px-2.5 pt-2 text-xs text-muted">
         {{ $t('project.browserInfo') }}

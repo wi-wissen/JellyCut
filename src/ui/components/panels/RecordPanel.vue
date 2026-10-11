@@ -65,13 +65,13 @@ export default defineComponent({
 </script>
 
 <template>
-  <section class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3" :aria-label="$t('record.title')">
+  <section class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3" :aria-label="$t('record.title')">
     <header class="flex min-h-7 items-center justify-between gap-2">
       <h2 class="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">{{ $t('record.title') }}</h2>
       <span v-if="live" class="flex items-center gap-2 font-mono text-sm font-semibold tabular-nums">
         <span
           aria-hidden="true"
-          class="size-2.5 rounded-full bg-[var(--jc-danger)] motion-safe:animate-pulse"
+          class="size-2.5 rounded-full bg-[#b3261e] motion-safe:animate-pulse"
         />
         {{ time }}
       </span>
@@ -119,18 +119,20 @@ export default defineComponent({
     <p v-else-if="phase === 'starting'" class="text-sm text-muted">{{ $t('record.waiting') }}</p>
 
     <template v-else-if="phase === 'recording' || phase === 'paused'">
-      <div v-if="kind !== 'microphone'" class="relative aspect-video shrink-0 overflow-hidden rounded-xl bg-stage">
-        <video
-          ref="preview"
-          muted
-          playsinline
-          autoplay
-          :aria-label="$t('record.preview')"
-          class="size-full object-contain"
-          :class="{ '-scale-x-100': kind === 'camera' }"
-        />
-        <div v-if="phase === 'paused'" class="absolute inset-0 flex items-center justify-center bg-black/50 text-sm font-bold text-white">
-          {{ $t('record.status.paused') }}
+      <div v-if="kind !== 'microphone'" class="flex shrink-0 justify-center">
+        <div class="relative aspect-video h-24 overflow-hidden rounded-xl bg-stage">
+          <video
+            ref="preview"
+            muted
+            playsinline
+            autoplay
+            :aria-label="$t('record.preview')"
+            class="size-full object-contain"
+            :class="{ '-scale-x-100': kind === 'camera' }"
+          />
+          <div v-if="phase === 'paused'" class="absolute inset-0 flex items-center justify-center bg-black/50 text-sm font-bold text-white">
+            {{ $t('record.status.paused') }}
+          </div>
         </div>
       </div>
       <div v-else class="flex flex-col gap-3 rounded-xl border border-line bg-panel2 p-4">
@@ -146,7 +148,7 @@ export default defineComponent({
       <button
         ref="stopButton"
         type="button"
-        class="flex min-h-14 items-center justify-between rounded-xl bg-[var(--jc-danger)] px-5 text-base font-bold text-white hover:opacity-90"
+        class="flex min-h-12 items-center justify-between rounded-xl bg-[#b3261e] px-5 text-base font-bold text-white hover:opacity-90"
         @click="stop"
       >
         <span class="flex items-center gap-2">

@@ -38,8 +38,23 @@ export default defineComponent({
     return { dragDepth: 0 }
   },
   computed: {
-    ...mapState(useEditorStore, ['project']),
-    ...mapState(useMediaStore, ['statusOf', 'problems', 'thumbnails', 'importing', 'lastImportError']),
+    ...mapState(useEditorStore, ['project', 'caps']),
+    ...mapState(useMediaStore, [
+      'statusOf',
+      'problems',
+      'thumbnails',
+      'importing',
+      'lastImportError',
+      'needsRelink',
+      'missingCount',
+      'folder'
+    ]),
+    showRelinkBanner(): boolean {
+      return this.needsRelink && this.missingCount > 0
+    },
+    canImportFromFolder(): boolean {
+      return this.caps.filePicker && this.folder?.permission === 'granted'
+    },
     assets(): Asset[] {
       return this.project.assets.filter((a) => this.kinds.includes(a.kind))
     },
@@ -57,7 +72,18 @@ export default defineComponent({
     }
   },
   methods: {
-    ...mapActions(useMediaStore, ['importFiles', 'addToTimeline', 'dismissImportError']),
+    ...mapActions(useMediaStore, [
+      'importFiles',
+      'importFromWorkFolder',
+      'addToTimeline',
+      'dismissImportError',
+      'pickFiles',
+      'pickFileFor',
+      'chooseFolderForRelink'
+    ]),
+    onRelinkTile(asset: Asset): void {
+      this.pickFileFor(asset.id)
+    },
     gradient(index: number): string {
       return GRADIENTS[index % GRADIENTS.length] ?? GRADIENTS[0] ?? ''
     },
@@ -83,6 +109,10 @@ export default defineComponent({
     },
     isReady(asset: Asset): boolean {
       return this.statusOf(asset.id) === 'ready'
+    },
+    /** Only missing files get a Re-link button; unsupported ones cannot be fixed by picking another file. */
+    isMissing(asset: Asset): boolean {
+      return this.statusOf(asset.id) === 'missing'
     },
     onTile(asset: Asset): void {
       if (this.isReady(asset)) this.addToTimeline(asset.id)
@@ -123,67 +153,110 @@ export default defineComponent({
         <span class="size-2 animate-pulse rounded-full bg-fill" aria-hidden="true" />
         {{ $t('library.importing') }}
       </span>
+      <button
+        v-else-if="canImportFromFolder"
+        type="button"
+        class="min-h-11 shrink-0 rounded-lg px-2 text-xs font-semibold text-txt hover:bg-panel2"
+        @click="importFromWorkFolder"
+      >
+        {{ $t('relink.folder.importFromFolder') }}
+      </button>
+    </div>
+
+    <div
+      v-if="showRelinkBanner"
+      role="status"
+      class="flex shrink-0 flex-col gap-2 rounded-xl border border-line bg-panel2 p-3 text-xs"
+    >
+      <p class="font-semibold text-fg">{{ $t('relink.banner', missingCount) }}</p>
+      <div class="flex flex-wrap gap-2">
+        <button
+          type="button"
+          class="min-h-11 rounded-lg bg-fill px-3 font-semibold text-fill-fg"
+          @click="pickFiles"
+        >
+          {{ $t('relink.selectFiles') }}
+        </button>
+        <button
+          v-if="caps.directoryPicker"
+          type="button"
+          class="min-h-11 rounded-lg border border-line px-3 font-semibold text-fg hover:bg-panel"
+          @click="chooseFolderForRelink"
+        >
+          {{ $t('relink.chooseFolder') }}
+        </button>
+      </div>
     </div>
 
     <input ref="fileInput" type="file" multiple :accept="accept" class="hidden" @change="onPicked" />
 
     <div class="min-h-0 flex-1 overflow-y-auto" :class="dragging ? 'rounded-lg outline-2 outline-dashed outline-fill -outline-offset-4' : ''">
       <div class="grid grid-cols-2 gap-2.5">
-        <button
-          v-for="(asset, index) in assets"
-          :key="asset.id"
-          type="button"
-          class="group relative block aspect-[16/10] w-full overflow-hidden rounded-lg text-left"
-          :class="isReady(asset) ? '' : 'cursor-default'"
-          :style="{ background: gradient(index) }"
-          :aria-label="tileLabel(asset)"
-          :aria-disabled="isReady(asset) ? undefined : 'true'"
-          @click="onTile(asset)"
-        >
-          <img
-            v-if="thumbnailOf(asset)"
-            :src="thumbnailOf(asset)"
-            alt=""
-            class="absolute inset-0 size-full object-cover"
-          />
-          <span v-if="asset.kind === 'audio'" class="absolute inset-0 flex items-center justify-center text-white">
-            <Icon name="audio" class="size-8" />
-          </span>
-
-          <span
-            v-if="!isReady(asset)"
-            class="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-panel2 px-2.5 pb-8 pt-2 text-center text-[10px] font-semibold leading-tight text-fg"
+        <div v-for="(asset, index) in assets" :key="asset.id" class="relative">
+          <button
+            type="button"
+            class="group relative block aspect-[16/10] w-full overflow-hidden rounded-lg text-left"
+            :class="isReady(asset) ? '' : 'cursor-default'"
+            :style="{ background: gradient(index) }"
+            :aria-label="tileLabel(asset)"
+            :aria-disabled="isReady(asset) ? undefined : 'true'"
+            @click="onTile(asset)"
           >
-            <svg viewBox="0 0 24 24" class="size-5 text-[var(--jc-danger)]" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-              <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
-              <path d="M12 9v4" />
-              <path d="M12 17h.01" />
-            </svg>
-            <span>{{ problemText(asset) }}</span>
-          </span>
+            <img
+              v-if="thumbnailOf(asset)"
+              :src="thumbnailOf(asset)"
+              alt=""
+              class="absolute inset-0 size-full object-cover"
+            />
+            <span v-if="asset.kind === 'audio'" class="absolute inset-0 flex items-center justify-center text-white">
+              <Icon name="audio" class="size-8" />
+            </span>
 
-          <span
-            v-if="isReady(asset)"
-            class="absolute left-1.5 top-1.5 flex size-6 items-center justify-center rounded-full bg-fill text-fill-fg shadow"
-            aria-hidden="true"
-          >
-            <Icon name="plus" class="size-3.5" />
-          </span>
-          <span
-            v-if="isReady(asset)"
-            class="absolute inset-0 flex items-center justify-center bg-black/35 text-sm font-bold text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
-            aria-hidden="true"
-          >
-            {{ $t('library.add') }}
-          </span>
+            <span
+              v-if="!isReady(asset)"
+              class="absolute inset-0 flex items-start justify-center gap-1 bg-panel2 px-2.5 pt-5 text-center text-[10px] font-semibold leading-tight text-fg"
+            >
+              <svg viewBox="0 0 24 24" class="mt-px size-3.5 shrink-0 text-[var(--jc-danger)]" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+                <path d="M12 9v4" />
+                <path d="M12 17h.01" />
+              </svg>
+              <span>{{ problemText(asset) }}</span>
+            </span>
 
-          <span v-if="durationLabel(asset)" class="absolute right-1.5 top-1.5 rounded bg-black/60 px-1 font-mono text-[10px] text-white">
-            {{ durationLabel(asset) }}
-          </span>
-          <span class="absolute inset-x-0 bottom-0 truncate bg-black/55 px-2 py-1 text-[11px] font-semibold text-white">
-            {{ asset.name }}
-          </span>
-        </button>
+            <span
+              v-if="isReady(asset)"
+              class="absolute left-1.5 top-1.5 flex size-6 items-center justify-center rounded-full bg-fill text-fill-fg shadow"
+              aria-hidden="true"
+            >
+              <Icon name="plus" class="size-3.5" />
+            </span>
+            <span
+              v-if="isReady(asset)"
+              class="absolute inset-0 flex items-center justify-center bg-black/35 text-sm font-bold text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+              aria-hidden="true"
+            >
+              {{ $t('library.add') }}
+            </span>
+
+            <span v-if="durationLabel(asset)" class="absolute right-1.5 top-1.5 rounded bg-black/60 px-1 font-mono text-[10px] text-white">
+              {{ durationLabel(asset) }}
+            </span>
+            <span class="absolute inset-x-0 bottom-0 truncate bg-black/55 px-2 py-1 text-[11px] font-semibold text-white">
+              {{ asset.name }}
+            </span>
+          </button>
+
+          <button
+            v-if="isMissing(asset)"
+            type="button"
+            class="absolute bottom-8 left-1/2 z-10 min-h-7 -translate-x-1/2 whitespace-nowrap rounded-lg bg-fill px-3 text-[11px] font-bold text-fill-fg before:absolute before:-inset-y-2 before:inset-x-0 before:content-['']"
+            :title="$t('relink.tileLabel', { name: asset.name })"
+            @click="onRelinkTile(asset)"
+          >
+            {{ $t('relink.tileButton') }}
+          </button>
+        </div>
 
         <button
           type="button"

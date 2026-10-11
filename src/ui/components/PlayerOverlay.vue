@@ -8,6 +8,7 @@ import type { Scene, TextLayer } from '../../core/render/types'
 import {
   axisLock,
   clamp,
+  dragToTransformDelta,
   fittedFrameRect,
   pointInRotatedRect,
   previewSize,
@@ -16,13 +17,15 @@ import {
   textRect,
   THIRDS_GUIDES,
   type Box,
+  type TextBox,
+  type TextLayerInput,
   type Point
 } from '../../core/render/layout'
 import { updateText } from '../../core/timeline/textOps'
 import { setClipProps } from '../../core/timeline/ops'
 import { findClipAt } from '../../core/timeline/edit'
 import type { Clip, Project, TextItem } from '../../core/project/types'
-import { clearTextMeasureCache, measureTextBox } from '../player/textMeasure'
+import { clearTextMeasureCache, measureLine } from '../player/textMeasure'
 
 /** Snap distance in screen pixels, converted to output fractions per axis. */
 const SNAP_PX = 8
@@ -121,12 +124,7 @@ export default defineComponent({
         scale: 1,
         offsetY: 0
       }
-      const family = item.style.font
-      const box = textRect(this.outW, this.outH, layer, (text, px) => {
-        // Reading fontTick re-measures once the curated fonts have loaded.
-        void this.fontTick
-        return measureTextBox(text, px, family)
-      })
+      const box = this.measureBox(layer, item.style.font)
       return box ? { box, id: item.id, name: item.text } : null
     },
     clipView(): BoxView | null {
@@ -183,20 +181,29 @@ export default defineComponent({
     onPictureDown(event: PointerEvent): void {
       if (event.button !== 0) return
       const p = this.toOutput(event.clientX, event.clientY)
-      // Topmost text first: texts are drawn in project order, so the last one is on top.
-      const texts = [...this.scene.texts].reverse()
-      for (const layer of texts) {
-        const box = textRect(this.outW, this.outH, layer, (text, px) => measureTextBox(text, px, this.fontFamily(layer.id)))
-        if (box && pointInRotatedRect(p, box)) {
-          this.select({ kind: 'text', id: layer.id })
-          return
-        }
+      const textId = this.textAt(p)
+      if (textId) {
+        this.select({ kind: 'text', id: textId })
+        return
       }
       const clip: Clip | undefined = findClipAt(this.planned.clips, this.playheadMicros)
       this.select(clip ? { kind: 'clip', id: clip.id } : null)
     },
-    fontFamily(id: string): string {
-      return this.project.texts.find((t) => t.id === id)?.style.font ?? 'Sora'
+    /** Glyph box of a text layer; reading fontTick makes it measure again once the curated fonts have loaded. */
+    measureBox(layer: TextLayerInput, family: string): TextBox | null {
+      return textRect(this.outW, this.outH, layer, (line, px) => {
+        void this.fontTick
+        return measureLine(line, px, family)
+      })
+    },
+    /** The topmost text whose glyph box contains the output point. */
+    textAt(p: Point): string | null {
+      for (const layer of [...this.scene.texts].reverse()) {
+        const family = this.project.texts.find((t) => t.id === layer.id)?.style.font ?? 'Sora'
+        const box = this.measureBox(layer, family)
+        if (box && pointInRotatedRect(p, box)) return layer.id
+      }
+      return null
     },
 
     // --- gestures ---
@@ -237,6 +244,12 @@ export default defineComponent({
     },
     onClipMoveDown(event: PointerEvent, view: BoxView): void {
       if (event.button !== 0) return
+      // The picture box covers the whole picture; a text on top of it is what the user means to pick.
+      const textId = this.textAt(this.toOutput(event.clientX, event.clientY))
+      if (textId) {
+        this.select({ kind: 'text', id: textId })
+        return
+      }
       const clip = this.selectedClip
       if (!clip) return
       this.startPress(event, {
@@ -286,19 +299,23 @@ export default defineComponent({
     /** Moves the text centre; Shift locks the axis, both axes snap to the centre and thirds lines. */
     dragText(d: Drag, dxPx: number, dyPx: number, shift: boolean): void {
       const { dx, dy, lockX, lockY } = lockAxis(dxPx, dyPx, shift)
-      let x = clamp(d.originX + dx / this.outW, 0, 1)
-      let y = clamp(d.originY + dy / this.outH, 0, 1)
+      const delta = dragToTransformDelta(dx, dy, this.outW, this.outH)
+      let x = clamp(d.originX + delta.x, 0, 1)
+      let y = clamp(d.originY + delta.y, 0, 1)
       let guideX: number | null = null
       let guideY: number | null = null
+      // The snap distance is 8 screen pixels, whatever the preview scale.
+      const snapX = (SNAP_PX * d.outPerPx) / this.outW
+      const snapY = (SNAP_PX * d.outPerPx) / this.outH
       if (!lockX) {
-        const s = snapToGuides(x, THIRDS_GUIDES, SNAP_PX / this.outW)
+        const s = snapToGuides(x, THIRDS_GUIDES, snapX)
         x = s.value
         guideX = s.guide
       } else {
         x = d.originX
       }
       if (!lockY) {
-        const s = snapToGuides(y, THIRDS_GUIDES, SNAP_PX / this.outH)
+        const s = snapToGuides(y, THIRDS_GUIDES, snapY)
         y = s.value
         guideY = s.guide
       } else {
@@ -311,8 +328,9 @@ export default defineComponent({
     },
     dragClip(d: Drag, dxPx: number, dyPx: number, shift: boolean): void {
       const { dx, dy } = lockAxis(dxPx, dyPx, shift)
-      const x = clamp(d.originX + dx / this.outW, -1, 1)
-      const y = clamp(d.originY + dy / this.outH, -1, 1)
+      const delta = dragToTransformDelta(dx, dy, this.outW, this.outH)
+      const x = clamp(d.originX + delta.x, -1, 1)
+      const y = clamp(d.originY + delta.y, -1, 1)
       const id = d.id
       this.editProject((base) => setClipProps(base, id, { transform: { x, y } }), `clip-move:${id}`)
     },
@@ -322,7 +340,17 @@ export default defineComponent({
       const id = d.id
       if (d.target === 'text') {
         const size = Math.round(scaleFromHandle(d.startBox, d.corner, p, d.startValue, TEXT_SIZE_MIN, TEXT_SIZE_MAX))
-        this.editProject((base) => updateText(base, id, { style: { size } }), `text-size:${id}`)
+        // The glyph box sits off the anchor by an amount that grows with the size, so the anchor
+        // moves to keep the box centre where the press found it.
+        const item = this.selectedText
+        if (!item) return
+        const offset = textRect(this.outW, this.outH, { text: item.text, style: { size, outline: item.style.outline }, pos: { x: 0, y: 0 } }, (line, px) =>
+          measureLine(line, px, item.style.font)
+        )
+        if (!offset) return
+        const x = clamp((d.startBox.cx - offset.cx) / this.outW, 0, 1)
+        const y = clamp((d.startBox.cy - offset.cy) / this.outH, 0, 1)
+        this.editProject((base) => updateText(base, id, { style: { size }, pos: { x, y } }), `text-size:${id}`)
       } else {
         const scale = scaleFromHandle(d.startBox, d.corner, p, d.startValue, SCALE_MIN, SCALE_MAX)
         this.editProject((base) => setClipProps(base, id, { transform: { scale } }), `clip-scale:${id}`)
@@ -444,8 +472,8 @@ function arrowDelta(key: string, step: number): Point | null {
         type="button"
         class="absolute z-10 size-3.5 touch-none rounded-[3px] border border-signal-fg bg-signal before:absolute before:-inset-3.5 before:content-['']"
         :style="{
-          left: corner.sx < 0 ? '0' : '100%',
-          top: corner.sy < 0 ? '0' : '100%',
+          left: corner.sx < 0 ? '8px' : 'calc(100% - 8px)',
+          top: corner.sy < 0 ? '8px' : 'calc(100% - 8px)',
           transform: 'translate(-50%, -50%)',
           cursor: corner.sx * corner.sy > 0 ? 'nwse-resize' : 'nesw-resize'
         }"
@@ -482,8 +510,8 @@ function arrowDelta(key: string, step: number): Point | null {
         type="button"
         class="absolute z-10 size-3.5 touch-none rounded-[3px] border border-signal-fg bg-signal before:absolute before:-inset-3.5 before:content-['']"
         :style="{
-          left: corner.sx < 0 ? '0' : '100%',
-          top: corner.sy < 0 ? '0' : '100%',
+          left: corner.sx < 0 ? '8px' : 'calc(100% - 8px)',
+          top: corner.sy < 0 ? '8px' : 'calc(100% - 8px)',
           transform: 'translate(-50%, -50%)',
           cursor: corner.sx * corner.sy > 0 ? 'nwse-resize' : 'nesw-resize'
         }"

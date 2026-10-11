@@ -119,6 +119,9 @@ await check('Firefox-like: Ctrl+Z and Ctrl+Shift+Z undo and redo the rename', as
 
 await check('Firefox-like: autosave survives a reload', async () => {
   await fx.reload()
+  // A restored project with missing media opens the re-link dialog once; it would cover the menu.
+  const relinkDialog = fx.getByRole('dialog', { name: /Missing files|Dateien fehlen/ })
+  if (await relinkDialog.isVisible({ timeout: 3000 }).catch(() => false)) await fx.keyboard.press('Escape')
   await waitForName(fx, 'Trip Renamed')
 })
 
@@ -171,7 +174,8 @@ await check('Chromium: picker APIs are present', async () => {
 await check('Chromium: menu offers Choose work folder and no browser info', async () => {
   await openMenu(cr)
   assert(await menuItem(cr, 'Choose work folder').isVisible(), 'work folder item missing')
-  assert((await cr.getByText(/Chrome or Edge/).count()) === 0, 'browser info must not be shown')
+  const hits = await cr.getByText(/Chrome or Edge/).allInnerTexts()
+  assert(hits.length === 0, `browser info must not be shown: ${JSON.stringify(hits)}`)
 })
 
 await check('Chromium: menu fits a 390 px phone viewport', async () => {

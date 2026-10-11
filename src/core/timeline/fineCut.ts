@@ -44,6 +44,15 @@ export function clampCut(clip: Clip, t: Micros, frameLen: Micros): Micros {
   return Math.min(Math.max(rounded, bounds.min), bounds.max)
 }
 
+/**
+ * The frame rate as the frames are counted. Probed rates are averages of millisecond timestamps (30 fps
+ * reads as 29.996), so a value within 0.005 of an integer is that integer. NTSC rates (29.97) stay as they are.
+ */
+export function nominalFps(fps: number): number {
+  const rounded = Math.round(fps)
+  return rounded > 0 && Math.abs(fps - rounded) < 0.005 ? rounded : fps
+}
+
 /** Source frame number of the frame starting at srcTime. Rounds, because containers quantise timestamps. */
 export function frameIndexLabel(srcTime: Micros, fps: number): number {
   return Math.round((srcTime * fps) / MICROS_PER_SECOND)

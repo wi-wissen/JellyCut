@@ -26,7 +26,7 @@ export default defineComponent({
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center gap-1" role="group" :aria-label="groupLabel">
+  <div class="flex flex-wrap items-center" role="group" :aria-label="groupLabel">
     <button
       v-for="hex in colors"
       :key="hex"

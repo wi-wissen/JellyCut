@@ -91,11 +91,11 @@ describe('fittedFrameRect', () => {
 })
 
 describe('text geometry', () => {
-  // A fake measure: 0.5 px per px of font size per character, lines 1 em tall.
-  const measure = (text: string, px: number) => ({
-    width: Math.max(...text.split('\n').map((l) => l.length)) * px * 0.5,
-    height: text.split('\n').length * textLineHeightPx(px)
-  })
+  // Fake metrics: 0.5 px advance per px of font size and character, glyphs 0.7 em high, 0.2 em below the middle.
+  const measure = (line: string, px: number) => {
+    const width = line.length * px * 0.5
+    return { width, left: width / 2, right: width / 2, ascent: 0.7 * px, descent: 0.2 * px }
+  }
 
   it('scales the font size with the output height like the rasteriser', () => {
     expect(textFontPx(26, 1080)).toBe(26)
@@ -109,17 +109,32 @@ describe('text geometry', () => {
     expect(textPadPx(80, '#000000')).toBe(12)
   })
 
-  it('centres the box on pos, scaled by the layer scale and offset by offsetY', () => {
-    // size 100 at 500 px high is 46 px font; ink 4 * 46 * 0.5 = 92, line box 56, padding 2.
+  it('boxes the glyphs, centred on pos, scaled by the layer scale and offset by offsetY', () => {
+    // size 100 at 500 px high is a 46 px font: ink 92 wide, glyphs from -32.2 to +9.2 around the middle.
     const box = textRect(1000, 500, { text: 'abcd', style: { size: 100, outline: null }, pos: { x: 0.25, y: 0.5 }, scale: 2, offsetY: 0.1 }, measure)!
     expect(box.cx).toBeCloseTo(250, 6)
-    expect(box.cy).toBeCloseTo((0.5 + 0.1) * 500, 6)
-    expect(box.w).toBeCloseTo(2 * 96, 6)
-    expect(box.h).toBeCloseTo(2 * 60, 6)
+    expect(box.cy).toBeCloseTo(0.6 * 500 - 23, 6)
+    expect(box.w).toBeCloseTo(2 * 92, 6)
+    expect(box.h).toBeCloseTo(2 * (32.2 + 9.2), 6)
+    expect(box.rotationDeg).toBe(0)
   })
 
-  it('returns null for empty text', () => {
+  it('grows the box by half the outline stroke', () => {
+    const plain = textRect(1000, 1080, { text: 'ab', style: { size: 80, outline: null }, pos: { x: 0.5, y: 0.5 } }, measure)!
+    const outlined = textRect(1000, 1080, { text: 'ab', style: { size: 80, outline: '#000000' }, pos: { x: 0.5, y: 0.5 } }, measure)!
+    expect(outlined.w - plain.w).toBeCloseTo(10, 6)
+    expect(outlined.h - plain.h).toBeCloseTo(10, 6)
+  })
+
+  it('gives every line its own glyph rows', () => {
+    const one = textRect(1000, 1080, { text: 'ab', style: { size: 80, outline: null }, pos: { x: 0.5, y: 0.5 } }, measure)!
+    const two = textRect(1000, 1080, { text: 'ab\ncd', style: { size: 80, outline: null }, pos: { x: 0.5, y: 0.5 } }, measure)!
+    expect(two.h).toBeCloseTo(one.h + 96, 6)
+  })
+
+  it('returns null for empty or blank text', () => {
     expect(textRect(100, 100, { text: '', style: { size: 10, outline: null }, pos: { x: 0.5, y: 0.5 } }, measure)).toBeNull()
+    expect(textRect(100, 100, { text: ' ', style: { size: 10, outline: null }, pos: { x: 0.5, y: 0.5 } }, (l, px) => ({ ...measure(l, px), width: 0 }))).toBeNull()
   })
 
   it('hit-tests points in a rotated box', () => {

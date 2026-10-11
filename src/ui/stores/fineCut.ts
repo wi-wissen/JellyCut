@@ -9,6 +9,7 @@ import {
   clipForFineCut,
   cutBounds,
   frameIndexLabel,
+  nominalFps,
   pauseJumpTarget,
   snapToKeyframe,
   srcToTimeline,
@@ -35,8 +36,8 @@ const PREFS_KEY = 'jellycut.fineCut'
 const LANE = 'fine-cut'
 /** Keyboard steps stop on a keyframe that is at most this many frames away. */
 const SNAP_FRAMES = 3
-/** Keyframes are looked up this many frames to each side of the cut (the strip shows 8 each side). */
-const KEY_WINDOW_FRAMES = 8
+/** Keyframes are looked up this many frames to each side of the cut; the strip spans at most 64 frames each side. */
+const KEY_WINDOW_FRAMES = 64
 const SNIPPET_MICROS = 80_000
 /** Frame starts that differ by less than this are the same frame (timestamps are whole microseconds). */
 const BOUNDARY_TOLERANCE: Micros = 1_000
@@ -159,9 +160,6 @@ export const useFineCutStore = defineStore('fineCut', {
     frameIndex(state): number {
       return frameIndexLabel(this.cutSrc, state.fps)
     },
-    busy(state): boolean {
-      return state.pendingJobs > 0
-    },
     /** Pauses inside the clip's source range, in source time. */
     pauses(state): Pause[] {
       void state.waveformRevision
@@ -183,7 +181,7 @@ export const useFineCutStore = defineStore('fineCut', {
       const clip = clipForFineCut(editor.project, editor.playheadMicros, editor.selection)
       if (!clip) return false
       const asset = editor.project.assets.find((a) => a.id === clip.assetId)
-      const fps = asset?.fps ?? editor.project.format.fps
+      const fps = nominalFps(asset?.fps ?? editor.project.format.fps)
       const gen = ++generation
       const file = getAssetFile(clip.assetId)
       const tlFrame = Math.max(1, Math.round(frameDuration(fps) / clip.speed))
@@ -421,10 +419,13 @@ export const useFineCutStore = defineStore('fineCut', {
       const src = timelineToSrc(clip, clampCut(clip, target, tlFrame))
       const span = await this.frameAt(src)
       let s = dir > 0 && span.start < src - BOUNDARY_TOLERANCE ? span.end : span.start
+      // Container timestamps are whole milliseconds, so a real first frame can start a fraction of a frame early.
+      const lo = bounds.min - BOUNDARY_TOLERANCE
+      const hi = bounds.max + BOUNDARY_TOLERANCE
       for (let i = 0; i < 3; i++) {
         const t = srcToTimeline(clip, s)
-        if (t < bounds.min) s = (await this.frameAt(s)).end
-        else if (t > bounds.max) s = (await this.frameAt(Math.max(0, s - frameDuration(this.fps) / 2))).start
+        if (t < lo) s = (await this.frameAt(s)).end
+        else if (t > hi) s = (await this.frameAt(Math.max(0, s - frameDuration(this.fps) / 2))).start
         else return t
       }
       return clampCut(clip, srcToTimeline(clip, s), tlFrame)

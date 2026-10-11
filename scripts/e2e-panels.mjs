@@ -109,13 +109,9 @@ await check('back link returns to the library and clears the selection', async (
   await page.getByRole('heading', { name: 'Clip · Beach.mp4' }).waitFor()
 })
 
-await check('Fill in "Picture in format" sets transform.fit; Fit sets it back', async () => {
-  const group = page.getByRole('group', { name: 'Picture in format' })
-  await group.getByRole('button', { name: 'Fill', exact: true }).click()
-  assert(clipNamed(await project(page), 'Beach.mp4').transform.fit === 'fill', 'fit not fill')
-  await group.getByRole('button', { name: 'Fit', exact: true }).click()
-  assert(clipNamed(await project(page), 'Beach.mp4').transform.fit === 'fit', 'fit not restored')
-  await group.getByRole('button', { name: 'Fill', exact: true }).click()
+await check('the clip panel has no per-clip Fit/Fill control (fit is project-wide)', async () => {
+  assert((await page.getByRole('group', { name: 'Picture in format' }).count()) === 0, 'per-clip fit group still there')
+  assert((await page.locator('aside').getByRole('button', { name: 'Fill', exact: true }).count()) === 0, 'Fill button in the clip panel')
 })
 
 await check('zoom drag lands in transform.scale and is one undo step', async () => {
@@ -193,9 +189,9 @@ await page.getByRole('heading', { name: 'Transitions', exact: true }).waitFor()
 await page.screenshot({ path: join(SHOT_DIR, 'panel-transitions-light.png') })
 
 await page.getByRole('tab', { name: 'Material', exact: true }).click()
-await check('record tab shows the calm placeholder', async () => {
+await check('record tab shows the record panel', async () => {
   await page.getByRole('button', { name: 'Record', exact: true }).click()
-  await page.getByText('Recording comes soon', { exact: true }).waitFor()
+  await page.getByRole('button', { name: /^Microphone/ }).waitFor()
   await page.getByRole('button', { name: 'Media', exact: true }).click()
   await page.getByRole('heading', { name: 'Media', exact: true }).waitFor()
 })
@@ -311,15 +307,19 @@ await check('ratio popover: an outside click closes it', async () => {
   assert((await page.getByRole('dialog', { name: 'Picture format and background' }).count()) === 0, 'still open')
 })
 
-await check('fit chip toggles every clip when nothing is selected', async () => {
+await check('picture fit switch sets Fill and Fit for every clip, whatever is selected', async () => {
   await page.getByRole('button', { name: 'Back to library' }).click()
-  const chip = page.getByRole('button', { name: /^Toggle fit or fill/ })
+  const chip = page.getByRole('button', { name: /^Picture fit, currently/ })
   await chip.click()
-  let clips = (await project(page)).clips
-  assert(clips.every((c) => c.transform.fit === 'fill'), `fits ${clips.map((c) => c.transform.fit)}`)
+  await page.getByRole('radio', { name: 'Fill', exact: true }).click()
+  await page.keyboard.press('Escape')
+  let p = await project(page)
+  assert(p.format.fit === 'fill' && p.clips.every((c) => c.transform.fit === 'fill'), `fits ${p.clips.map((c) => c.transform.fit)}`)
   await chip.click()
-  clips = (await project(page)).clips
-  assert(clips.every((c) => c.transform.fit === 'fit'), `fits ${clips.map((c) => c.transform.fit)}`)
+  await page.getByRole('radio', { name: 'Fit', exact: true }).click()
+  await page.keyboard.press('Escape')
+  p = await project(page)
+  assert(p.format.fit === 'fit' && p.clips.every((c) => c.transform.fit === 'fit'), `fits ${p.clips.map((c) => c.transform.fit)}`)
 })
 
 await check('music: selecting a music item shows its panel; volume drag and fade-in change the item', async () => {

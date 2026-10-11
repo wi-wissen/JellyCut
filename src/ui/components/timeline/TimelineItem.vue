@@ -28,18 +28,27 @@ export default defineComponent({
   },
   computed: {
     bodyStyle(): Record<string, string> {
+      // Colours per track are defined in tokens.css; see docs/ui-layout.md ("Track colours").
+      const v = this.variant
       const background = {
         video: `var(--jc-track-video-${this.tone})`,
-        text: 'var(--jc-fill)',
-        music: 'var(--jc-music)',
+        text: 'var(--jc-track-text)',
+        music: 'var(--jc-track-music)',
         audio:
-          'repeating-linear-gradient(90deg, color-mix(in srgb, var(--jc-wave) 60%, transparent) 0 3px, transparent 3px 6px), color-mix(in srgb, var(--jc-wave) 22%, var(--jc-panel2))'
-      }[this.variant]
+          'repeating-linear-gradient(90deg, color-mix(in srgb, var(--jc-wave) 35%, transparent) 0 3px, transparent 3px 6px), color-mix(in srgb, var(--jc-wave) 12%, var(--jc-panel2))'
+      }[v]
+      const color = {
+        video: 'var(--jc-track-video-fg)',
+        text: 'var(--jc-track-text-fg)',
+        music: 'var(--jc-track-music-fg)',
+        audio: 'var(--jc-track-audio-fg)'
+      }[v]
       return {
         background,
-        color: this.variant === 'audio' ? 'var(--jc-fg)' : '#ffffff',
+        color,
+        // Selection: a 2 px lime outline, with a thin dark line inside so it also shows on amber and lime-ish tracks.
         boxShadow: this.selected
-          ? 'inset 0 0 0 2px var(--jc-signal)'
+          ? 'inset 0 0 0 2px var(--jc-signal), inset 0 0 0 3px var(--jc-signal-fg)'
           : 'inset 0 0 0 1px var(--jc-panel)'
       }
     },

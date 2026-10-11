@@ -4,7 +4,7 @@ import { mapState } from 'pinia'
 import { useFineCutStore } from '../../stores/fineCut'
 import { getFrameProvider } from '../../stores/media'
 import type { DecodedFrame } from '../../../engine/media/frames'
-import { frameIndexLabel, timelineToSrc } from '../../../core/timeline/fineCut'
+import { frameIndexLabel } from '../../../core/timeline/fineCut'
 import { frameDuration, type Micros } from '../../../core/time'
 
 /** Frames shown on each side of the cut: at least 8, and as many as fill the visible span (up to 64). */
@@ -99,7 +99,9 @@ export default defineComponent({
       const half = this.half
       const tiles: Tile[] = []
       for (let offset = -half; offset < half; offset++) {
-        const src = Math.max(0, this.cutSrc + offset * fl)
+        const src = this.cutSrc + offset * fl
+        // Before the first frame there is nothing to show.
+        if (src < 0) continue
         const key = this.keyframeTimes.some((k) => Math.abs(k - src) < fl / 2)
         tiles.push({ frame: frameIndexLabel(src, this.fps), src, key, offset })
       }
@@ -171,11 +173,9 @@ export default defineComponent({
       :style="{ left: cutX + tile.offset * px + 'px', width: px + 'px' }"
     >
       <canvas :ref="(el) => bind(tile.frame, el as HTMLCanvasElement | null)" class="block h-14 w-full" aria-hidden="true" />
-      <span
-        class="absolute bottom-0 left-0 right-0 truncate bg-bg/70 px-0.5 text-center font-mono text-[9px] leading-tight"
-        :class="tile.key ? 'font-bold text-txt' : 'text-muted'"
-      >
-        {{ tile.key ? $t('fineCut.keyTile', { n: tile.frame }) : $t('fineCut.frameTile', { n: tile.frame }) }}
+      <span class="absolute bottom-0 left-0 right-0 flex flex-col items-center bg-bg/70 font-mono text-[9px] leading-tight">
+        <span v-if="tile.key" class="font-bold text-txt">{{ $t('fineCut.keyTile') }}</span>
+        <span class="max-w-full truncate" :class="tile.key ? 'font-bold' : 'text-muted'">{{ $t('fineCut.frameTile', { n: tile.frame }) }}</span>
       </span>
     </div>
     <div class="pointer-events-none absolute bottom-0 top-0 w-0.5 bg-signal" :style="{ left: cutX - 1 + 'px' }" aria-hidden="true" />

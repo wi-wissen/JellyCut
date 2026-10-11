@@ -27,3 +27,12 @@ Reference size 1120x700, but the layout is fluid (flex/grid), never fixed px wid
 - Icons: inline SVG, 24px viewBox, stroke currentColor, width 2, round caps. Put them in one `Icon.vue` component with a `name` prop (no icon libraries).
 - Dark mode: toggled by setting `data-theme` on <html> (button in TopBar); tokens are already defined in `src/ui/styles/tokens.css`.
 - Touch targets >= 44px on buttons, every icon button has an aria-label or visible text. Focus ring is global.
+
+## Track colours
+
+- Video clips: three blues (`--jc-track-video-1..3`) alternate from clip to clip, so every cut is visible; white labels.
+- Original audio: green striped wave (`--jc-wave`), dark labels.
+- Added music: teal (`--jc-track-music`), white labels.
+- Text: amber/gold (`--jc-track-text`), dark labels (`--jc-track-text-fg`).
+- Selection: always a 2 px lime outline (`--jc-signal`) with corner handles, never a violet (`--jc-fill`) fill.
+- All label pairs meet WCAG AA (4.5:1) in light and dark; lane swatches in the label column show the same colours.

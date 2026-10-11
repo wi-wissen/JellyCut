@@ -66,7 +66,7 @@
       "cannotDecode": "Dieser Browser kann diese Datei nicht lesen. Bitte nutze Chrome oder Edge.",
       "unsupportedFormat": "Dieser Dateityp wird nicht unterstützt.",
       "noMedia": "Diese Datei enthält weder Bild noch Ton.",
-      "missing": "Datei nicht verknüpft. Öffne sie erneut, um sie neu zu verknüpfen."
+      "missing": "Datei fehlt."
     },
     "audio": "Audio"
   },
@@ -170,7 +170,7 @@
   },
   "clip": {
     "header": "Clip · {name}",
-    "picture": "Bild im Format",
+    "picture": "Bild",
     "fit": "Einpassen",
     "fill": "Füllen",
     "zoom": "Zoom",
@@ -395,7 +395,7 @@
     "waveform": "Wellenform",
     "waveformLoading": "Wellenform wird berechnet",
     "strip": "Frame-Streifen",
-    "keyTile": "KEY {n}",
+    "keyTile": "KEY",
     "frameTile": "#{n}"
   },
   "relink": {
