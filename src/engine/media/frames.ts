@@ -40,11 +40,12 @@ export class ExactFrameProvider {
     return this.files.has(assetId)
   }
 
-  private open(assetId: string): Promise<Entry | null> {
-    let entry = this.entries.get(assetId)
+  private open(assetId: string, lane: string): Promise<Entry | null> {
+    const key = `${assetId}|${lane}`
+    let entry = this.entries.get(key)
     if (!entry) {
       entry = this.create(assetId)
-      this.entries.set(assetId, entry)
+      this.entries.set(key, entry)
     }
     return entry
   }
@@ -64,9 +65,13 @@ export class ExactFrameProvider {
     return { kind: 'video', input, track, sink: new CanvasSink(track), last: null }
   }
 
-  /** Returns the frame shown at `srcTime` of the asset, or null when it cannot be decoded. */
-  async getFrame(assetId: string, srcTime: Micros): Promise<DecodedFrame | null> {
-    const entry = await this.open(assetId)
+  /**
+   * Returns the frame shown at `srcTime` of the asset, or null when it cannot be decoded.
+   * Each `lane` has its own decoder, so two layers showing the same file (both sides of a transition)
+   * do not keep pulling the decoder back and forth.
+   */
+  async getFrame(assetId: string, srcTime: Micros, lane = ''): Promise<DecodedFrame | null> {
+    const entry = await this.open(assetId, lane)
     if (!entry) return null
     if (entry.kind === 'image') return entry.bitmap
 

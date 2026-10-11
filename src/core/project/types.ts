@@ -15,6 +15,8 @@ export interface Asset {
   width?: number
   height?: number
   fps?: number
+  /** Whether the file has a usable audio track. Undefined means "assume yes" for video, audio files always have it. */
+  hasAudio?: boolean
 }
 
 export interface Transform {

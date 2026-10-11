@@ -9,6 +9,9 @@ import ActionBar from '../components/ActionBar.vue'
 import TimelinePanel from '../components/TimelinePanel.vue'
 import { useEditorStore } from '../stores/editor'
 
+// The autosave is restored the first time the editor is opened, so the landing and help pages never touch it.
+let restored = false
+
 const TEXT_INPUT_TYPES = /^(text|search|url|tel|email|password|number)$/
 
 function isTextEntry(target: EventTarget | null): boolean {
@@ -20,6 +23,11 @@ function isTextEntry(target: EventTarget | null): boolean {
 export default defineComponent({
   name: 'EditorView',
   components: { TopBar, TabBar, LibraryPanel, PlayerStage, ActionBar, TimelinePanel },
+  async beforeRouteEnter() {
+    if (restored) return
+    restored = true
+    await useEditorStore().restoreAutosave()
+  },
   mounted() {
     this.applyTheme()
     document.addEventListener('keydown', this.onKeydown)
