@@ -106,7 +106,10 @@
   },
   "player": {
     "fitFill": "Fit · Fill",
-    "ratio": "Aspect ratio"
+    "ratio": "Aspect ratio",
+    "canvasLabel": "Video preview",
+    "empty": "No video yet. Add media on the left and click it to put it on the timeline.",
+    "noWebgl": "Your browser cannot show the preview (WebGL is missing). Please use Chrome or Edge."
   },
   "landing": {
     "title": "Jelly Cut",

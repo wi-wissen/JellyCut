@@ -8,6 +8,7 @@ import PlayerStage from '../components/PlayerStage.vue'
 import ActionBar from '../components/ActionBar.vue'
 import TimelinePanel from '../components/TimelinePanel.vue'
 import { useEditorStore } from '../stores/editor'
+import '../fonts'
 
 // The autosave is restored the first time the editor is opened, so the landing and help pages never touch it.
 let restored = false

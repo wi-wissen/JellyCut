@@ -1,4 +1,5 @@
 import { musicGain } from '../../core/audio/gain'
+import { CURATED_FONTS, canvasFont } from '../../core/text/fonts'
 import type { Clip, Project } from '../../core/project/types'
 import { buildScene, planTimeline, type PlannedTimeline } from '../../core/render/scene'
 import type { Micros } from '../../core/time'
@@ -50,7 +51,7 @@ export class PreviewEngine {
 
   constructor(
     private canvas: HTMLCanvasElement,
-    private provider: ExactFrameProvider,
+    private getProvider: () => ExactFrameProvider,
     private callbacks: PreviewCallbacks
   ) {
     this.compositor = new Compositor(canvas)
@@ -116,6 +117,11 @@ export class PreviewEngine {
     URL.revokeObjectURL(entry.url)
     entry.bitmap?.close()
     this.assets.delete(assetId)
+  }
+
+  /** Draws the current time again, e.g. after an asset became available. */
+  refresh(): void {
+    if (!this.isPlaying) void this.renderPaused()
   }
 
   /** Shows the frame at `t` (paused). Resolves when the frame is on the canvas. */
@@ -289,7 +295,7 @@ export class PreviewEngine {
     const scene = buildScene(project, this.planned, this.time)
     const frames = new Map<string, FrameSource>()
     for (const [lane, layer] of scene.videos.entries()) {
-      const frame = await this.provider.getFrame(layer.assetId, layer.srcTime, String(lane))
+      const frame = await this.getProvider().getFrame(layer.assetId, layer.srcTime, String(lane))
       if (token !== this.renderToken || this.disposed) return
       if (frame) frames.set(layer.clipId, frame)
     }
@@ -313,7 +319,7 @@ export class PreviewEngine {
 
   private async loadFonts(): Promise<void> {
     try {
-      await Promise.all(['400', '600', '700'].map((w) => document.fonts.load(`${w} 32px Sora`)))
+      await Promise.all(CURATED_FONTS.map((f) => document.fonts.load(canvasFont(f.family, 32))))
     } catch {
       // Text falls back to the system font; nothing else depends on it.
     }

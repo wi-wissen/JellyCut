@@ -106,7 +106,10 @@
   },
   "player": {
     "fitFill": "Einpassen · Füllen",
-    "ratio": "Bildformat"
+    "ratio": "Bildformat",
+    "canvasLabel": "Vorschau des Videos",
+    "empty": "Noch kein Video. Füge links Medien hinzu und klicke sie an, um sie in die Timeline zu legen.",
+    "noWebgl": "Dein Browser kann die Vorschau nicht darstellen (WebGL fehlt). Bitte Chrome oder Edge verwenden."
   },
   "landing": {
     "title": "Jelly Cut",

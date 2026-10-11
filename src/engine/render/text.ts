@@ -1,3 +1,4 @@
+import { canvasFont } from '../../core/text/fonts'
 import type { TextStyle } from '../../core/project/types'
 
 export type Canvas2D = HTMLCanvasElement | OffscreenCanvas
@@ -37,7 +38,7 @@ export function textPixelSize(size: number, outputHeight: number): number {
 export function rasterizeText(text: string, style: TextStyle, px: number): TextRaster | null {
   const lines = text.split('\n')
   const family = style.font.replace(/["\\]/g, '').trim()
-  const font = `700 ${px}px ${family ? `"${family}", ` : ''}system-ui, sans-serif`
+  const font = canvasFont(family, px)
 
   const probe = context2d(createCanvas(1, 1))
   probe.font = font

@@ -23,6 +23,11 @@ export function getFrameProvider(): ExactFrameProvider {
   return provider
 }
 
+/** The File behind an asset in this session, if it was imported (or re-linked) here. */
+export function getAssetFile(assetId: string): File | undefined {
+  return files.get(assetId)
+}
+
 function rebuildProvider(): void {
   const old = provider
   provider = new ExactFrameProvider()
