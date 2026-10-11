@@ -1,10 +1,9 @@
 # Logo notes
 
-- Idea: a flat, sticker-like jellyfish swimming up and to the right (rotated 40 degrees), faceless; the tilt, bell and trailing tentacles carry the mark.
-- Bell: scalloped bowl in three violet layers: light shell #A593FF behind, dome #6D4CF5, dark rim band #4B2FC4; a lime highlight arc and dot on top.
-- Tentacles: four S-curved ribbons of different lengths trailing down-left: light violet, lime, violet, pale lime; round dots on some.
-- Palette: only the two brand colours and their tints/shades: violet #6D4CF5 / #A593FF / #4B2FC4 / #2A1A7A, lime #C6F432 / #E3FA8A / #8FB51C. Favicon tile is #1E1650.
-- Lime tentacles carry an olive #8FB51C underlay so they stay readable on #F4F3FA.
-- `public/favicon.svg`: 64x64 on a dark rounded tile so all tones keep contrast at 16 px.
-- `public/logo.svg`: transparent, tight viewBox; works on #F4F3FA and #0E0F14; use at about 28 px high beside the wordmark.
-- Do not add other hues, a face, or straighten the tentacles.
+- Idea: "sliced play". A soft, round-cornered play triangle (the "jelly") cut once by a straight slash (the "Cut"): video plus editing in one gesture.
+- Colours: only violet #6D4CF5 (badge and the slash gap) and lime #C6F432 (the mark). Flat fills, no gradients, no outlines, no third colour.
+- Construction (64x64): badge `rect` rx 14; mark = triangle (21.5,18) (47.5,32) (21.5,46) grown by a 5 unit radius; slash = 6 unit violet bar rotated 21 degrees through the centre.
+- `public/favicon.svg` and `public/logo.svg` are the same self-contained badge; they need no tile or CSS behind them and work on light (#F4F3FA) and dark (#0E0F14) pages.
+- Usage: about 32 px high to the left of the bold wordmark "Jelly Cut", gap about 10 px; keep at least 4 px clear space around the badge.
+- Minimum size: 16 px (favicon). Do not use it smaller; the slash closes up.
+- Do not: round the cut edges, mirror the slash, recolour the mark (e.g. white or violet on lime), add a face, shadows or tentacles, or put the lime mark on a light background without the violet badge (lime on white has almost no contrast).

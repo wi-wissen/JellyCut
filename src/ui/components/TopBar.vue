@@ -27,12 +27,7 @@ export default defineComponent({
 <template>
   <header class="flex h-[52px] shrink-0 items-center gap-2.5 border-b border-line bg-panel px-3">
     <div class="flex items-center gap-2 pr-1">
-      <span
-        class="flex size-8 items-center justify-center rounded-lg border"
-        style="background: var(--jc-logo-tile); border-color: var(--jc-logo-tile-line)"
-      >
-        <img :src="logoUrl" alt="" class="size-6 object-contain" />
-      </span>
+      <img :src="logoUrl" alt="" class="size-8" />
       <span class="text-[15px] font-bold tracking-tight">{{ $t('app.name') }}</span>
     </div>
 
