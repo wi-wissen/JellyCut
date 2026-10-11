@@ -1,7 +1,7 @@
 <script lang="ts">
 import { defineComponent, type PropType } from 'vue'
 
-export type TimelineItemVariant = 'video' | 'text' | 'music' | 'audio'
+export type TimelineItemVariant = 'video' | 'text' | 'music' | 'audio' | 'overlay'
 export type TrimEdge = 'start' | 'end'
 
 /** One bar in a lane. Position and size are pixels; the parent owns all pointer logic except the press itself. */
@@ -33,6 +33,7 @@ export default defineComponent({
       const background = {
         video: `var(--jc-track-video-${this.tone})`,
         text: 'var(--jc-track-text)',
+        overlay: 'var(--jc-track-overlay)',
         music: 'var(--jc-track-music)',
         audio:
           'repeating-linear-gradient(90deg, color-mix(in srgb, var(--jc-wave) 35%, transparent) 0 3px, transparent 3px 6px), color-mix(in srgb, var(--jc-wave) 12%, var(--jc-panel2))'
@@ -40,6 +41,7 @@ export default defineComponent({
       const color = {
         video: 'var(--jc-track-video-fg)',
         text: 'var(--jc-track-text-fg)',
+        overlay: 'var(--jc-track-overlay-fg)',
         music: 'var(--jc-track-music-fg)',
         audio: 'var(--jc-track-audio-fg)'
       }[v]

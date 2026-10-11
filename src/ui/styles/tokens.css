@@ -22,6 +22,8 @@
   --jc-track-music-fg: #ffffff;
   --jc-track-text: #f2b233;
   --jc-track-text-fg: #14121f;
+  --jc-track-overlay: #b4325f;
+  --jc-track-overlay-fg: #ffffff;
   --jc-wave: #2e9e63;
   --jc-music: #0f766e;
   --jc-logo-tile: #ede9ff;
@@ -47,6 +49,7 @@
     --jc-track-audio-fg: #e9eaf2;
     --jc-track-music: #0f6f69;
     --jc-track-text: #e0a526;
+    --jc-track-overlay: #9c2a52;
     --jc-wave: #4fd48a;
     --jc-music: #0f6f69;
     --jc-danger: #ff8a80;
@@ -70,6 +73,7 @@
   --jc-track-audio-fg: #e9eaf2;
   --jc-track-music: #0f6f69;
   --jc-track-text: #e0a526;
+  --jc-track-overlay: #9c2a52;
   --jc-wave: #4fd48a;
   --jc-music: #0f6f69;
   --jc-danger: #ff8a80;

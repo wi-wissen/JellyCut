@@ -1,8 +1,10 @@
 import type { Clip, FitMode, MusicItem, Project, TextItem, Transform } from '../project/types'
 import { frameDuration, type Micros } from '../time'
 import { clipEnd, findClipAt, rippleClose, splitClip, trimClipEnd, trimClipStart } from './edit'
+import { IMAGE_MAX_DURATION } from './insert'
+import { duplicateOverlay } from './overlayOps'
 
-export type ItemKind = 'clip' | 'text' | 'music'
+export type ItemKind = 'clip' | 'text' | 'music' | 'overlay'
 export interface ItemRef {
   kind: ItemKind
   id: string
@@ -29,7 +31,8 @@ export function projectIds(project: Project): Set<string> {
     ...project.assets.map((a) => a.id),
     ...project.clips.map((c) => c.id),
     ...project.texts.map((t) => t.id),
-    ...project.music.map((m) => m.id)
+    ...project.music.map((m) => m.id),
+    ...project.overlays.map((o) => o.id)
   ])
 }
 
@@ -71,6 +74,10 @@ export function deleteItem(project: Project, ref: ItemRef): Project {
     const texts = project.texts.filter((t) => t.id !== ref.id)
     return texts.length === project.texts.length ? project : { ...project, texts }
   }
+  if (ref.kind === 'overlay') {
+    const overlays = project.overlays.filter((o) => o.id !== ref.id)
+    return overlays.length === project.overlays.length ? project : { ...project, overlays }
+  }
   const music = project.music.filter((m) => m.id !== ref.id)
   return music.length === project.music.length ? project : { ...project, music }
 }
@@ -105,6 +112,7 @@ export function duplicateItem(project: Project, ref: ItemRef, newId: string): Pr
     }
     return { ...project, texts: [...project.texts.slice(0, index + 1), copy, ...project.texts.slice(index + 1)] }
   }
+  if (ref.kind === 'overlay') return duplicateOverlay(project, ref.id, newId)
   const index = project.music.findIndex((m) => m.id === ref.id)
   const original = project.music[index]
   if (!original) return project
@@ -128,6 +136,8 @@ function updateClip(project: Project, clipId: string, update: (clip: Clip, proje
 }
 
 function assetDurationOf(project: Project, clip: Clip): Micros | null {
+  // A freeze frame holds one picture, so like an image it is not limited by the length of its file.
+  if (clip.still !== undefined) return IMAGE_MAX_DURATION
   return project.assets.find((a) => a.id === clip.assetId)?.duration ?? null
 }
 
@@ -178,6 +188,8 @@ export function setClipProps(project: Project, clipId: string, patch: ClipPatch)
       next = { ...next, muted: patch.muted }
     }
     if (patch.speed !== undefined) {
+      // A freeze frame always runs at speed 1.
+      if (clip.still !== undefined) return null
       if (!isPositive(patch.speed)) return null
       if (Math.round((clip.srcOut - clip.srcIn) / patch.speed) < 1) return null
       next = { ...next, speed: patch.speed }

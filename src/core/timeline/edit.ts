@@ -9,6 +9,11 @@ export function clipDuration(clip: Clip): Micros {
   return Math.round((clip.srcOut - clip.srcIn) / clip.speed)
 }
 
+/** Source time of the picture shown at timeline time t: the held frame of a freeze frame, else the mapped time. */
+export function sourceTimeAt(clip: Clip, t: Micros): Micros {
+  return clip.still ?? clip.srcIn + Math.round((t - clip.start) * clip.speed)
+}
+
 export function clipEnd(clip: Clip): Micros {
   return clip.start + clipDuration(clip)
 }

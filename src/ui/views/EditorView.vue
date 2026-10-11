@@ -53,13 +53,13 @@ export default defineComponent({
 </script>
 
 <template>
-  <div class="flex h-full flex-col overflow-hidden bg-bg text-fg">
+  <div class="jc-editor flex h-full flex-col overflow-hidden bg-bg text-fg">
     <TopBar />
-    <div class="flex min-h-0 flex-1">
-      <aside class="flex w-[350px] shrink-0 flex-col border-r border-line bg-panel">
+    <div class="jc-workspace flex min-h-0 flex-1">
+      <aside class="jc-sheet flex w-[350px] shrink-0 flex-col border-r border-line bg-panel">
         <LeftPanel />
       </aside>
-      <main class="flex min-w-0 flex-1 flex-col">
+      <main class="jc-main flex min-w-0 flex-1 flex-col">
         <PlayerStage />
         <ActionBar />
       </main>

@@ -5,6 +5,8 @@ import { useMediaStore } from '../stores/media'
 
 const FOCUSABLE = 'button:not([disabled]), [tabindex]:not([tabindex="-1"])'
 const TITLE_ID = 'remove-asset-title'
+/** Element that had focus before the confirmation opened; focus goes back there on close. */
+let returnTarget: HTMLElement | null = null
 
 /** Small confirmation before a media file that is used on the timeline is removed. */
 export default defineComponent({
@@ -24,7 +26,17 @@ export default defineComponent({
   },
   watch: {
     pendingRemoval(value: unknown) {
-      if (value) void nextTick(() => this.focusCancel())
+      if (value) {
+        returnTarget = document.activeElement as HTMLElement | null
+        void nextTick(() => this.focusCancel())
+        return
+      }
+      const target = returnTarget
+      returnTarget = null
+      // A removed medium's button is gone by now; then focus stays where the browser puts it.
+      void nextTick(() => {
+        if (target?.isConnected) target.focus()
+      })
     }
   },
   mounted() {

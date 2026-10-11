@@ -196,6 +196,45 @@ check('touch targets are at least 44 px', await dialog().locator('button:visible
 await dialog().getByRole('button', { name: 'Close' }).click()
 await dialog().waitFor({ state: 'detached', timeout: 3000 })
 
+// 9b. Export hint: shown in the done state while a medium needs credit; non-blocking, dismissible, opens credits.
+const exportPhase = () => page.evaluate(() => document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('export').phase)
+const exportDialog = () => page.getByRole('dialog', { name: /Export video/ })
+const hint = () => exportDialog().getByRole('button', { name: 'Open credits', exact: true })
+/** Opens the export dialog (or uses the open one), starts and waits for the done state. */
+async function runExport(openFirst) {
+  if (openFirst) await page.locator('#export-button').click()
+  await exportDialog().waitFor({ timeout: 4000 })
+  for (let i = 0; i < 150 && (await exportPhase()) !== 'ready'; i++) await page.waitForTimeout(100)
+  await page.getByRole('button', { name: 'Start export', exact: true }).click()
+  for (let i = 0; i < 600 && (await exportPhase()) !== 'done'; i++) await page.waitForTimeout(100)
+  return (await exportPhase()) === 'done'
+}
+check('export finishes with media that need credit', await runExport(true))
+check('export hint is shown when a used medium needs credit', (await hint().count()) === 1)
+check('export hint does not block: Save stays enabled', await exportDialog().getByRole('button', { name: 'Save', exact: true }).isEnabled())
+await hint().click()
+await dialog().waitFor({ timeout: 3000 })
+check('hint button opens the credits dialog above the export dialog', (await dialog().isVisible()) && (await exportDialog().count()) === 1)
+await page.keyboard.press('Escape')
+await dialog().waitFor({ state: 'detached', timeout: 3000 })
+check('Escape closes only the credits dialog', (await exportDialog().count()) === 1 && (await exportPhase()) === 'done')
+check('focus returns to the hint button', await page.evaluate(() => document.activeElement?.id === 'export-credits-hint-button'))
+await exportDialog().getByRole('button', { name: 'Hide', exact: true }).click()
+check('hiding the hint removes it', (await hint().count()) === 0)
+await exportDialog().getByRole('button', { name: 'Close', exact: true }).click()
+await exportDialog().waitFor({ state: 'detached', timeout: 3000 })
+
+// Nothing needs credit any more (own work on every medium): the done state shows no hint.
+await page.evaluate(async () => {
+  const { patchAssetCredit } = await import('/src/core/credits/credits.ts')
+  const pinia = document.querySelector('#app').__vue_app__.config.globalProperties.$pinia
+  const ed = pinia._s.get('editor')
+  for (const a of ed.project.assets) ed.commitProject(patchAssetCredit(ed.project, a.id, { license: 'own-work' }))
+})
+check('export without credit-needing media: no hint', (await runExport(true)) && (await hint().count()) === 0)
+await exportDialog().getByRole('button', { name: 'Close', exact: true }).click()
+await exportDialog().waitFor({ state: 'detached', timeout: 3000 })
+
 // 10. Responsive and dark layout of the dialog, then the guide page.
 await page.emulateMedia({ colorScheme: 'dark' })
 await page.getByRole('button', { name: 'Credits for frames.webm' }).click()

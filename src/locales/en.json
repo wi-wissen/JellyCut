@@ -189,7 +189,11 @@
     "filter": "Filter and adjustment",
     "filterSummary": "Filter: {name}",
     "filterNone": "Filter: None",
-    "filterChange": "Open filters"
+    "filterChange": "Open filters",
+    "freeze": "Freeze frame",
+    "freezeAction": "Freeze frame at playhead",
+    "freezeHint": "Move the playhead onto this clip to freeze the picture there.",
+    "freezeNote": "Freeze frame: the picture is held for its length, without sound."
   },
   "transitions": {
     "title": "Transitions",
@@ -330,7 +334,12 @@
     "widthValue": "{value} px",
     "loop": "Loop forever",
     "roughNote": "Rough estimate",
-    "calibrationHint": "The estimate gets more accurate after your first export on this computer."
+    "calibrationHint": "The estimate gets more accurate after your first export on this computer.",
+    "creditsHint": {
+      "text": "Some media in this project need a credit line.",
+      "open": "Open credits",
+      "hide": "Hide"
+    }
   },
   "record": {
     "title": "Record",
@@ -669,6 +678,76 @@
       "title": "7. Always read the licence on the page itself",
       "text": "Read the licence on the page where you found the material before you use it. Rules can change, so this guide is a starting point and not legal advice.",
       "school": "For school use: if you publish a video outside school, for example on a video platform or on a school website, the same rules apply."
+    }
+  },
+  "a11y": {
+    "fileInput": "Choose media files",
+    "guideNav": "Guide navigation"
+  },
+  "responsive": {
+    "more": "More",
+    "moreActions": "More actions",
+    "showTools": "Show tools",
+    "hideTools": "Hide tools"
+  },
+  "overlays": {
+    "panel": "Stickers",
+    "stickerHint": "Click a sticker. It appears at the playhead and can be moved, scaled and rotated in the preview.",
+    "stickerNames": {
+      "star": "Star",
+      "heart": "Heart",
+      "smile": "Smile",
+      "thumbsUp": "Thumbs up",
+      "party": "Party",
+      "fire": "Fire",
+      "sparkles": "Sparkles",
+      "check": "Check",
+      "cross": "Cross",
+      "hundred": "Hundred",
+      "rocket": "Rocket",
+      "laugh": "Laugh"
+    },
+    "shapes": "Shapes",
+    "shape": {
+      "rect": "Frame",
+      "ellipse": "Ellipse",
+      "arrow": "Arrow"
+    },
+    "shapeHint": "The shape appears at the playhead. Drag the handles to move, scale or rotate it.",
+    "drawPanel": "Draw",
+    "drawToggle": "Draw on the preview",
+    "drawOn": "On",
+    "drawOff": "Off",
+    "drawHint": "Turn drawing on, then paint over the preview with a mouse or your finger. Each stroke appears at the playhead.",
+    "penWidth": "Line width",
+    "penWidths": {
+      "thin": "Thin",
+      "medium": "Medium",
+      "thick": "Thick"
+    },
+    "undoStroke": "Undo last stroke",
+    "noStrokes": "No strokes in this project yet.",
+    "color": "Colour",
+    "size": "Size",
+    "rotation": "Rotation",
+    "lineWidth": "Line width",
+    "width": "Width",
+    "height": "Height",
+    "start": "Start",
+    "duration": "Duration",
+    "header": {
+      "sticker": "Sticker · {name}",
+      "shape": "Shape · {name}",
+      "stroke": "Stroke"
+    },
+    "timelineLabel": "Overlay: {name}",
+    "player": {
+      "box": "Overlay {name}",
+      "move": "Move",
+      "scale": "Resize",
+      "rotate": "Rotate",
+      "surface": "Drawing surface: paint with a mouse or your finger",
+      "drawing": "Drawing"
     }
   }
 }

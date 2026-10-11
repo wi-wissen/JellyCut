@@ -72,6 +72,11 @@ export interface Clip {
   /** Absent means all neutral. */
   adjust?: ColorAdjust
   transitionIn: TransitionIn | null
+  /**
+   * Freeze frame: the source time of the one frame this clip shows for its whole length. Such a clip has
+   * speed 1 and no audio; srcIn/srcOut only give its length. See core/timeline/freezeOps.
+   */
+  still?: Micros
 }
 
 export interface TextStyle {
@@ -103,6 +108,48 @@ export interface MusicItem {
   fadeOut: Micros
 }
 
+/** Placement and timing shared by all overlay items (stickers, shapes, strokes). */
+export interface OverlayBase {
+  id: string
+  start: Micros
+  duration: Micros
+  /** Centre as a fraction of the output: x of the width, y of the height. */
+  pos: { x: number; y: number }
+  /** Size multiplier, 1 = as created. */
+  scale: number
+  /** Clockwise degrees. */
+  rotation: number
+}
+
+export interface StickerOverlay extends OverlayBase {
+  kind: 'sticker'
+  /** One emoji; drawn with the system emoji font. */
+  emoji: string
+  /** Glyph height as a fraction of the output height. */
+  size: number
+}
+
+export interface ShapeOverlay extends OverlayBase {
+  kind: 'shape'
+  shape: 'rect' | 'ellipse' | 'arrow'
+  /** Width and height as fractions of the output height. */
+  width: number
+  height: number
+  /** Line width as a fraction of the output height. */
+  lineWidth: number
+  color: string
+}
+
+export interface StrokeOverlay extends OverlayBase {
+  kind: 'stroke'
+  /** Points relative to pos; both axes in fractions of the output height. At least two. */
+  points: [number, number][]
+  lineWidth: number
+  color: string
+}
+
+export type OverlayItem = StickerOverlay | ShapeOverlay | StrokeOverlay
+
 export interface ProjectFormat {
   ratio: FormatRatio
   width: number
@@ -120,7 +167,7 @@ export interface Project {
   assets: Asset[]
   clips: Clip[]
   texts: TextItem[]
-  overlays: unknown[]
+  overlays: OverlayItem[]
   stickers: unknown[]
   drawings: unknown[]
   music: MusicItem[]

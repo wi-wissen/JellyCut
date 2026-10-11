@@ -1,10 +1,13 @@
 import { TRANSITION_TYPES } from '../../core/render/types'
 import type { LayerTransition, Scene, TextLayer, VideoLayer } from '../../core/render/types'
-import type { ProjectFormat, TextStyle, Transform } from '../../core/project/types'
+import type { OverlayItem, ProjectFormat, TextStyle, Transform } from '../../core/project/types'
+import { rectCorners } from '../../core/render/layout'
+import { overlayBox } from '../../core/render/overlayLayout'
 import { isIdentity, type Grade } from '../../core/filters/filters'
 import { FRAGMENT_BLUR, FRAGMENT_COPY, FRAGMENT_FRAME, FRAGMENT_GRADED_FRAME, FRAGMENT_MIX, FRAGMENT_TEXT } from './shaders'
 import { Program, createTarget, createTexture, type Target } from './gl'
 import { parseCssColor, rasterizeText, textPixelSize, type Rgb } from './text'
+import { overlayRasterKey, rasterizeOverlay } from './overlays'
 
 /** Anything texImage2D accepts that also reports its size. */
 export type FrameSource = CanvasImageSource & { width?: number; height?: number }
@@ -16,6 +19,7 @@ const BLUR_GAIN = 0.88
 const MAX_BLUR_RADIUS = 64
 const MAX_OUTPUT_SIDE = 8192
 const TEXT_CACHE_LIMIT = 96
+const OVERLAY_CACHE_LIMIT = 64
 
 type Vec2 = readonly [number, number]
 type Quad = readonly [Vec2, Vec2, Vec2, Vec2]
@@ -138,6 +142,7 @@ export class Compositor {
   private readonly frameTextures = new Map<string, FrameTexture>()
   /** Insertion order doubles as LRU order. */
   private readonly textTextures = new Map<string, FrameTexture>()
+  private readonly overlayTextures = new Map<string, FrameTexture>()
   private explicitSize: { w: number; h: number } | null = null
   private outW = 1
   private outH = 1
@@ -155,6 +160,7 @@ export class Compositor {
     // The old GL objects are gone with the context; drop our references without deleting them.
     this.frameTextures.clear()
     this.textTextures.clear()
+    this.overlayTextures.clear()
     this.pages = [null, null]
     this.blurTargets = null
     this.lost = false
@@ -218,6 +224,7 @@ export class Compositor {
       this.clear(screen, this.backgroundRgb(format))
     }
 
+    this.drawOverlays(scene.overlays, screen)
     this.drawTexts(scene.texts, screen)
     this.lastError = this.readGlError()
   }
@@ -254,6 +261,7 @@ export class Compositor {
       this.releaseOutputTargets()
       for (const entry of this.frameTextures.values()) this.gl.deleteTexture(entry.tex)
       for (const entry of this.textTextures.values()) this.gl.deleteTexture(entry.tex)
+      for (const entry of this.overlayTextures.values()) this.gl.deleteTexture(entry.tex)
       if (this.programs) for (const p of Object.values(this.programs)) p.delete()
       if (this.vbo) this.gl.deleteBuffer(this.vbo)
       if (this.vao) this.gl.deleteVertexArray(this.vao)
@@ -545,6 +553,57 @@ export class Compositor {
     gl.uniform2f(p.uniform('u_res'), target.w, target.h)
     this.drawQuad(FULL_QUAD, UV_UPRIGHT)
     gl.activeTexture(gl.TEXTURE0)
+  }
+
+  // --- overlays (stickers, shapes, strokes) ---
+
+  private drawOverlays(items: readonly OverlayItem[], target: Target): void {
+    const p = this.programs?.text
+    if (!p || items.length === 0) return
+    const gl = this.gl
+    this.bindTarget(target)
+    this.setBlend(true)
+    p.use()
+    gl.uniform1f(p.uniform('u_alpha'), 1)
+    for (const item of items) {
+      const texture = this.overlayTexture(item, target.h)
+      if (!texture) continue
+      const box = overlayBox(item, target.w, target.h)
+      const [a, b, c, d] = rectCorners(box)
+      const corners: Quad = [this.toClip(a.x, a.y, target), this.toClip(b.x, b.y, target), this.toClip(c.x, c.y, target), this.toClip(d.x, d.y, target)]
+      this.bindTexture(texture.tex)
+      this.drawQuad(corners, UV_UPRIGHT)
+    }
+  }
+
+  private overlayTexture(item: OverlayItem, outH: number): FrameTexture | null {
+    const key = overlayRasterKey(item, outH)
+    const hit = this.overlayTextures.get(key)
+    if (hit) {
+      this.overlayTextures.delete(key)
+      this.overlayTextures.set(key, hit)
+      return hit
+    }
+    const raster = rasterizeOverlay(item, outH)
+    if (!raster) return null
+    const gl = this.gl
+    const tex = createTexture(gl)
+    gl.bindTexture(gl.TEXTURE_2D, tex)
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, raster.canvas)
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false)
+    const entry: FrameTexture = { tex, w: raster.width, h: raster.height }
+    this.overlayTextures.set(key, entry)
+    if (this.overlayTextures.size > OVERLAY_CACHE_LIMIT) {
+      const oldest = this.overlayTextures.keys().next().value
+      if (oldest !== undefined) {
+        const evicted = this.overlayTextures.get(oldest)
+        if (evicted) gl.deleteTexture(evicted.tex)
+        this.overlayTextures.delete(oldest)
+      }
+    }
+    return entry
   }
 
   // --- text ---

@@ -21,5 +21,6 @@ export default defineConfig({
       }
     }
   },
-  test: { include: ['src/**/*.test.ts'] }
+  // tokens.css is read as text by the contrast test; Vitest empties CSS modules unless they are included.
+  test: { include: ['src/**/*.test.ts'], css: { include: [/tokens\.css/] } }
 })

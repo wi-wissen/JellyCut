@@ -1,8 +1,10 @@
 <script lang="ts">
 import { defineComponent, type Component, type PropType } from 'vue'
 import {
+  ArrowUpRight,
   Blend,
   ChevronDown,
+  Circle,
   CircleDot,
   Captions,
   Copy,
@@ -69,6 +71,9 @@ const ICONS: Record<string, Component> = {
   text: Type,
   sticker: Smile,
   draw: Pencil,
+  shapeRect: RectangleHorizontal,
+  shapeEllipse: Circle,
+  shapeArrow: ArrowUpRight,
   captions: Captions,
   filter: SlidersHorizontal,
   transition: Blend,

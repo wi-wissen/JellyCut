@@ -187,7 +187,9 @@ export default defineComponent({
     onWindowKeydown(event: KeyboardEvent): void {
       if (!this.open) return
       if (event.key === 'Escape') {
+        // Stacked over the export dialog: Escape closes only this one, whatever the listener order.
         event.preventDefault()
+        event.stopImmediatePropagation()
         this.close()
         return
       }

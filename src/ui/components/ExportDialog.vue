@@ -3,6 +3,8 @@ import { defineComponent, nextTick } from 'vue'
 import { mapActions, mapState } from 'pinia'
 import { useEditorStore } from '../stores/editor'
 import { useExportStore } from '../stores/export'
+import { useCreditsStore } from '../stores/credits'
+import { assetsNeedingCredit } from '../../core/credits/credits'
 import { EXPORT_FPS, EXPORT_QUALITIES, EXPORT_RESOLUTIONS, GIF_FPS, GIF_WIDTHS } from '../../core/export/presets'
 import { formatBytes, formatClock, formatEta } from '../../core/export/format'
 import { formatEstimate } from '../../core/export/estimate'
@@ -10,6 +12,7 @@ import { formatEstimate } from '../../core/export/estimate'
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
 const TRIGGER_ID = 'export-button'
 const TITLE_ID = 'export-dialog-title'
+const CREDITS_HINT_BUTTON_ID = 'export-credits-hint-button'
 
 export default defineComponent({
   name: 'ExportDialog',
@@ -21,7 +24,9 @@ export default defineComponent({
       formats: ['mp4', 'gif'] as const,
       gifWidths: GIF_WIDTHS,
       gifFpsValues: GIF_FPS,
-      titleId: TITLE_ID
+      titleId: TITLE_ID,
+      creditsHintButtonId: CREDITS_HINT_BUTTON_ID,
+      creditsHintDismissed: false
     }
   },
   computed: {
@@ -43,7 +48,8 @@ export default defineComponent({
       'missingNames',
       'canStart'
     ]),
-    ...mapState(useEditorStore, ['totalDuration']),
+    ...mapState(useEditorStore, ['totalDuration', 'project']),
+    ...mapState(useCreditsStore, { creditsOpen: 'open' }),
     locale(): string {
       return this.$i18n.locale
     },
@@ -99,6 +105,9 @@ export default defineComponent({
     resultSizeText(): string {
       return this.result ? formatBytes(this.result.size, this.locale) : ''
     },
+    creditsHintVisible(): boolean {
+      return !this.creditsHintDismissed && assetsNeedingCredit(this.project).length > 0
+    },
     missingText(): string {
       return this.$t('export.errors.missing', { names: this.missingNames.join(', ') })
     }
@@ -106,6 +115,7 @@ export default defineComponent({
   watch: {
     open(isOpen: boolean) {
       if (isOpen) {
+        this.creditsHintDismissed = false
         void nextTick(() => this.focusInside(true))
       } else {
         void nextTick(() => (document.getElementById(TRIGGER_ID) as HTMLElement | null)?.focus())
@@ -125,6 +135,14 @@ export default defineComponent({
   },
   methods: {
     ...mapActions(useExportStore, ['show', 'close', 'setOptions', 'setFormat', 'setGifOptions', 'start', 'cancel', 'save', 'reset']),
+    /** Opens the credits dialog above this one; focus returns to the hint when it closes. */
+    openCredits(): void {
+      useCreditsStore().show({ returnId: CREDITS_HINT_BUTTON_ID })
+    },
+    dismissCreditsHint(): void {
+      this.creditsHintDismissed = true
+      void nextTick(() => this.focusInside(false))
+    },
     panel(): HTMLElement | null {
       return (this.$refs.panel as HTMLElement | undefined) ?? null
     },
@@ -144,7 +162,8 @@ export default defineComponent({
       if (this.phase !== 'running') this.close()
     },
     onWindowKeydown(event: KeyboardEvent): void {
-      if (!this.open) return
+      // The credits dialog stacks on top and handles its own keys.
+      if (!this.open || this.creditsOpen) return
       event.stopPropagation()
       if (event.key === 'Escape') {
         event.preventDefault()
@@ -354,6 +373,15 @@ export default defineComponent({
             <p class="text-base font-bold">{{ $t('export.done') }}</p>
             <p class="mt-1 text-sm">{{ $t('export.doneText') }}</p>
             <p class="mt-2 break-all text-sm text-muted">{{ $t('export.fileSize', { name: result.fileName, size: resultSizeText }) }}</p>
+            <div v-if="creditsHintVisible" class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-line bg-panel2 px-3 py-2 text-sm">
+              <p class="min-w-0 flex-1">{{ $t('export.creditsHint.text') }}</p>
+              <button :id="creditsHintButtonId" type="button" class="min-h-11 rounded-lg px-3 font-semibold text-fg underline hover:bg-panel" @click="openCredits">
+                {{ $t('export.creditsHint.open') }}
+              </button>
+              <button type="button" class="min-h-11 rounded-lg px-3 text-muted hover:bg-panel" @click="dismissCreditsHint">
+                {{ $t('export.creditsHint.hide') }}
+              </button>
+            </div>
           </div>
 
           <!-- Error and cancelled -->

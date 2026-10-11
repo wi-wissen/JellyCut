@@ -62,6 +62,11 @@ describe('planAudioSegments: clips', () => {
     )
     expect(plan(q).map((s) => s.sourceId)).toEqual(['ok'])
   })
+  it('gives a freeze frame no sound, even when the clip is not muted', () => {
+    const frozen = project([asset('v', 'video')], [clip('c1', 'v', 0, 2 * S, 0, { still: 5 * S })])
+    expect(plan(frozen)).toEqual([])
+  })
+
   it('keeps the clip speed (audio is resampled by the mixer)', () => {
     const q = project([asset('v', 'video')], [clip('c1', 'v', 0, 8 * S, 0, { speed: 2 })])
     const [s] = plan(q)

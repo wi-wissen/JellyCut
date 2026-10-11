@@ -16,3 +16,10 @@ Implementation hints (WebGL2): render the cover layer into a small texture (abou
 Background options in the UI: "Blur" (default) and "Colour" (a colour picker; `{ type: 'color', color }`). A third option "Mirrored edges" is possible later and is not part of V1.
 
 The background belongs to the project format (one choice for the whole project), not to single clips.
+
+## Freeze frame (L-05, standbild)
+
+- A freeze frame is a normal video clip with `still: <source time>` (src/core/project/types.ts). It shows that one frame for its whole length, so the frame and the video asset stay the same and no new media file is needed.
+- Its length is `srcOut - srcIn` at speed 1, exactly like an image clip; `srcIn/srcOut` only give the length, so trims, splits and ripple work unchanged. Speed is fixed at 1, and the frame has no audio (`muted`, and the audio mixer skips it).
+- The picture comes from `sourceTimeAt()` (core/timeline/edit.ts), used by the Scene for preview and export alike. Transitions use the same handle rules as images and need no change.
+- "Standbild am Abspielkopf" splits the clip under the playhead and puts a 2 s frame between the halves; the frame copies the clip's transform and look. It is not a separate frame grab, so no extra decoding or storage is needed.

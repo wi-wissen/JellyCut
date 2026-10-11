@@ -24,8 +24,11 @@ import {
 } from '../../core/render/layout'
 import { updateText } from '../../core/timeline/textOps'
 import { setClipProps } from '../../core/timeline/ops'
+import { updateOverlay } from '../../core/timeline/overlayOps'
+import { LINE_WIDTHS } from '../../core/timeline/overlayCatalog'
+import { overlayBox } from '../../core/render/overlayLayout'
 import { findClipAt } from '../../core/timeline/edit'
-import type { Clip, Project, TextItem } from '../../core/project/types'
+import type { Clip, OverlayItem, Project, TextItem } from '../../core/project/types'
 import { clearTextMeasureCache, measureLine } from '../player/textMeasure'
 
 /** Snap distance in screen pixels, converted to output fractions per axis. */
@@ -48,9 +51,12 @@ const CORNERS: readonly Corner[] = [
 
 /** One pointer press on a box. Values are the ones at press time; every edit is computed from them. */
 interface Drag {
-  kind: 'move' | 'scale'
-  target: 'text' | 'clip'
+  kind: 'move' | 'scale' | 'rotate'
+  target: 'text' | 'clip' | 'overlay'
   id: string
+  /** Rotation only: the anchor in output pixels and the pointer angle at press time (degrees). */
+  pivot?: Point
+  startAngle?: number
   pointerX: number
   pointerY: number
   /** Output pixels per screen pixel at press time. */
@@ -71,6 +77,13 @@ interface BoxView {
 
 // Not reactive on purpose: a press is only needed between its down and up events.
 let drag: Drag | null = null
+/** Pointer that is drawing a stroke, while drawing mode is on. */
+let drawPointer: number | null = null
+
+/** Clockwise angle of p around pivot, in degrees (screen space, y down). */
+function angleDeg(pivot: Point, p: Point): number {
+  return (Math.atan2(p.y - pivot.y, p.x - pivot.x) * 180) / Math.PI
+}
 
 function boxStyle(box: Box, outW: number, outH: number): Record<string, string> {
   return {
@@ -89,10 +102,27 @@ export default defineComponent({
     format: { type: Object as PropType<Project['format']>, required: true }
   },
   data() {
-    return { guideX: null as number | null, guideY: null as number | null, dragging: false, fontTick: 0, corners: CORNERS, snapGuides: SNAP_GUIDES, strongGuide: STRONG_GUIDE }
+    return {
+      guideX: null as number | null,
+      guideY: null as number | null,
+      dragging: false,
+      fontTick: 0,
+      corners: CORNERS,
+      snapGuides: SNAP_GUIDES,
+      strongGuide: STRONG_GUIDE,
+      /** Points of the stroke being drawn, in output pixels. */
+      livePoints: [] as Point[]
+    }
   },
   computed: {
-    ...mapState(useEditorStore, ['project', 'selection', 'selectedClip', 'playheadMicros']),
+    ...mapState(useEditorStore, ['project', 'selection', 'selectedClip', 'selectedOverlay', 'playheadMicros', 'drawing', 'overlayColor', 'penWidth']),
+    /** Pen width on screen, as the stroke will be drawn in the output. */
+    livePenPx(): number {
+      return LINE_WIDTHS[this.penWidth] * this.outH
+    },
+    livePolyline(): string {
+      return this.livePoints.map((p) => `${p.x},${p.y}`).join(' ')
+    },
     size(): { width: number; height: number } {
       return previewSize(this.format)
     },
@@ -135,6 +165,12 @@ export default defineComponent({
       const src = { width: asset?.width ?? DEFAULT_SRC.width, height: asset?.height ?? DEFAULT_SRC.height }
       const box = fittedFrameRect(this.outW, this.outH, src.width, src.height, clip.transform)
       return { box, id: clip.id, name: asset?.name ?? '' }
+    },
+    /** The selected sticker, shape or stroke; its box is shown whether or not it is on screen at the playhead. */
+    overlayView(): BoxView | null {
+      const item = this.selectedOverlay
+      if (!item) return null
+      return { box: overlayBox(item, this.outW, this.outH), id: item.id, name: this.overlayLabel(item) }
     }
   },
   mounted() {
@@ -156,7 +192,8 @@ export default defineComponent({
       'endGesture',
       'editProject',
       'updateSelectedText',
-      'setSelectedClipProps'
+      'setSelectedClipProps',
+      'addStrokeAtPlayhead'
     ]),
     rootEl(): HTMLElement | null {
       return this.$refs.root as HTMLElement | null
@@ -182,6 +219,11 @@ export default defineComponent({
     onPictureDown(event: PointerEvent): void {
       if (event.button !== 0) return
       const p = this.toOutput(event.clientX, event.clientY)
+      const overlayId = this.overlayAt(p)
+      if (overlayId) {
+        this.select({ kind: 'overlay', id: overlayId })
+        return
+      }
       const textId = this.textAt(p)
       if (textId) {
         this.select({ kind: 'text', id: textId })
@@ -189,6 +231,19 @@ export default defineComponent({
       }
       const clip: Clip | undefined = findClipAt(this.planned.clips, this.playheadMicros)
       this.select(clip ? { kind: 'clip', id: clip.id } : null)
+    },
+    /** The topmost sticker, shape or stroke on screen at the playhead whose box contains the point. */
+    overlayAt(p: Point): string | null {
+      for (const item of [...this.scene.overlays].reverse()) {
+        if (pointInRotatedRect(p, overlayBox(item, this.outW, this.outH))) return item.id
+      }
+      return null
+    },
+    /** Short name for the box label and the aria text: the emoji, or the kind of shape or stroke. */
+    overlayLabel(item: OverlayItem): string {
+      if (item.kind === 'sticker') return item.emoji
+      if (item.kind === 'shape') return this.$t(`overlays.shape.${item.shape}`)
+      return this.$t('overlays.header.stroke')
     },
     /** Glyph box of a text layer; reading fontTick makes it measure again once the curated fonts have loaded. */
     measureBox(layer: TextLayerInput, family: string): TextBox | null {
@@ -246,8 +301,14 @@ export default defineComponent({
     },
     onClipMoveDown(event: PointerEvent, view: BoxView): void {
       if (event.button !== 0) return
-      // The picture box covers the whole picture; a text on top of it is what the user means to pick.
-      const textId = this.textAt(this.toOutput(event.clientX, event.clientY))
+      // The picture box covers the whole picture; a sticker or text on top of it is what the user means to pick.
+      const point = this.toOutput(event.clientX, event.clientY)
+      const overlayId = this.overlayAt(point)
+      if (overlayId) {
+        this.select({ kind: 'overlay', id: overlayId })
+        return
+      }
+      const textId = this.textAt(point)
       if (textId) {
         this.select({ kind: 'text', id: textId })
         return
@@ -280,6 +341,119 @@ export default defineComponent({
         corner
       })
     },
+    onOverlayMoveDown(event: PointerEvent, view: BoxView): void {
+      if (event.button !== 0) return
+      const item = this.selectedOverlay
+      if (!item) return
+      this.startPress(event, {
+        kind: 'move',
+        target: 'overlay',
+        id: view.id,
+        originX: item.pos.x,
+        originY: item.pos.y,
+        startBox: view.box,
+        startValue: item.scale,
+        corner: null
+      })
+    },
+    onOverlayScaleDown(event: PointerEvent, view: BoxView, corner: Corner): void {
+      if (event.button !== 0) return
+      const item = this.selectedOverlay
+      if (!item) return
+      this.startPress(event, {
+        kind: 'scale',
+        target: 'overlay',
+        id: view.id,
+        originX: item.pos.x,
+        originY: item.pos.y,
+        startBox: view.box,
+        startValue: item.scale,
+        corner
+      })
+    },
+    /** Rotation turns around the anchor (pos), the point the item is placed by. */
+    onOverlayRotateDown(event: PointerEvent, view: BoxView): void {
+      if (event.button !== 0) return
+      const item = this.selectedOverlay
+      if (!item) return
+      const pivot = { x: item.pos.x * this.outW, y: item.pos.y * this.outH }
+      const p = this.toOutput(event.clientX, event.clientY)
+      this.startPress(event, {
+        kind: 'rotate',
+        target: 'overlay',
+        id: view.id,
+        originX: item.pos.x,
+        originY: item.pos.y,
+        startBox: view.box,
+        startValue: item.rotation,
+        corner: null,
+        pivot,
+        startAngle: angleDeg(pivot, p)
+      })
+    },
+    /** Moves the anchor; Shift locks the axis, the centre snaps to the guides unless Alt is held. */
+    dragOverlay(d: Drag, dxPx: number, dyPx: number, shift: boolean, alt: boolean): void {
+      const { dx, dy, lockX, lockY } = lockAxis(dxPx, dyPx, shift)
+      const delta = dragToTransformDelta(dx, dy, this.outW, this.outH)
+      let x = clamp(d.originX + delta.x, 0, 1)
+      let y = clamp(d.originY + delta.y, 0, 1)
+      if (lockX) x = d.originX
+      if (lockY) y = d.originY
+      const snap = this.snapAxes(x, y, d, alt, lockX, lockY)
+      const id = d.id
+      this.editProject((base) => updateOverlay(base, id, { pos: { x: snap.x, y: snap.y } }), `overlay-drag:${id}`)
+    },
+    scaleOverlay(d: Drag, event: PointerEvent): void {
+      if (!d.corner) return
+      const scale = scaleFromHandle(d.startBox, d.corner, this.toOutput(event.clientX, event.clientY), d.startValue, SCALE_MIN, SCALE_MAX)
+      const id = d.id
+      this.editProject((base) => updateOverlay(base, id, { scale }), `overlay-scale:${id}`)
+    },
+    rotateOverlay(d: Drag, event: PointerEvent): void {
+      if (!d.pivot || d.startAngle === undefined) return
+      let rotation = d.startValue + (angleDeg(d.pivot, this.toOutput(event.clientX, event.clientY)) - d.startAngle)
+      // Shift snaps to 15 degree steps.
+      if (event.shiftKey) rotation = Math.round(rotation / 15) * 15
+      const id = d.id
+      this.editProject((base) => updateOverlay(base, id, { rotation }), `overlay-rotate:${id}`)
+    },
+    onOverlayKey(event: KeyboardEvent, view: BoxView): void {
+      if (this.handleCommonKey(event)) return
+      const item = this.selectedOverlay
+      if (!item) return
+      const delta = arrowDelta(event.key, event.shiftKey ? NUDGE_LARGE : NUDGE)
+      if (!delta) return
+      event.preventDefault()
+      const x = clamp(item.pos.x + delta.x, 0, 1)
+      const y = clamp(item.pos.y + delta.y, 0, 1)
+      this.editProject((base) => updateOverlay(base, view.id, { pos: { x, y } }), `overlay-nudge:${view.id}`)
+    },
+
+    // --- drawing mode: one pointer press makes one stroke ---
+    onDrawDown(event: PointerEvent): void {
+      if (event.button !== 0) return
+      ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+      drawPointer = event.pointerId
+      this.livePoints = [this.toOutput(event.clientX, event.clientY)]
+    },
+    onDrawMove(event: PointerEvent): void {
+      if (event.pointerId !== drawPointer) return
+      const p = this.toOutput(event.clientX, event.clientY)
+      const last = this.livePoints[this.livePoints.length - 1]
+      // Points closer than half a pixel add nothing visible; skipping them keeps the stroke light.
+      if (last && Math.hypot(p.x - last.x, p.y - last.y) < 0.5) return
+      this.livePoints.push(p)
+    },
+    onDrawUp(event: PointerEvent): void {
+      if (event.pointerId !== drawPointer) return
+      drawPointer = null
+      const points = this.livePoints
+      this.livePoints = []
+      if (points.length < 2) return
+      const w = this.outW
+      const h = this.outH
+      this.addStrokeAtPlayhead(points.map((p) => ({ x: p.x / w, y: p.y / h })))
+    },
     onMove(event: PointerEvent): void {
       const d = drag
       if (!d) return
@@ -291,9 +465,14 @@ export default defineComponent({
       const dyPx = (event.clientY - d.pointerY) * d.outPerPx
       if (!d.moved && dxPx === 0 && dyPx === 0) return
       d.moved = true
-      if (d.kind === 'move') {
+      if (d.kind === 'rotate') {
+        this.rotateOverlay(d, event)
+      } else if (d.kind === 'move') {
         if (d.target === 'text') this.dragText(d, dxPx, dyPx, event.shiftKey, event.altKey)
+        else if (d.target === 'overlay') this.dragOverlay(d, dxPx, dyPx, event.shiftKey, event.altKey)
         else this.dragClip(d, dxPx, dyPx, event.shiftKey, event.altKey)
+      } else if (d.target === 'overlay') {
+        this.scaleOverlay(d, event)
       } else {
         this.scaleBox(d, event)
       }
@@ -479,6 +658,84 @@ function arrowDelta(key: string, step: number): Point | null {
       data-role="guide-y"
       aria-hidden="true"
     />
+
+    <!-- Drawing mode: the surface takes every pointer; the live stroke is a preview, the committed one is drawn by the engine. -->
+    <div
+      v-if="drawing"
+      class="pointer-events-auto absolute inset-0 z-[12] touch-none cursor-crosshair"
+      :aria-label="$t('overlays.player.surface')"
+      role="img"
+      data-role="draw-surface"
+      @pointerdown="onDrawDown"
+      @pointermove="onDrawMove"
+      @pointerup="onDrawUp"
+      @pointercancel="onDrawUp"
+    >
+      <span class="pointer-events-none absolute left-2 top-2 rounded-full bg-signal px-2 py-0.5 text-[11px] font-semibold text-signal-fg">
+        {{ $t('overlays.player.drawing') }}
+      </span>
+    </div>
+    <svg
+      v-if="drawing && livePoints.length > 1"
+      class="pointer-events-none absolute inset-0 z-[13] h-full w-full"
+      :viewBox="`0 0 ${outW} ${outH}`"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <polyline
+        :points="livePolyline"
+        fill="none"
+        :stroke="overlayColor"
+        :stroke-width="livePenPx"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    </svg>
+
+    <div
+      v-if="overlayView && !drawing"
+      class="pointer-events-auto absolute z-10 touch-none rounded-[2px] border-2 border-signal shadow-[0_0_0_1px_rgba(20,18,31,0.55)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-signal"
+      role="group"
+      tabindex="0"
+      :aria-label="$t('overlays.player.box', { name: overlayView.name })"
+      :style="boxStyle(overlayView)"
+      data-role="overlay-box"
+      @pointerdown="onOverlayMoveDown($event, overlayView)"
+      @pointermove="onMove"
+      @pointerup="onUp"
+      @pointercancel="onUp"
+      @keydown="onOverlayKey($event, overlayView)"
+    >
+      <button
+        v-for="corner in corners"
+        :key="corner.key"
+        type="button"
+        class="absolute z-10 size-3.5 touch-none rounded-[3px] border border-signal-fg bg-signal before:absolute before:-inset-3.5 before:content-['']"
+        :style="{
+          left: corner.sx < 0 ? '8px' : 'calc(100% - 8px)',
+          top: corner.sy < 0 ? '8px' : 'calc(100% - 8px)',
+          transform: 'translate(-50%, -50%)',
+          cursor: corner.sx * corner.sy > 0 ? 'nwse-resize' : 'nesw-resize'
+        }"
+        :aria-label="$t('overlays.player.scale')"
+        @pointerdown.stop="onOverlayScaleDown($event, overlayView, corner)"
+      />
+      <button
+        type="button"
+        class="absolute left-1/2 -top-8 z-10 size-4 -translate-x-1/2 touch-none rounded-full border-2 border-signal-fg bg-signal before:absolute before:-inset-3 before:content-['']"
+        :aria-label="$t('overlays.player.rotate')"
+        :title="$t('overlays.player.rotate')"
+        data-role="overlay-rotate"
+        @pointerdown.stop="onOverlayRotateDown($event, overlayView)"
+      />
+      <button
+        type="button"
+        class="absolute left-1/2 top-1/2 z-10 size-4 -translate-x-1/2 -translate-y-1/2 touch-none rounded-full border-2 border-signal-fg bg-signal before:absolute before:-inset-3 before:content-['']"
+        :aria-label="$t('overlays.player.move')"
+        :title="$t('overlays.player.move')"
+        @pointerdown.stop="onOverlayMoveDown($event, overlayView)"
+      />
+    </div>
 
     <div
       v-if="clipView"

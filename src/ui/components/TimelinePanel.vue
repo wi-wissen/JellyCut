@@ -5,6 +5,7 @@ import Icon from './Icon.vue'
 import TimelineItem from './timeline/TimelineItem.vue'
 import { useEditorStore } from '../stores/editor'
 import { useFineCutStore } from '../stores/fineCut'
+import type { OverlayItem } from '../../core/project/types'
 import type { Micros } from '../../core/time'
 import { frameDuration } from '../../core/time'
 import { clipEnd } from '../../core/timeline/edit'
@@ -22,7 +23,6 @@ import {
   type RulerTick
 } from '../../core/timeline/ruler'
 
-const LABEL_COLUMN_PX = 124
 const RULER_HEIGHT_PX = 22
 const LANE_HEIGHT_PX = 38
 /** Room after the last item, so the end of the track can be reached by scrolling. */
@@ -40,7 +40,7 @@ const FOLLOW_TARGET = 0.2
 /** A manual scroll or press in the lanes stops following for this long. */
 const FOLLOW_PAUSE_MS = 3000
 
-type Variant = 'video' | 'text' | 'music' | 'audio'
+type Variant = 'video' | 'text' | 'music' | 'audio' | 'overlay'
 type GestureKind = 'scrub' | 'reorder' | 'trim-start' | 'trim-end' | 'move-text'
 
 interface LaneItem {
@@ -101,7 +101,6 @@ export default defineComponent({
   components: { Icon, TimelineItem },
   data() {
     return {
-      labelColumn: LABEL_COLUMN_PX,
       rulerHeight: RULER_HEIGHT_PX,
       laneHeight: LANE_HEIGHT_PX,
       pxPerSecond: DEFAULT_PX_PER_SECOND,
@@ -195,6 +194,22 @@ export default defineComponent({
           widthPx: px(text.duration)
         }
       })
+      const overlayItems = project.overlays.map((overlay): LaneItem => {
+        const name = this.overlayName(overlay)
+        const end = overlay.start + overlay.duration
+        return {
+          key: `overlay:${overlay.id}`,
+          ref: { kind: 'overlay', id: overlay.id },
+          variant: 'overlay',
+          tone: 1,
+          label: name,
+          ariaLabel: this.$t('overlays.timelineLabel', { name }),
+          startMicros: overlay.start,
+          endMicros: end,
+          leftPx: px(overlay.start),
+          widthPx: px(overlay.duration)
+        }
+      })
       const musicItems = project.music.map((music): LaneItem => {
         const name = names.get(music.assetId) ?? ''
         const end = music.start + (music.srcOut - music.srcIn)
@@ -214,7 +229,7 @@ export default defineComponent({
 
       return [
         { id: 'text', icon: 'text', label: 'timeline.text', swatch: 'var(--jc-track-text)', items: textItems },
-        { id: 'overlay', icon: 'sticker', label: 'timeline.overlay', swatch: 'var(--jc-panel2)', items: [] },
+        { id: 'overlay', icon: 'sticker', label: 'timeline.overlay', swatch: 'var(--jc-track-overlay)', items: overlayItems },
         { id: 'video', icon: 'media', label: 'timeline.video', swatch: 'var(--jc-track-video-1)', items: videoItems },
         { id: 'originalAudio', icon: 'audio', label: 'timeline.originalAudio', swatch: 'var(--jc-wave)', items: originalAudioItems },
         { id: 'music', icon: 'audio', label: 'timeline.music', swatch: 'var(--jc-track-music)', items: musicItems }
@@ -272,11 +287,20 @@ export default defineComponent({
       'trimTextStart',
       'trimTextEnd',
       'moveText',
+      'trimOverlayStart',
+      'trimOverlayEnd',
+      'moveOverlay',
       'reorderClip',
       'beginGesture',
       'endGesture'
     ]),
 
+    /** Short label of an overlay bar: the emoji for stickers, the kind for shapes and strokes. */
+    overlayName(item: OverlayItem): string {
+      if (item.kind === 'sticker') return item.emoji
+      if (item.kind === 'shape') return this.$t(`overlays.shape.${item.shape}`)
+      return this.$t('overlays.header.stroke')
+    },
     isSelected(item: LaneItem): boolean {
       const sel = this.selection
       return item.ref !== null && sel !== null && sel.kind === item.ref.kind && sel.id === item.ref.id
@@ -384,7 +408,7 @@ export default defineComponent({
           .filter((other) => other.key !== item.key)
           .map((other) => ({ leftPx: other.leftPx, endPx: other.leftPx + other.widthPx }))
         this.gesture = gesture
-      } else if (item.ref.kind === 'text') {
+      } else if (item.ref.kind === 'text' || item.ref.kind === 'overlay') {
         this.beginGesture()
         const gesture = this.makeGesture('move-text', event, item)
         gesture.candidates = collectSnapPoints(this.project, item.ref.id, this.playheadMicros)
@@ -427,6 +451,9 @@ export default defineComponent({
       if (gesture.itemKind === 'clip') {
         if (isStart) this.trimStart(gesture.id, t)
         else this.trimEnd(gesture.id, t)
+      } else if (gesture.itemKind === 'overlay') {
+        if (isStart) this.trimOverlayStart(gesture.id, t)
+        else this.trimOverlayEnd(gesture.id, t)
       } else if (isStart) {
         this.trimTextStart(gesture.id, t)
       } else {
@@ -439,7 +466,8 @@ export default defineComponent({
       gesture.moved = true
       let t = gesture.originStart + pxToMicros(dx, this.pxPerSecond)
       if (this.snapping) t = snapTime(t, gesture.candidates, pxToMicros(SNAP_THRESHOLD_PX, this.pxPerSecond))
-      this.moveText(gesture.id, Math.max(0, t))
+      if (gesture.itemKind === 'overlay') this.moveOverlay(gesture.id, Math.max(0, t))
+      else this.moveText(gesture.id, Math.max(0, t))
     },
     updateReorder(gesture: Gesture, event: PointerEvent) {
       const dx = event.clientX - gesture.originX
@@ -509,13 +537,13 @@ export default defineComponent({
 
 <template>
   <section
-    class="flex shrink-0 flex-col border-t border-line bg-panel"
+    class="jc-timeline flex shrink-0 flex-col border-t border-line bg-panel"
     @keydown="onKeydown"
     @pointermove="onPointerMove"
     @pointerup="onPointerEnd"
     @pointercancel="onPointerEnd"
   >
-    <div class="flex h-9 shrink-0 items-center gap-2 border-b border-line px-3">
+    <div class="jc-timeline__toolbar flex h-9 shrink-0 items-center gap-2 border-b border-line px-3">
       <button
         type="button"
         role="switch"
@@ -562,7 +590,7 @@ export default defineComponent({
     </div>
 
     <div class="flex">
-      <div class="shrink-0 border-r border-line" :style="{ width: labelColumn + 'px' }">
+      <div class="jc-lane-labels w-[124px] shrink-0 border-r border-line">
         <div class="border-b border-line" :style="{ height: rulerHeight + 'px' }" />
         <div
           v-for="lane in lanes"
@@ -584,7 +612,7 @@ export default defineComponent({
         :aria-label="$t('timeline.area')"
       >
         <div
-          class="relative select-none touch-none"
+          class="jc-timeline__track relative select-none touch-none"
           :style="{ width: contentWidth + 'px' }"
           :data-px-per-second="pxPerSecond"
           @pointerdown="onScrubDown"

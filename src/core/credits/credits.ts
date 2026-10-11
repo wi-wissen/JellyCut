@@ -64,6 +64,11 @@ export function assetsInUse(project: Project): Asset[] {
   return project.assets.filter((a) => used.has(a.id))
 }
 
+/** Used media whose licence requires a credit line. Unlicensed media are not counted: their licence is unknown. */
+export function assetsNeedingCredit(project: Project): Asset[] {
+  return assetsInUse(project).filter((a) => licenseById(a.credit?.license)?.needsAttribution === true)
+}
+
 /**
  * 'not-needed' for licences that need no credit (own work, CC0, public domain). 'complete' when a
  * licence that needs credit comes with title, author, a source or link. Everything else, including

@@ -51,7 +51,7 @@ export function validateProject(value: unknown): ProjectResult {
   const assetIds = validateAssets(root.assets, 'assets', errors)
   validateClips(root.clips, 'clips', assetIds, errors)
   validateTexts(root.texts, 'texts', errors)
-  arrayOf(root.overlays, 'overlays', errors)
+  validateOverlays(root.overlays, 'overlays', errors)
   arrayOf(root.stickers, 'stickers', errors)
   arrayOf(root.drawings, 'drawings', errors)
   validateMusic(root.music, 'music', assetIds, errors)
@@ -192,6 +192,7 @@ function validateClips(value: unknown, path: string, assetIds: Set<string>, erro
     need(errors, c.filter === null || typeof c.filter === 'string', `${p}.filter`, 'must be a string or null')
     if (c.filterAmount !== undefined) need(errors, isUnit(c.filterAmount), `${p}.filterAmount`, 'must be a number from 0 to 1')
     if (c.adjust !== undefined) validateAdjust(c.adjust, `${p}.adjust`, errors)
+    if (c.still !== undefined) need(errors, isMicros(c.still), `${p}.still`, MICROS_MSG)
     validateTransition(c.transitionIn, `${p}.transitionIn`, errors)
   })
 }
@@ -270,6 +271,50 @@ function validateMusic(value: unknown, path: string, assetIds: Set<string>, erro
     need(errors, isVolume(m.volume), `${p}.volume`, `must be a number from 0 to ${MAX_VOLUME}`)
     need(errors, isMicros(m.fadeIn), `${p}.fadeIn`, MICROS_MSG)
     need(errors, isMicros(m.fadeOut), `${p}.fadeOut`, MICROS_MSG)
+  })
+}
+
+const OVERLAY_SHAPES = ['rect', 'ellipse', 'arrow'] as const
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/
+const MAX_EMOJI_LENGTH = 16
+
+function validateOverlays(value: unknown, path: string, errors: Errors): void {
+  const ids = new Set<string>()
+  arrayOf(value, path, errors).forEach((item, i) => {
+    const p = `${path}[${i}]`
+    const o = record(item, p, errors)
+    if (!o) return
+    checkId(o.id, `${p}.id`, ids, errors)
+    need(errors, isMicros(o.start), `${p}.start`, MICROS_MSG)
+    need(errors, isMicros(o.duration) && o.duration > 0, `${p}.duration`, 'must be a positive integer (microseconds)')
+    const pos = record(o.pos, `${p}.pos`, errors)
+    if (pos) {
+      need(errors, isFiniteNumber(pos.x), `${p}.pos.x`, FINITE_MSG)
+      need(errors, isFiniteNumber(pos.y), `${p}.pos.y`, FINITE_MSG)
+    }
+    need(errors, isPositiveNumber(o.scale), `${p}.scale`, POSITIVE_MSG)
+    need(errors, isFiniteNumber(o.rotation), `${p}.rotation`, FINITE_MSG)
+
+    if (o.kind === 'sticker') {
+      need(errors, typeof o.emoji === 'string' && o.emoji.length > 0 && o.emoji.length <= MAX_EMOJI_LENGTH, `${p}.emoji`, `must be a string of 1 to ${MAX_EMOJI_LENGTH} characters`)
+      need(errors, isPositiveNumber(o.size), `${p}.size`, POSITIVE_MSG)
+    } else if (o.kind === 'shape') {
+      need(errors, OVERLAY_SHAPES.includes(o.shape as (typeof OVERLAY_SHAPES)[number]), `${p}.shape`, `must be one of ${OVERLAY_SHAPES.join(', ')}`)
+      need(errors, isPositiveNumber(o.width), `${p}.width`, POSITIVE_MSG)
+      need(errors, isPositiveNumber(o.height), `${p}.height`, POSITIVE_MSG)
+      need(errors, isPositiveNumber(o.lineWidth), `${p}.lineWidth`, POSITIVE_MSG)
+      need(errors, typeof o.color === 'string' && HEX_COLOR.test(o.color), `${p}.color`, 'must be #RRGGBB')
+    } else if (o.kind === 'stroke') {
+      const points = Array.isArray(o.points) ? o.points : null
+      need(errors, points !== null && points.length >= 2, `${p}.points`, 'must be a list of at least two [x, y] pairs')
+      points?.forEach((pt, j) => {
+        need(errors, Array.isArray(pt) && pt.length === 2 && isFiniteNumber(pt[0]) && isFiniteNumber(pt[1]), `${p}.points[${j}]`, 'must be a [x, y] pair of finite numbers')
+      })
+      need(errors, isPositiveNumber(o.lineWidth), `${p}.lineWidth`, POSITIVE_MSG)
+      need(errors, typeof o.color === 'string' && HEX_COLOR.test(o.color), `${p}.color`, 'must be #RRGGBB')
+    } else {
+      errors.push(`${p}.kind must be one of sticker, shape, stroke`)
+    }
   })
 }
 

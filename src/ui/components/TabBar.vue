@@ -28,8 +28,8 @@ const GROUPS: GroupDef[] = [
     key: 'design',
     tabs: [
       { id: 'text', icon: 'text' },
-      { id: 'sticker', icon: 'sticker', soon: true },
-      { id: 'draw', icon: 'draw', soon: true },
+      { id: 'sticker', icon: 'sticker' },
+      { id: 'draw', icon: 'draw' },
       { id: 'captions', icon: 'captions', soon: true }
     ]
   },
@@ -45,6 +45,11 @@ const GROUPS: GroupDef[] = [
 export default defineComponent({
   name: 'TabBar',
   components: { Icon },
+  props: {
+    /** Narrow layouts only: whether the panel above the tab bar is shown. */
+    sheetOpen: { type: Boolean, default: true }
+  },
+  emits: ['toggle-sheet', 'tab-picked'],
   data() {
     return { groups: GROUPS }
   },
@@ -64,33 +69,45 @@ export default defineComponent({
       const first = group.tabs.find((t) => !t.soon)?.id ?? group.tabs[0]!.id
       this.leaveSelection(first)
       this.setActiveGroup(group.key, first)
+      this.$emit('tab-picked')
     },
     selectTab(tab: TabDef) {
       if (tab.soon) return
       this.leaveSelection(tab.id)
       this.setActiveTab(tab.id)
+      this.$emit('tab-picked')
     }
   }
 })
 </script>
 
 <template>
-  <nav class="flex flex-col gap-2 border-b border-line px-3 py-2.5">
-    <div class="flex rounded-lg bg-panel2 p-[3px]" role="tablist" :aria-label="$t('groups.label')">
+  <nav class="jc-tabbar flex flex-col gap-2 border-b border-line px-3 py-2.5">
+    <div class="jc-tabbar__groups flex items-center gap-2">
+      <div class="flex flex-1 rounded-lg bg-panel2 p-[3px]" role="tablist" :aria-label="$t('groups.label')">
+        <button
+          v-for="group in groups"
+          :key="group.key"
+          type="button"
+          role="tab"
+          class="h-[34px] min-w-0 flex-1 truncate rounded-md px-2 text-xs font-semibold transition-colors"
+          :class="activeGroup === group.key ? 'bg-fill text-fill-fg' : 'text-fg hover:bg-panel'"
+          :aria-selected="activeGroup === group.key"
+          @click="selectGroup(group)"
+        >
+          {{ $t(`groups.${group.key}`) }}
+        </button>
+      </div>
       <button
-        v-for="group in groups"
-        :key="group.key"
         type="button"
-        role="tab"
-        class="h-[34px] min-w-0 flex-1 truncate rounded-md px-2 text-xs font-semibold transition-colors"
-        :class="activeGroup === group.key ? 'bg-fill text-fill-fg' : 'text-fg hover:bg-panel'"
-        :aria-selected="activeGroup === group.key"
-        @click="selectGroup(group)"
+        class="jc-tabbar__toggle"
+        :aria-expanded="sheetOpen ? 'true' : 'false'"
+        @click="$emit('toggle-sheet')"
       >
-        {{ $t(`groups.${group.key}`) }}
+        {{ sheetOpen ? $t('responsive.hideTools') : $t('responsive.showTools') }}
       </button>
     </div>
-    <div class="flex gap-1">
+    <div class="jc-tabbar__tabs flex gap-1">
       <button
         v-for="tab in currentGroup.tabs"
         :key="tab.id"

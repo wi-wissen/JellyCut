@@ -60,7 +60,7 @@ export default defineComponent({
 
 <template>
   <div class="mx-auto w-full max-w-2xl px-4 pb-16 pt-6 sm:px-6">
-    <nav class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-semibold" aria-label="Jelly Cut">
+    <nav class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-semibold" :aria-label="$t('a11y.guideNav')">
       <a href="../../app/" class="inline-flex min-h-11 items-center text-txt underline underline-offset-2 hover:no-underline">
         <span aria-hidden="true" class="mr-1">←</span>{{ $t('sources.backToEditor') }}
       </a>

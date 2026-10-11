@@ -1,6 +1,19 @@
 import { defineStore } from 'pinia'
 import { createProject, parseProjectJson, serializeProject } from '../../core/project/schema'
-import type { Asset, Clip, FitMode, FormatRatio, MusicItem, Project, TextItem } from '../../core/project/types'
+import type { Asset, Clip, FitMode, FormatRatio, MusicItem, OverlayItem, Project, ShapeOverlay, TextItem } from '../../core/project/types'
+import { DEFAULT_OVERLAY_COLOR, type LineWidthId } from '../../core/timeline/overlayCatalog'
+import {
+  addShape,
+  addSticker,
+  addStroke,
+  moveOverlay as moveOverlayInTime,
+  removeLastStroke,
+  trimOverlayEnd as trimOverlayEndInTime,
+  trimOverlayStart as trimOverlayStartInTime,
+  updateOverlay,
+  type OverlayPatch,
+  type StrokePoint
+} from '../../core/timeline/overlayOps'
 import {
   setAllFit,
   setBackground as setFormatBackground,
@@ -11,6 +24,7 @@ import type { TransitionType } from '../../core/render/types'
 import { formatTimecode, frameIndexAt, frameStart, secondsToMicros, type Micros } from '../../core/time'
 import { applyGradeToAll, setClipGrade as setGrade, type GradePatch } from '../../core/filters/ops'
 import { nextId } from '../../core/timeline/ids'
+import { freezeFrameAt } from '../../core/timeline/freezeOps'
 import { updateMusic, type MusicPatch } from '../../core/timeline/musicOps'
 import { addText, updateText, type TextPresetId, type TextPatch } from '../../core/timeline/textOps'
 import { DEFAULT_TRANSITION, setTransition, transitionTargetClipId } from '../../core/timeline/transitionOps'
@@ -107,12 +121,17 @@ export interface EditorState {
   selection: ItemRef | null
   /** Read by the transport code; the store does not play anything itself. */
   isPlaying: boolean
+  /** Colour for new shapes and strokes. Not part of the project and not undoable. */
+  overlayColor: string
+  penWidth: LineWidthId
+  /** Drawing mode: pointer input on the player makes strokes instead of selecting. */
+  drawing: boolean
 }
 
 const RULER_STEP = secondsToMicros(5)
 const AUTOSAVE_DELAY_MS = 800
 const MAX_PROJECT_NAME = 60
-const ID_PREFIX: Record<ItemKind, string> = { clip: 'clip-', text: 'text-', music: 'music-' }
+const ID_PREFIX: Record<ItemKind, string> = { clip: 'clip-', text: 'text-', music: 'music-', overlay: 'overlay-' }
 
 /**
  * Drag gestures edit relative to the project at pointer-down. Kept outside the reactive
@@ -138,6 +157,7 @@ export function projectDuration(project: Project): Micros {
   const ends = [
     ...project.clips.map((c) => c.start + clipLength(c)),
     ...project.texts.map((t) => t.start + t.duration),
+    ...project.overlays.map((o) => o.start + o.duration),
     ...project.music.map((m) => m.start + (m.srcOut - m.srcIn))
   ]
   return Math.max(0, ...ends)
@@ -312,7 +332,10 @@ export const useEditorStore = defineStore('editor', {
       loadError: null,
       caps: detectCaps(),
       selection: null,
-      isPlaying: false
+      isPlaying: false,
+      overlayColor: DEFAULT_OVERLAY_COLOR,
+      penWidth: 'medium',
+      drawing: false
     }
   },
   getters: {
@@ -402,13 +425,23 @@ export const useEditorStore = defineStore('editor', {
       const accent = words.pop() ?? ''
       return { lead: words.join(' '), accent }
     },
-    selectedItem(state): Clip | TextItem | MusicItem | null {
+    selectedItem(state): Clip | TextItem | MusicItem | OverlayItem | null {
       const ref = state.selection
       if (!ref) return null
       const project = state.history.present
       if (ref.kind === 'clip') return project.clips.find((c) => c.id === ref.id) ?? null
       if (ref.kind === 'text') return project.texts.find((t) => t.id === ref.id) ?? null
+      if (ref.kind === 'overlay') return project.overlays.find((o) => o.id === ref.id) ?? null
       return project.music.find((m) => m.id === ref.id) ?? null
+    },
+    selectedOverlay(state): OverlayItem | null {
+      const ref = state.selection
+      if (ref?.kind !== 'overlay') return null
+      return state.history.present.overlays.find((o) => o.id === ref.id) ?? null
+    },
+    /** Strokes in the project; the pen panel enables its undo button only when there is one. */
+    strokeCount(state): number {
+      return state.history.present.overlays.filter((o) => o.kind === 'stroke').length
     },
     selectedClip(state): Clip | null {
       const ref = state.selection
@@ -427,10 +460,13 @@ export const useEditorStore = defineStore('editor', {
   actions: {
     setActiveTab(tab: TabId) {
       this.activeTab = tab
+      // Leaving the pen tab ends drawing, so the player goes back to normal pointer use.
+      if (tab !== 'draw') this.drawing = false
     },
     setActiveGroup(group: GroupId, firstTab: TabId) {
       this.activeGroup = group
       this.activeTab = firstTab
+      if (firstTab !== 'draw') this.drawing = false
     },
     setTheme(mode: ThemeMode) {
       this.theme = mode
@@ -623,6 +659,13 @@ export const useEditorStore = defineStore('editor', {
       const project = this.project
       this.commitProject(splitAt(project, this.playheadMicros, freshId(project, ID_PREFIX.clip)))
     },
+    /** Freeze frame of the picture under the playhead, inserted with the default length. */
+    insertFreezeFrame() {
+      const project = this.project
+      const stillId = freshId(project, ID_PREFIX.clip)
+      const splitId = nextId([...projectIds(project), stillId], ID_PREFIX.clip)
+      this.commitProject(freezeFrameAt(project, this.playheadMicros, { stillId, splitId }))
+    },
     deleteSelected() {
       const ref = this.selection
       if (!ref) return
@@ -719,6 +762,60 @@ export const useEditorStore = defineStore('editor', {
       const ref = this.selection
       if (ref?.kind !== 'music') return
       this.commitProject(updateMusic(this.project, ref.id, patch), key)
+    },
+
+    // --- stickers, shapes and strokes (overlays) ---
+    setOverlayColor(color: string) {
+      this.overlayColor = color
+    },
+    setPenWidth(width: LineWidthId) {
+      this.penWidth = width
+    },
+    setDrawing(on: boolean) {
+      this.drawing = on
+      if (on) this.select(null)
+    },
+    /** Adds a sticker at the playhead and selects it. */
+    addStickerAtPlayhead(emoji: string) {
+      const project = this.project
+      const id = freshId(project, ID_PREFIX.overlay)
+      const next = addSticker(project, id, this.playheadMicros, emoji)
+      if (next === project) return
+      this.commitProject(next)
+      this.selection = { kind: 'overlay', id }
+    },
+    addShapeAtPlayhead(shape: ShapeOverlay['shape']) {
+      const project = this.project
+      const id = freshId(project, ID_PREFIX.overlay)
+      const next = addShape(project, id, this.playheadMicros, shape, this.overlayColor)
+      if (next === project) return
+      this.commitProject(next)
+      this.selection = { kind: 'overlay', id }
+    },
+    /** One finished pen stroke is one undo step. Points are output fractions. */
+    addStrokeAtPlayhead(points: StrokePoint[]) {
+      const project = this.project
+      const id = freshId(project, ID_PREFIX.overlay)
+      const next = addStroke(project, id, this.playheadMicros, points, this.overlayColor, this.penWidth)
+      if (next !== project) this.commitProject(next)
+    },
+    /** Removes the most recently drawn stroke. */
+    undoLastStroke() {
+      this.commitProject(removeLastStroke(this.project))
+    },
+    updateSelectedOverlay(patch: OverlayPatch, key?: string) {
+      const ref = this.selection
+      if (ref?.kind !== 'overlay') return
+      this.commitProject(updateOverlay(this.project, ref.id, patch), key)
+    },
+    moveOverlay(id: string, t: Micros) {
+      this.editProject((base) => moveOverlayInTime(base, id, t), `overlay-move:${id}`)
+    },
+    trimOverlayStart(id: string, t: Micros) {
+      this.editProject((base) => trimOverlayStartInTime(base, id, t), `overlay-trim-start:${id}`)
+    },
+    trimOverlayEnd(id: string, t: Micros) {
+      this.editProject((base) => trimOverlayEndInTime(base, id, t), `overlay-trim-end:${id}`)
     }
   }
 })

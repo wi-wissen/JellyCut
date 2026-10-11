@@ -237,7 +237,7 @@ export default defineComponent({
       </button>
     </div>
 
-    <input ref="fileInput" type="file" multiple :accept="accept" class="hidden" @change="onPicked" />
+    <input ref="fileInput" type="file" multiple :accept="accept" class="hidden" :aria-label="$t('a11y.fileInput')" @change="onPicked" />
 
     <div class="min-h-0 flex-1 overflow-y-auto" :class="dragging ? 'rounded-lg outline-2 outline-dashed outline-fill -outline-offset-4' : ''">
       <div v-if="showStart" class="mt-4 flex flex-col items-center gap-4 rounded-xl border border-line bg-panel2 px-5 py-8 text-center">

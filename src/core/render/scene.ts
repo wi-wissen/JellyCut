@@ -1,7 +1,7 @@
 import type { Clip, Project, TextItem } from '../project/types'
 import type { Micros } from '../time'
 import { clipGrade } from '../filters/ops'
-import { clipEnd } from '../timeline/edit'
+import { clipEnd, sourceTimeAt } from '../timeline/edit'
 import { planTransitions, type TransitionPlan } from '../timeline/transitions'
 import {
   TEXT_ANIM_DURATION,
@@ -65,7 +65,7 @@ export function buildScene(project: Project, planned: PlannedTimeline, t: Micros
     videos.push({
       clipId: clip.id,
       assetId: clip.assetId,
-      srcTime: clip.srcIn + Math.round((t - clip.start) * clip.speed),
+      srcTime: sourceTimeAt(clip, t),
       transform: { ...clip.transform },
       transition: transition ? { ...transition } : null,
       grade: clipGrade(clip)
@@ -78,10 +78,14 @@ export function buildScene(project: Project, planned: PlannedTimeline, t: Micros
     texts.push(textLayer(item, t))
   }
 
+  // Overlay items are immutable project data, so the scene can share them.
+  const overlays = project.overlays.filter((item) => item.start <= t && t < item.start + item.duration)
+
   return {
     time: t,
     format: { ...project.format, background: { ...project.format.background } },
     videos,
+    overlays,
     texts
   }
 }

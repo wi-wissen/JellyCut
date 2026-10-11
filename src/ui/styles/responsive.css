@@ -1,0 +1,168 @@
+/*
+ * Responsive shell. Desktop (>= 1100px) is the Tailwind layout of the components; every rule here
+ * applies below 1100px. Unlayered on purpose: these rules must win over the Tailwind utilities.
+ */
+
+/* Desktop: the compact-only controls stay hidden. */
+.jc-topbar__more-wrap,
+.jc-tabbar__toggle {
+  display: none;
+}
+
+/* Compact: player on top, timeline below, the left column becomes a bottom sheet with the tab bar at its edge. */
+@media (max-width: 1099px) {
+  .jc-editor {
+    height: 100dvh;
+  }
+  /* The row wrapper disappears so its children can be ordered in the editor's column. */
+  .jc-workspace {
+    display: contents;
+  }
+  .jc-main {
+    order: 1;
+    flex: 1 1 0;
+    min-height: 0;
+  }
+  .jc-timeline {
+    order: 2;
+    flex: 0 0 auto;
+    max-height: 34dvh;
+    overflow-y: auto;
+  }
+  .jc-sheet {
+    order: 3;
+    flex: 0 0 auto;
+    width: auto;
+    height: min(36dvh, 340px);
+    min-height: 0;
+    border-right: 0;
+    border-top: 1px solid var(--jc-line);
+  }
+  .jc-sheet:has(.jc-left--collapsed) {
+    height: auto;
+  }
+  /* Tab bar below the panel content; DOM order stays tab bar first, so the content is read first only visually. */
+  .jc-left {
+    flex-direction: column-reverse;
+  }
+  .jc-left__content {
+    overflow-y: auto;
+  }
+  .jc-left--collapsed .jc-left__content {
+    display: none;
+  }
+  .jc-tabbar {
+    border-bottom: 0;
+    border-top: 1px solid var(--jc-line);
+  }
+  .jc-tabbar [role='tab'] {
+    min-height: var(--jc-touch);
+  }
+  .jc-tabbar__toggle {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    min-height: var(--jc-touch);
+    padding: 0 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--jc-txt);
+  }
+
+  /* Action bar: one scrolling row, every target at least 44px. */
+  .jc-actionbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+  .jc-actionbar > * {
+    flex-shrink: 0;
+  }
+  .jc-actionbar .jc-play {
+    width: var(--jc-touch);
+    height: var(--jc-touch);
+  }
+
+  /* Timeline toolbar scrolls sideways instead of wrapping; the lane labels get a narrower column. */
+  .jc-timeline__toolbar {
+    height: var(--jc-touch);
+    overflow-x: auto;
+  }
+  .jc-timeline__toolbar > * {
+    flex-shrink: 0;
+  }
+  .jc-timeline__toolbar button {
+    min-width: var(--jc-touch);
+    height: var(--jc-touch);
+  }
+  .jc-lane-labels {
+    width: 88px;
+  }
+
+  /* Top bar: the name and the secondary controls move into the overflow menu on phones. */
+  .jc-topbar__more-wrap {
+    display: none;
+  }
+  #project-menu-trigger {
+    max-width: 180px;
+  }
+}
+
+/* Touch screens: the timeline pans with a finger; clip bodies and the track scroll instead of dragging. */
+@media (max-width: 1099px) and (pointer: coarse) {
+  .jc-timeline__track,
+  .jc-timeline [data-kind] > button {
+    touch-action: pan-x pan-y;
+  }
+  /* The trim handles are 7px wide; the invisible extension keeps them easy to hit. */
+  .jc-timeline [data-handle]::before {
+    content: '';
+    position: absolute;
+    inset: 0 -12px;
+  }
+}
+
+/* Phones: the app name and the undo, redo and theme buttons move into the overflow menu. */
+@media (max-width: 767px) {
+  .jc-brand-name,
+  .jc-topbar__inline {
+    display: none;
+  }
+  .jc-topbar__more-wrap {
+    display: flex;
+  }
+}
+
+/* Short landscape screens (phones turned sideways): the tabs share one row and the timeline gets less height. */
+@media (max-width: 1099px) and (max-height: 500px) {
+  .jc-topbar {
+    height: 48px;
+  }
+  .jc-timeline {
+    max-height: 28dvh;
+  }
+  .jc-tabbar {
+    flex-direction: row;
+    align-items: center;
+  }
+  .jc-tabbar__groups {
+    flex: 0 0 280px;
+  }
+  .jc-tabbar__tabs {
+    flex: 1 1 auto;
+  }
+  /* An open panel floats over the timeline; the player keeps its height. */
+  .jc-sheet {
+    position: relative;
+    height: auto;
+  }
+  .jc-left__content {
+    position: absolute;
+    inset: auto 0 100% 0;
+    max-height: 70dvh;
+    z-index: 20;
+    border-top: 1px solid var(--jc-line);
+    background: var(--jc-panel);
+    box-shadow: 0 -8px 24px rgb(0 0 0 / 0.12);
+  }
+}

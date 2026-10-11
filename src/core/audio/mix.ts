@@ -97,6 +97,8 @@ function transitionRamps(planned: PlannedTimeline): Map<string, TransitionRamps>
 
 function clipSegment(clip: Clip, asset: Asset | undefined, ramps: TransitionRamps | undefined): AudioSegment | null {
   if (!asset || asset.kind !== 'video' || asset.hasAudio === false) return null
+  // A freeze frame has no sound of its own.
+  if (clip.still !== undefined) return null
   if (clip.muted || clip.volume <= 0) return null
 
   const start = clip.start

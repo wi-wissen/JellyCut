@@ -109,10 +109,10 @@ export default defineComponent({
 </script>
 
 <template>
-  <div class="flex shrink-0 flex-wrap items-center gap-0.5 border-y border-line bg-panel px-2 py-1.5">
+  <div class="jc-actionbar flex shrink-0 flex-wrap items-center gap-0.5 border-y border-line bg-panel px-2 py-1.5">
     <button
       type="button"
-      class="flex size-10 shrink-0 items-center justify-center rounded-full bg-fill text-fill-fg"
+      class="jc-play flex size-10 shrink-0 items-center justify-center rounded-full bg-fill text-fill-fg"
       :aria-label="playLabel"
       :aria-pressed="isPlaying"
       @click="togglePlaying"

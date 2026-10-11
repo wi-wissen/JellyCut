@@ -8,6 +8,8 @@ import type { Asset } from '../../core/project/types'
 
 const FOCUSABLE = 'button:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
 const TITLE_ID = 'relink-dialog-title'
+/** Element that had focus before the dialog opened; focus goes back there on close. */
+let returnTarget: HTMLElement | null = null
 
 type RowState = 'matched' | 'choose' | 'rejected' | 'notFound'
 
@@ -82,9 +84,15 @@ export default defineComponent({
   watch: {
     relinkOpen(isOpen: boolean) {
       if (isOpen) {
+        returnTarget = document.activeElement as HTMLElement | null
         void nextTick(() => this.focusInside(true))
       } else {
         this.dragDepth = 0
+        const target = returnTarget
+        returnTarget = null
+        void nextTick(() => {
+          if (target?.isConnected) target.focus()
+        })
       }
     }
   },

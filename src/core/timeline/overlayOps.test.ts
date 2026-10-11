@@ -1,0 +1,189 @@
+import { describe, expect, it } from 'vitest'
+import { createProject, validateProject } from '../project/schema'
+import type { Project } from '../project/types'
+import { secondsToMicros } from '../time'
+import { DEFAULT_OVERLAY_DURATION, LINE_WIDTHS } from './overlayCatalog'
+import {
+  MIN_OVERLAY_DURATION,
+  addShape,
+  addSticker,
+  addStroke,
+  duplicateOverlay,
+  moveOverlay,
+  removeLastStroke,
+  trimOverlayEnd,
+  trimOverlayStart,
+  updateOverlay
+} from './overlayOps'
+import { deleteItem, duplicateItem, projectIds } from './ops'
+
+const s = (seconds: number) => secondsToMicros(seconds)
+const RED = '#ff0000'
+
+function base(): Project {
+  return createProject('Overlays')
+}
+
+function withSticker(): Project {
+  return addSticker(base(), 'overlay-1', s(2), '⭐')
+}
+
+describe('addSticker', () => {
+  it('adds a centred sticker at the given start with default size and duration', () => {
+    const p = withSticker()
+    expect(p.overlays).toHaveLength(1)
+    const item = p.overlays[0]!
+    expect(item).toMatchObject({ kind: 'sticker', id: 'overlay-1', start: s(2), duration: DEFAULT_OVERLAY_DURATION, scale: 1, rotation: 0, emoji: '⭐' })
+    expect(item.pos).toEqual({ x: 0.5, y: 0.5 })
+    expect(validateProject(p).ok).toBe(true)
+  })
+
+  it('rounds the start to whole microseconds, clamps it to 0, and refuses reused ids or empty emoji', () => {
+    expect(addSticker(base(), 'o1', -5.4, '⭐').overlays[0]!.start).toBe(0)
+    expect(addSticker(base(), 'o1', 1000.6, '⭐').overlays[0]!.start).toBe(1001)
+    const p = withSticker()
+    expect(addSticker(p, 'overlay-1', 0, '🔥')).toBe(p)
+    expect(addSticker(p, 'overlay-2', 0, '')).toBe(p)
+    expect(addSticker(p, 'overlay-3', Number.NaN, '🔥')).toBe(p)
+  })
+
+  it('shares the id namespace with clips, texts and music', () => {
+    const p: Project = {
+      ...base(),
+      texts: [{ id: 'x', start: 0, duration: s(1), text: 'a', style: { font: 'Sora', size: 10, color: '#ffffff', outline: null }, pos: { x: 0.5, y: 0.5 }, animIn: null, animOut: null }]
+    }
+    expect(projectIds(p).has('x')).toBe(true)
+    expect(addSticker(p, 'x', 0, '⭐')).toBe(p)
+  })
+})
+
+describe('addShape', () => {
+  it('adds a shape with the chosen colour, lower-cased, and the medium line width', () => {
+    const p = addShape(base(), 'overlay-1', 0, 'arrow', '#FF00AA')
+    expect(p.overlays[0]).toMatchObject({ kind: 'shape', shape: 'arrow', color: '#ff00aa', lineWidth: LINE_WIDTHS.medium })
+    expect(validateProject(p).ok).toBe(true)
+  })
+
+  it('refuses a colour that is not #RRGGBB', () => {
+    const p = base()
+    expect(addShape(p, 'o1', 0, 'rect', 'red')).toBe(p)
+    expect(addShape(p, 'o1', 0, 'rect', '#fff')).toBe(p)
+  })
+})
+
+describe('addStroke', () => {
+  it('stores points relative to the bounding-box centre, in output-height units', () => {
+    // 16:9 format: an x fraction of 0.5 is 0.5 * 16/9 height units.
+    const p = addStroke(base(), 'overlay-1', 0, [{ x: 0.25, y: 0.25 }, { x: 0.75, y: 0.75 }], RED)
+    const item = p.overlays[0]!
+    expect(item.kind).toBe('stroke')
+    if (item.kind !== 'stroke') return
+    const aspect = 16 / 9
+    expect(item.pos.x).toBeCloseTo(0.5, 5)
+    expect(item.pos.y).toBeCloseTo(0.5, 5)
+    expect(item.points[0]![0]).toBeCloseTo(-0.25 * aspect, 4)
+    expect(item.points[0]![1]).toBeCloseTo(-0.25, 4)
+    expect(item.points[1]![0]).toBeCloseTo(0.25 * aspect, 4)
+    expect(item.points[1]![1]).toBeCloseTo(0.25, 4)
+    expect(item.lineWidth).toBe(LINE_WIDTHS.medium)
+  })
+
+  it('drops points that sit on top of the previous kept point, and refuses a stroke with fewer than two points', () => {
+    const p = base()
+    const same = addStroke(p, 'o1', 0, [{ x: 0.3, y: 0.3 }, { x: 0.3, y: 0.3 }, { x: 0.3001, y: 0.3 }], RED)
+    expect(same).toBe(p)
+    const line = addStroke(p, 'o1', 0, [{ x: 0.1, y: 0.1 }, { x: 0.1, y: 0.1 }, { x: 0.9, y: 0.9 }, { x: Number.NaN, y: 0 }], RED, 'thick')
+    const item = line.overlays[0]!
+    expect(item.kind === 'stroke' && item.points).toHaveLength(2)
+    expect(item.kind === 'stroke' && item.lineWidth).toBe(LINE_WIDTHS.thick)
+    expect(validateProject(line).ok).toBe(true)
+  })
+})
+
+describe('updateOverlay', () => {
+  it('changes position, scale and rotation, normalising the angle', () => {
+    const p = updateOverlay(withSticker(), 'overlay-1', { pos: { x: 0.2 }, scale: 2, rotation: -90 })
+    const item = p.overlays[0]!
+    expect(item.pos).toEqual({ x: 0.2, y: 0.5 })
+    expect(item.scale).toBe(2)
+    expect(item.rotation).toBe(270)
+  })
+
+  it('clamps scale and clamps positions to the picture', () => {
+    const p = updateOverlay(withSticker(), 'overlay-1', { scale: 1000, pos: { x: 3, y: -1 } })
+    expect(p.overlays[0]!.scale).toBe(10)
+    expect(p.overlays[0]!.pos).toEqual({ x: 1, y: 0 })
+  })
+
+  it('rejects the whole patch for non-finite values, bad colours, or fields that do not apply to the kind', () => {
+    const p = withSticker()
+    expect(updateOverlay(p, 'overlay-1', { scale: Number.NaN })).toBe(p)
+    expect(updateOverlay(p, 'overlay-1', { color: '#ff0000' })).toBe(p)
+    expect(updateOverlay(p, 'overlay-1', { size: 0.2, width: 0.3 })).toBe(p)
+    expect(updateOverlay(p, 'missing', { scale: 2 })).toBe(p)
+  })
+
+  it('returns the same project when nothing changes', () => {
+    const p = withSticker()
+    expect(updateOverlay(p, 'overlay-1', { scale: 1, rotation: 0 })).toBe(p)
+  })
+
+  it('sets size on stickers and width, height, line width and colour on shapes', () => {
+    const sticker = updateOverlay(withSticker(), 'overlay-1', { size: 0.2 })
+    expect(sticker.overlays[0]).toMatchObject({ size: 0.2 })
+    const shape = addShape(base(), 'o1', 0, 'rect', RED)
+    const next = updateOverlay(shape, 'o1', { width: 0.5, height: 0.25, lineWidth: 0.01, color: '#00FF00' })
+    expect(next.overlays[0]).toMatchObject({ width: 0.5, height: 0.25, lineWidth: 0.01, color: '#00ff00' })
+  })
+})
+
+describe('moving and trimming', () => {
+  it('moves an overlay in time and keeps its duration', () => {
+    const p = moveOverlay(withSticker(), 'overlay-1', s(7.25))
+    expect(p.overlays[0]).toMatchObject({ start: s(7.25), duration: DEFAULT_OVERLAY_DURATION })
+    expect(moveOverlay(withSticker(), 'overlay-1', -10).overlays[0]!.start).toBe(0)
+  })
+
+  it('trims the start with the end fixed, and never below the minimum duration', () => {
+    const p = withSticker() // 2 s .. 5 s
+    const t = trimOverlayStart(p, 'overlay-1', s(3))
+    expect(t.overlays[0]).toMatchObject({ start: s(3), duration: s(2) })
+    const tooFar = trimOverlayStart(p, 'overlay-1', s(9))
+    expect(tooFar.overlays[0]!.start + tooFar.overlays[0]!.duration).toBe(s(5))
+    expect(tooFar.overlays[0]!.duration).toBe(MIN_OVERLAY_DURATION)
+  })
+
+  it('trims the end with the start fixed, and never below the minimum duration', () => {
+    const p = withSticker()
+    expect(trimOverlayEnd(p, 'overlay-1', s(4)).overlays[0]!.duration).toBe(s(2))
+    const tiny = trimOverlayEnd(p, 'overlay-1', 0)
+    expect(tiny.overlays[0]).toMatchObject({ start: s(2), duration: MIN_OVERLAY_DURATION })
+  })
+})
+
+describe('duplicate, delete and undo of strokes', () => {
+  it('duplicates right after the original, in time and in the list', () => {
+    const p = addStroke(withSticker(), 'stroke-1', s(0), [{ x: 0.1, y: 0.1 }, { x: 0.2, y: 0.2 }], RED)
+    const d = duplicateOverlay(p, 'stroke-1', 'stroke-2')
+    expect(d.overlays.map((o) => o.id)).toEqual(['overlay-1', 'stroke-1', 'stroke-2'])
+    expect(d.overlays[2]!.start).toBe(d.overlays[1]!.start + d.overlays[1]!.duration)
+    expect(duplicateItem(p, { kind: 'overlay', id: 'overlay-1' }, 'overlay-9').overlays).toHaveLength(3)
+  })
+
+  it('deletes overlays through the shared item ops', () => {
+    const p = withSticker()
+    expect(deleteItem(p, { kind: 'overlay', id: 'overlay-1' }).overlays).toHaveLength(0)
+    expect(deleteItem(p, { kind: 'overlay', id: 'nope' })).toBe(p)
+  })
+
+  it('removes only the most recent stroke and leaves stickers and shapes alone', () => {
+    let p = withSticker()
+    p = addStroke(p, 'stroke-1', 0, [{ x: 0.1, y: 0.1 }, { x: 0.2, y: 0.2 }], RED)
+    p = addStroke(p, 'stroke-2', 0, [{ x: 0.3, y: 0.1 }, { x: 0.4, y: 0.2 }], RED)
+    const once = removeLastStroke(p)
+    expect(once.overlays.map((o) => o.id)).toEqual(['overlay-1', 'stroke-1'])
+    const twice = removeLastStroke(once)
+    expect(twice.overlays.map((o) => o.id)).toEqual(['overlay-1'])
+    expect(removeLastStroke(twice)).toBe(twice)
+  })
+})

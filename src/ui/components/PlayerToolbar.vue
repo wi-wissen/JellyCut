@@ -193,6 +193,7 @@ export default defineComponent({
         v-if="panel"
         ref="dialog"
         role="dialog"
+        aria-modal="false"
         :aria-label="panel === 'ratio' ? $t('player.ratioDialog') : $t('player.pictureFit.title')"
         class="fixed z-50 flex flex-col gap-3 overflow-y-auto rounded-xl border border-line bg-panel p-3 text-[12px] font-normal text-fg shadow-xl"
         :style="placementStyle"

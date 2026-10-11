@@ -6,6 +6,7 @@ import {
   CREDIT_MAX_LENGTH,
   LICENSES,
   assetsInUse,
+  assetsNeedingCredit,
   cleanText,
   creditLine,
   creditStatus,
@@ -95,6 +96,29 @@ describe('assetsInUse', () => {
   })
   it('is empty for an empty timeline', () => {
     expect(assetsInUse(project([asset('a')], []))).toEqual([])
+  })
+})
+
+describe('assetsNeedingCredit', () => {
+  it('returns used media whose licence needs credit, in project order', () => {
+    const p = project([
+      asset('a', 'video', { license: 'cc-by-4.0' }),
+      asset('b', 'video', { license: 'own-work' }),
+      asset('c', 'audio', { license: 'pixabay' }),
+      asset('d', 'video', { license: 'cc-by-4.0' })
+    ], ['a', 'b', 'c'])
+    expect(assetsNeedingCredit(p).map((a) => a.id)).toEqual(['a', 'c'])
+  })
+
+  it('ignores unlicensed media, free licences and media not on the timeline', () => {
+    const p = project([asset('a'), asset('b', 'video', { license: 'cc0-1.0' }), asset('c', 'video', { license: 'other' })], ['a', 'b'])
+    expect(assetsNeedingCredit(p)).toEqual([])
+  })
+
+  it('counts a medium once when it is used twice', () => {
+    const p = project([asset('a', 'video', { license: 'unsplash' })], ['a'])
+    p.clips = [...p.clips, { ...p.clips[0]!, id: 'clip-copy', start: 2_000_000 }]
+    expect(assetsNeedingCredit(p).map((a) => a.id)).toEqual(['a'])
   })
 })
 

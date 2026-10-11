@@ -189,7 +189,11 @@
     "filter": "Filter und Anpassung",
     "filterSummary": "Filter: {name}",
     "filterNone": "Filter: Ohne",
-    "filterChange": "Filter öffnen"
+    "filterChange": "Filter öffnen",
+    "freeze": "Standbild",
+    "freezeAction": "Standbild am Abspielkopf",
+    "freezeHint": "Setze den Abspielkopf auf diesen Clip, um dort das Bild anzuhalten.",
+    "freezeNote": "Standbild: Das Bild steht für die ganze Länge, ohne Ton."
   },
   "transitions": {
     "title": "Übergänge",
@@ -330,7 +334,12 @@
     "widthValue": "{value} px",
     "loop": "Endlos wiederholen",
     "roughNote": "Grobe Schätzung",
-    "calibrationHint": "Die Schätzung wird nach dem ersten Export auf diesem Computer genauer."
+    "calibrationHint": "Die Schätzung wird nach dem ersten Export auf diesem Computer genauer.",
+    "creditsHint": {
+      "text": "Einige Medien in diesem Projekt brauchen eine Quellenangabe.",
+      "open": "Quellenangaben öffnen",
+      "hide": "Ausblenden"
+    }
   },
   "record": {
     "title": "Aufnahme",
@@ -669,6 +678,76 @@
       "title": "7. Immer die Lizenz prüfen",
       "text": "Lies die Lizenz auf der Seite des Materials, bevor du es verwendest. Regeln können sich ändern. Diese Seite ist eine Orientierung und keine Rechtsberatung.",
       "school": "Für die Schule gilt: Wenn du ein Video außerhalb der Schule veröffentlichst, zum Beispiel auf einer Videoplattform oder der Schulhomepage, gelten dieselben Regeln."
+    }
+  },
+  "a11y": {
+    "fileInput": "Mediendateien auswählen",
+    "guideNav": "Navigation der Anleitung"
+  },
+  "responsive": {
+    "more": "Mehr",
+    "moreActions": "Weitere Aktionen",
+    "showTools": "Werkzeuge zeigen",
+    "hideTools": "Werkzeuge ausblenden"
+  },
+  "overlays": {
+    "panel": "Aufkleber",
+    "stickerHint": "Klicke einen Sticker. Er erscheint am Abspielkopf und lässt sich in der Vorschau verschieben, skalieren und drehen.",
+    "stickerNames": {
+      "star": "Stern",
+      "heart": "Herz",
+      "smile": "Lächeln",
+      "thumbsUp": "Daumen hoch",
+      "party": "Party",
+      "fire": "Feuer",
+      "sparkles": "Glitzer",
+      "check": "Haken",
+      "cross": "Kreuz",
+      "hundred": "Hundert",
+      "rocket": "Rakete",
+      "laugh": "Lachen"
+    },
+    "shapes": "Formen",
+    "shape": {
+      "rect": "Rahmen",
+      "ellipse": "Ellipse",
+      "arrow": "Pfeil"
+    },
+    "shapeHint": "Die Form erscheint am Abspielkopf. Ziehe an den Anfassern, um sie zu verschieben, zu skalieren oder zu drehen.",
+    "drawPanel": "Zeichnen",
+    "drawToggle": "Zeichnen auf der Vorschau",
+    "drawOn": "An",
+    "drawOff": "Aus",
+    "drawHint": "Schalte das Zeichnen ein, dann mit Maus oder Finger über die Vorschau malen. Jeder Strich erscheint am Abspielkopf.",
+    "penWidth": "Strichstärke",
+    "penWidths": {
+      "thin": "Dünn",
+      "medium": "Mittel",
+      "thick": "Dick"
+    },
+    "undoStroke": "Letzten Strich zurücknehmen",
+    "noStrokes": "Noch keine Striche in diesem Projekt.",
+    "color": "Farbe",
+    "size": "Größe",
+    "rotation": "Drehung",
+    "lineWidth": "Linienstärke",
+    "width": "Breite",
+    "height": "Höhe",
+    "start": "Start",
+    "duration": "Dauer",
+    "header": {
+      "sticker": "Sticker · {name}",
+      "shape": "Form · {name}",
+      "stroke": "Strich"
+    },
+    "timelineLabel": "Überlagerung: {name}",
+    "player": {
+      "box": "Überlagerung {name}",
+      "move": "Verschieben",
+      "scale": "Größe ändern",
+      "rotate": "Drehen",
+      "surface": "Zeichenfläche: Mit Maus oder Finger malen",
+      "drawing": "Zeichnen läuft"
     }
   }
 }

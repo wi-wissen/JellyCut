@@ -9,6 +9,7 @@ import { SPEED_STEPS, speedStepIndex } from '../../../core/timeline/speed'
 import { canHaveTransition } from '../../../core/timeline/transitionOps'
 import { isFilterId } from '../../../core/filters/filters'
 import type { Clip } from '../../../core/project/types'
+import { clipEnd } from '../../../core/timeline/edit'
 import { formatNumber } from '../../numberFormat'
 
 export default defineComponent({
@@ -18,9 +19,17 @@ export default defineComponent({
     return { speedSteps: SPEED_STEPS }
   },
   computed: {
-    ...mapState(useEditorStore, ['project', 'selectedClip']),
+    ...mapState(useEditorStore, ['project', 'selectedClip', 'playheadMicros']),
     clip(): Clip | null {
       return this.selectedClip
+    },
+    /** A freeze frame has no sound and no speed of its own, so those sections are left out. */
+    isFreeze(): boolean {
+      return this.clip?.still !== undefined
+    },
+    freezeAvailable(): boolean {
+      const clip = this.clip
+      return clip !== null && clip.start <= this.playheadMicros && this.playheadMicros < clipEnd(clip)
     },
     header(): string {
       const clip = this.clip
@@ -63,7 +72,8 @@ export default defineComponent({
       'removeTransition',
       'setActiveTab',
       'setActiveGroup',
-      'endGesture'
+      'endGesture',
+      'insertFreezeFrame'
     ]),
     keyFor(field: string): string {
       return `clip-${field}:${this.clip?.id ?? ''}`
@@ -80,6 +90,9 @@ export default defineComponent({
     onSpeed(index: number): void {
       const speed = SPEED_STEPS[Math.round(index)]
       if (speed !== undefined) this.setSelectedClipProps({ speed }, this.keyFor('speed'))
+    },
+    onFreeze(): void {
+      if (this.freezeAvailable) this.insertFreezeFrame()
     },
     openTransitions(): void {
       this.setActiveGroup('look', 'transitions')
@@ -115,7 +128,7 @@ export default defineComponent({
       />
     </section>
 
-    <section class="flex flex-col gap-1.5 border-t border-line pt-3">
+    <section v-if="!isFreeze" class="flex flex-col gap-1.5 border-t border-line pt-3">
       <h3 class="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">{{ $t('clip.sound') }}</h3>
       <RangeField
         :label="$t('clip.volume')"
@@ -134,7 +147,7 @@ export default defineComponent({
       />
     </section>
 
-    <section class="flex flex-col gap-1.5 border-t border-line pt-3">
+    <section v-if="!isFreeze" class="flex flex-col gap-1.5 border-t border-line pt-3">
       <h3 class="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">{{ $t('clip.timing') }}</h3>
       <RangeField
         :label="$t('clip.tempo')"
@@ -146,6 +159,23 @@ export default defineComponent({
         @update="onSpeed"
         @commit="endEdit"
       />
+    </section>
+
+    <section class="flex flex-col gap-1.5 border-t border-line pt-3">
+      <h3 class="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">{{ $t('clip.freeze') }}</h3>
+      <p v-if="isFreeze" class="text-xs text-muted">{{ $t('clip.freezeNote') }}</p>
+      <p v-if="!freezeAvailable" id="clip-freeze-hint" class="text-xs text-muted">{{ $t('clip.freezeHint') }}</p>
+      <div>
+        <button
+          type="button"
+          class="min-h-11 rounded-lg bg-panel2 px-3 text-xs font-semibold text-fg hover:bg-panel disabled:opacity-40"
+          :disabled="!freezeAvailable"
+          :aria-describedby="freezeAvailable ? undefined : 'clip-freeze-hint'"
+          @click="onFreeze"
+        >
+          {{ $t('clip.freezeAction') }}
+        </button>
+      </div>
     </section>
 
     <section class="flex flex-col gap-1.5 border-t border-line pt-3">

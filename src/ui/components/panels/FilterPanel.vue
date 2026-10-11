@@ -97,6 +97,7 @@ function thumbScene(format: ProjectFormat, grade: Grade | null): Scene {
         grade
       }
     ],
+    overlays: [],
     texts: []
   }
 }

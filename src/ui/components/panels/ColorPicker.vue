@@ -298,6 +298,7 @@ export default defineComponent({
         v-if="open || !popover"
         ref="panel"
         role="dialog"
+        aria-modal="false"
         :aria-label="groupLabel"
         class="flex flex-col gap-3 overflow-y-auto rounded-xl border border-line bg-panel p-3 text-[12px] text-fg"
         :class="popover ? 'fixed z-50 shadow-xl' : 'relative mt-1'"
