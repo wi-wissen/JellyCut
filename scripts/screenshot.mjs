@@ -1,9 +1,9 @@
-// Usage: node scripts/screenshot.mjs <out.png> [light|dark] [width] [height] [locale]
+// Usage: node scripts/screenshot.mjs <out.png> [light|dark] [width] [height] [locale] [path]
 import { chromium } from 'playwright-core'
 import { createServer } from 'vite'
 import { existsSync, readdirSync } from 'node:fs'
 
-const [out = 'shot.png', theme = 'light', width = '1120', height = '700', locale = 'de'] = process.argv.slice(2)
+const [out = 'shot.png', theme = 'light', width = '1120', height = '700', locale = 'de', path = '/app'] = process.argv.slice(2)
 
 function findChromium() {
   const root = process.env.PLAYWRIGHT_BROWSERS_PATH ?? '/opt/pw-browsers'
@@ -19,7 +19,7 @@ const browser = await chromium.launch({ executablePath: findChromium(), args: ['
 const page = await browser.newPage({ viewport: { width: +width, height: +height }, locale, colorScheme: theme })
 page.on('pageerror', (e) => console.error('PAGE ERROR', e.message))
 page.on('console', (m) => m.type() === 'error' && console.error('CONSOLE', m.text()))
-await page.goto('http://localhost:5199/')
+await page.goto(`http://localhost:5199${path}`)
 await page.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme)
 await page.waitForTimeout(500)
 await page.screenshot({ path: out })

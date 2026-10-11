@@ -12,7 +12,7 @@ interface ActionDef {
 
 const ACTIONS: ActionDef[] = [
   { key: 'split', icon: 'split', hot: true },
-  { key: 'fineCut', icon: 'crop' },
+  { key: 'fineCut', icon: 'fineCut' },
   { key: 'duplicate', icon: 'copy' },
   { key: 'flip', icon: 'flip' },
   { key: 'rotate', icon: 'rotate' },

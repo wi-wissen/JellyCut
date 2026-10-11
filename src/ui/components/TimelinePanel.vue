@@ -63,20 +63,26 @@ export default defineComponent({
     <div class="flex h-9 shrink-0 items-center gap-2 border-b border-line px-3">
       <button
         type="button"
-        class="flex size-8 items-center justify-center rounded-md"
-        :class="snapping ? 'bg-fill text-fill-fg' : 'text-muted hover:bg-panel2'"
-        :aria-label="$t('timeline.magnet')"
-        :aria-pressed="snapping"
+        role="switch"
+        class="flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-semibold hover:bg-panel2"
+        :aria-checked="snapping"
+        :title="$t('timeline.snapHint')"
         @click="snapping = !snapping"
       >
-        <Icon name="magnet" class="size-4" />
+        <Icon name="magnet" class="size-4" :class="snapping ? 'text-txt' : 'text-muted'" />
+        <span>{{ $t('timeline.snap') }}</span>
+        <span
+          class="rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide"
+          :class="snapping ? 'bg-fill text-fill-fg' : 'bg-panel2 text-muted'"
+        >
+          {{ snapping ? $t('timeline.on') : $t('timeline.off') }}
+        </span>
       </button>
-      <span class="text-xs font-semibold text-muted">{{ $t('timeline.snapOn') }}</span>
 
       <div class="flex-1" />
 
       <button type="button" class="flex size-8 items-center justify-center rounded-md text-muted hover:bg-panel2" :aria-label="$t('timeline.zoomOut')">
-        <Icon name="zoom" class="size-4" />
+        <Icon name="zoomOut" class="size-4" />
       </button>
       <input
         v-model.number="zoom"
@@ -86,8 +92,8 @@ export default defineComponent({
         class="w-28 accent-fill"
         :aria-label="$t('timeline.zoom')"
       />
-      <button type="button" class="flex size-8 items-center justify-center rounded-md text-muted hover:bg-panel2" :aria-label="$t('timeline.fit')">
-        <Icon name="fit" class="size-4" />
+      <button type="button" class="flex size-8 items-center justify-center rounded-md text-muted hover:bg-panel2" :aria-label="$t('timeline.zoomIn')">
+        <Icon name="zoomIn" class="size-4" />
       </button>
     </div>
 

@@ -14,7 +14,10 @@ export default defineComponent({
   name: 'LibraryPanel',
   components: { Icon },
   computed: {
-    ...mapState(useEditorStore, ['mediaAssets'])
+    ...mapState(useEditorStore, ['mediaAssets']),
+    sourcesHref(): string {
+      return this.$router.resolve({ name: 'sources' }).href
+    }
   },
   methods: {
     gradient(index: number): string {
@@ -51,8 +54,13 @@ export default defineComponent({
       </div>
     </div>
 
-    <button type="button" class="shrink-0 self-start text-xs font-semibold text-txt underline underline-offset-2">
+    <a
+      :href="sourcesHref"
+      target="_blank"
+      rel="noopener"
+      class="shrink-0 self-start text-xs font-semibold text-txt underline underline-offset-2"
+    >
       {{ $t('library.freeSources') }}
-    </button>
+    </a>
   </section>
 </template>

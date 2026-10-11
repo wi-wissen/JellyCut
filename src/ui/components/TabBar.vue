@@ -2,7 +2,7 @@
 import { defineComponent } from 'vue'
 import { mapActions, mapState } from 'pinia'
 import Icon from './Icon.vue'
-import { useEditorStore, type TabId } from '../stores/editor'
+import { useEditorStore, type GroupId, type TabId } from '../stores/editor'
 
 interface TabDef {
   id: TabId
@@ -11,7 +11,7 @@ interface TabDef {
 }
 
 interface GroupDef {
-  key: 'material' | 'design' | 'look'
+  key: GroupId
   tabs: TabDef[]
 }
 
@@ -49,38 +49,53 @@ export default defineComponent({
     return { groups: GROUPS }
   },
   computed: {
-    ...mapState(useEditorStore, ['activeTab'])
+    ...mapState(useEditorStore, ['activeTab', 'activeGroup']),
+    currentGroup(): GroupDef {
+      return GROUPS.find((g) => g.key === this.activeGroup) ?? GROUPS[0]!
+    }
   },
   methods: {
-    ...mapActions(useEditorStore, ['setActiveTab'])
+    ...mapActions(useEditorStore, ['setActiveTab', 'setActiveGroup']),
+    selectGroup(group: GroupDef) {
+      this.setActiveGroup(group.key, group.tabs[0]!.id)
+    }
   }
 })
 </script>
 
 <template>
-  <nav class="flex flex-col gap-1 border-b border-line px-3 py-2">
-    <div v-for="group in groups" :key="group.key">
-      <h3 class="mb-0.5 text-[10px] font-semibold uppercase tracking-[.12em] text-muted">
+  <nav class="flex flex-col gap-2 border-b border-line px-3 py-2.5">
+    <div class="flex rounded-lg bg-panel2 p-[3px]" role="tablist" :aria-label="$t('groups.label')">
+      <button
+        v-for="group in groups"
+        :key="group.key"
+        type="button"
+        role="tab"
+        class="h-[34px] min-w-0 flex-1 truncate rounded-md px-2 text-xs font-semibold transition-colors"
+        :class="activeGroup === group.key ? 'bg-fill text-fill-fg' : 'text-fg hover:bg-panel'"
+        :aria-selected="activeGroup === group.key"
+        @click="selectGroup(group)"
+      >
         {{ $t(`groups.${group.key}`) }}
-      </h3>
-      <div class="flex gap-1">
-        <button
-          v-for="tab in group.tabs"
-          :key="tab.id"
-          type="button"
-          class="flex h-[34px] min-w-0 flex-auto items-center justify-center gap-1 rounded-lg px-1.5 text-[11px] font-semibold transition-colors"
-          :class="[
-            activeTab === tab.id ? 'bg-fill text-fill-fg' : 'text-fg hover:bg-panel2',
-            tab.soon ? 'opacity-45' : ''
-          ]"
-          :disabled="tab.soon"
-          :aria-pressed="activeTab === tab.id"
-          @click="setActiveTab(tab.id)"
-        >
-          <Icon :name="tab.icon" class="size-3.5 shrink-0" />
-          <span class="truncate">{{ $t(`tabs.${tab.id}`) }}</span>
-        </button>
-      </div>
+      </button>
+    </div>
+    <div class="flex gap-1">
+      <button
+        v-for="tab in currentGroup.tabs"
+        :key="tab.id"
+        type="button"
+        class="flex h-[44px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[11px] font-semibold transition-colors"
+        :class="[
+          activeTab === tab.id ? 'bg-panel2 text-txt ring-1 ring-fill' : 'text-fg hover:bg-panel2',
+          tab.soon ? 'opacity-45' : ''
+        ]"
+        :disabled="tab.soon"
+        :aria-pressed="activeTab === tab.id"
+        @click="setActiveTab(tab.id)"
+      >
+        <Icon :name="tab.icon" class="size-4 shrink-0" />
+        <span class="max-w-full truncate">{{ $t(`tabs.${tab.id}`) }}</span>
+      </button>
     </div>
   </nav>
 </template>

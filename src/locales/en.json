@@ -12,7 +12,8 @@
   "groups": {
     "material": "Material",
     "design": "Design",
-    "look": "Look"
+    "look": "Look",
+    "label": "Tool area"
   },
   "tabs": {
     "media": "Media",
@@ -45,18 +46,36 @@
     "delete": "Delete"
   },
   "timeline": {
-    "magnet": "Snapping",
-    "snapOn": "Snapping on",
     "zoom": "Zoom",
     "zoomOut": "Zoom out",
-    "fit": "Fit timeline",
     "text": "Text",
     "overlay": "Overlay",
     "video": "Video",
     "originalAudio": "Original audio",
-    "music": "Music"
+    "music": "Added audio",
+    "snap": "Magnet",
+    "on": "On",
+    "off": "Off",
+    "snapHint": "Magnet: clips and cuts snap to edges and the playhead",
+    "zoomIn": "Zoom in"
   },
   "player": {
     "fitFill": "Fit · Fill"
+  },
+  "landing": {
+    "title": "Jelly Cut",
+    "tagline": "Simple video editing for schools. Right in your browser, no account, no ads.",
+    "open": "Open editor",
+    "soon": "This page will be designed later."
+  },
+  "guide": {
+    "back": "Back",
+    "sourcesTitle": "Free images, music and videos",
+    "sourcesIntro": "This is where we collect vetted sources for material you may use in your videos, and explain how to credit the creators.",
+    "images": "Images",
+    "music": "Music",
+    "videos": "Videos",
+    "credits": "Crediting creators",
+    "todo": "This list is still being put together and will be checked for licences and terms of use before anything is added."
   }
 }

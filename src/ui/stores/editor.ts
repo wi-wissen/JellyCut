@@ -4,6 +4,7 @@ import type { Asset, Clip, Project } from '../../core/project/types'
 import { formatTimecode, frameStart, secondsToMicros, type Micros } from '../../core/time'
 
 export type TabId = 'media' | 'audio' | 'record' | 'text' | 'sticker' | 'draw' | 'captions' | 'filter' | 'transitions'
+export type GroupId = 'material' | 'design' | 'look'
 export type ThemeMode = 'light' | 'dark' | 'system'
 
 export interface TimelineSpan {
@@ -27,6 +28,7 @@ export interface Subtitle {
 
 export interface EditorState {
   project: Project
+  activeGroup: GroupId
   activeTab: TabId
   playheadMicros: Micros
   theme: ThemeMode
@@ -140,6 +142,7 @@ function systemPrefersDark(): boolean {
 export const useEditorStore = defineStore('editor', {
   state: (): EditorState => ({
     project: buildDemoProject(),
+    activeGroup: 'material',
     activeTab: 'media',
     // Frame 338 at 30 fps, displayed as 00:11:08.
     playheadMicros: frameStart(338, 30),
@@ -224,6 +227,10 @@ export const useEditorStore = defineStore('editor', {
   actions: {
     setActiveTab(tab: TabId) {
       this.activeTab = tab
+    },
+    setActiveGroup(group: GroupId, firstTab: TabId) {
+      this.activeGroup = group
+      this.activeTab = firstTab
     },
     setTheme(mode: ThemeMode) {
       this.theme = mode

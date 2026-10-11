@@ -12,7 +12,8 @@
   "groups": {
     "material": "Material",
     "design": "Gestalten",
-    "look": "Look"
+    "look": "Look",
+    "label": "Werkzeugbereich"
   },
   "tabs": {
     "media": "Medien",
@@ -45,18 +46,36 @@
     "delete": "Löschen"
   },
   "timeline": {
-    "magnet": "Einrasten",
-    "snapOn": "Einrasten an",
     "zoom": "Zoom",
     "zoomOut": "Verkleinern",
-    "fit": "Timeline einpassen",
     "text": "Text",
     "overlay": "Überlagerung",
     "video": "Video",
     "originalAudio": "Originalton",
-    "music": "Musik"
+    "music": "Eigener Ton",
+    "snap": "Magnet",
+    "on": "An",
+    "off": "Aus",
+    "snapHint": "Magnet: Clips und Schnitte rasten an Kanten und am Abspielkopf ein",
+    "zoomIn": "Vergrößern"
   },
   "player": {
     "fitFill": "Einpassen · Füllen"
+  },
+  "landing": {
+    "title": "Jelly Cut",
+    "tagline": "Einfacher Videoschnitt für die Schule. Direkt im Browser, ohne Konto, ohne Werbung.",
+    "open": "Editor öffnen",
+    "soon": "Diese Seite wird später gestaltet."
+  },
+  "guide": {
+    "back": "Zurück",
+    "sourcesTitle": "Freie Bilder, Musik und Videos",
+    "sourcesIntro": "Hier sammeln wir geprüfte Quellen für Material, das du in deinen Videos verwenden darfst, und erklären, wie du die Urheber nennst.",
+    "images": "Bilder",
+    "music": "Musik",
+    "videos": "Videos",
+    "credits": "Urheber nennen",
+    "todo": "Diese Liste wird noch zusammengestellt und vor der Aufnahme auf Lizenz und Nutzungsbedingungen geprüft."
   }
 }
