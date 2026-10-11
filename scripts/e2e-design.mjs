@@ -218,6 +218,7 @@ const count = await st('(ed) => ed.project.overlays.length')
 check('stacking: To front puts it last', orderFront === count - 1, `${orderFront} of ${count}`)
 
 // --- 5. the pen stays on after a stroke; Done ends it; a stroke is selected like other items -----
+await page.getByRole('tab', { name: 'Design', exact: true }).click()
 await page.getByRole('button', { name: 'Draw', exact: true }).click()
 await page.getByRole('button', { name: 'Start drawing', exact: true }).click()
 await settle(150)

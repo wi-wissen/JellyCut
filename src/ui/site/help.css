@@ -1,8 +1,16 @@
 /* Typography for help pages. Views put their text inside .help-prose and use plain elements.
    In the components layer, so utility classes on an element still win. */
 @layer components {
-  .help-prose > * + * {
+  .help-prose > * + *,
+  .help-prose section > * + *,
+  .help-prose details > * + * {
     margin-top: 1rem;
+  }
+  /* Callouts and call-to-action buttons need more air than running text. */
+  .help-prose aside,
+  .help-prose aside + *,
+  .help-prose p:has(> a[class*='bg-signal']) {
+    margin-top: 1.75rem;
   }
   .help-prose h2 {
     margin-top: 3rem;

@@ -56,3 +56,11 @@ The background belongs to the project format (one choice for the whole project),
 - **Pictures in the picture.** `srcIn` (start in the asset, microseconds) and `speed` (0.1 to 4, absent means 1). The scene's `srcTime` is `srcIn + elapsed * speed`, held at the last frame. Preview and export use the same value. The item's length on the timeline does not change.
 - The project version stays 1. All new fields are optional; the schema validates them strictly.
 
+## Design tabs: one way to work with every item (UI)
+
+- Creating an item selects it, and its settings replace the tab's gallery in the same place. Every item has the same sections in the same order: Content, Look, Timing, Animation, Order, Actions. Text uses the same sections; its Order section only says that text is always on top.
+- Positions are never typed. Items move by dragging in the preview (guides for centre, thirds and quarters stay) or with the arrow keys (Shift for bigger steps). Size and turning are done with the handles.
+- The pen stays on after each stroke until Done (or until another tab opens). Strokes are selected like other items after Done.
+- Picture-in-picture shapes are presets: Square, Rounded and Round (a circle of the centre square, radius at half the box). Rounded blur or pixelate areas are rounded in the shader too.
+- The timeline keeps overlay rows compact on a mouse (28 px). Overlaps beyond four rows share a last row; the selected bar is drawn on top.
+
