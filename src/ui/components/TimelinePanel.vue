@@ -130,6 +130,8 @@ export default defineComponent({
       const project = this.project
       const pps = this.pxPerSecond
       const names = new Map(project.assets.map((a) => [a.id, a.name]))
+      // Pictures and files without a sound track have nothing to show on the original audio lane.
+      const hasSound = new Map(project.assets.map((a) => [a.id, a.kind === 'video' && a.hasAudio !== false]))
       const px = (t: Micros): number => microsToPx(t, pps)
       const sortedClips = [...project.clips].sort((a, b) => a.start - b.start)
 
@@ -150,7 +152,7 @@ export default defineComponent({
         }
       })
       const originalAudioItems = sortedClips
-        .filter((clip) => !clip.muted)
+        .filter((clip) => !clip.muted && hasSound.get(clip.assetId) === true)
         .map((clip): LaneItem => {
           const end = clipEnd(clip)
           return {
