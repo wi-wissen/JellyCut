@@ -3,11 +3,13 @@ import { defineComponent } from 'vue'
 import { mapActions, mapState } from 'pinia'
 import Icon from './Icon.vue'
 import ProjectMenu from './ProjectMenu.vue'
+import ExportDialog from './ExportDialog.vue'
 import { useEditorStore } from '../stores/editor'
+import { useExportStore } from '../stores/export'
 
 export default defineComponent({
   name: 'TopBar',
-  components: { Icon, ProjectMenu },
+  components: { Icon, ProjectMenu, ExportDialog },
   data() {
     return { logoUrl: `${import.meta.env.BASE_URL}logo.svg` }
   },
@@ -15,7 +17,8 @@ export default defineComponent({
     ...mapState(useEditorStore, ['project', 'resolvedDark', 'canUndo', 'canRedo'])
   },
   methods: {
-    ...mapActions(useEditorStore, ['toggleTheme', 'undo', 'redo'])
+    ...mapActions(useEditorStore, ['toggleTheme', 'undo', 'redo']),
+    ...mapActions(useExportStore, ['show'])
   }
 })
 </script>
@@ -67,10 +70,14 @@ export default defineComponent({
       <Icon :name="resolvedDark ? 'sun' : 'moon'" class="size-5" />
     </button>
     <button
+      id="export-button"
       type="button"
       class="flex h-9 items-center rounded-lg bg-signal px-4 text-sm font-bold text-signal-fg"
+      aria-haspopup="dialog"
+      @click="show"
     >
       {{ $t('top.export') }}
     </button>
+    <ExportDialog />
   </header>
 </template>

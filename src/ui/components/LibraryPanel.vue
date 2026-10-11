@@ -1,8 +1,8 @@
 <script lang="ts">
-import { defineComponent } from 'vue'
+import { defineComponent, type PropType } from 'vue'
 import { mapActions, mapState } from 'pinia'
 import Icon from './Icon.vue'
-import type { Asset } from '../../core/project/types'
+import type { Asset, AssetKind } from '../../core/project/types'
 import { useEditorStore } from '../stores/editor'
 import { useMediaStore } from '../stores/media'
 
@@ -23,9 +23,17 @@ function formatDuration(micros: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
 }
 
+const ALL_KINDS: AssetKind[] = ['video', 'audio', 'image']
+
 export default defineComponent({
   name: 'LibraryPanel',
   components: { Icon },
+  props: {
+    /** Only assets of these kinds are listed. */
+    kinds: { type: Array as PropType<AssetKind[]>, default: () => ALL_KINDS },
+    /** Heading text; the default is the media heading. */
+    heading: { type: String, default: '' }
+  },
   data() {
     return { dragDepth: 0 }
   },
@@ -33,7 +41,10 @@ export default defineComponent({
     ...mapState(useEditorStore, ['project']),
     ...mapState(useMediaStore, ['statusOf', 'problems', 'thumbnails', 'importing', 'lastImportError']),
     assets(): Asset[] {
-      return this.project.assets
+      return this.project.assets.filter((a) => this.kinds.includes(a.kind))
+    },
+    title(): string {
+      return this.heading || this.$t('library.media')
     },
     dragging(): boolean {
       return this.dragDepth > 0
@@ -107,7 +118,7 @@ export default defineComponent({
     @drop.prevent="onDrop"
   >
     <div class="flex shrink-0 items-center justify-between gap-2">
-      <h2 class="text-sm font-bold">{{ $t('library.media') }}</h2>
+      <h2 class="text-sm font-bold">{{ title }}</h2>
       <span v-if="importing > 0" role="status" class="flex items-center gap-1.5 text-xs text-muted">
         <span class="size-2 animate-pulse rounded-full bg-fill" aria-hidden="true" />
         {{ $t('library.importing') }}

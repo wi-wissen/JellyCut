@@ -1,14 +1,25 @@
 import { defineStore } from 'pinia'
 import { createProject, parseProjectJson, serializeProject } from '../../core/project/schema'
-import type { Asset, Clip, MusicItem, Project, TextItem } from '../../core/project/types'
+import type { Asset, Clip, FitMode, FormatRatio, MusicItem, Project, TextItem } from '../../core/project/types'
+import {
+  setAllFit,
+  setBackground as setFormatBackground,
+  setRatio as setFormatRatio,
+  type FormatBackground
+} from '../../core/project/format'
+import type { TransitionType } from '../../core/render/types'
 import { formatTimecode, frameIndexAt, frameStart, secondsToMicros, type Micros } from '../../core/time'
 import { nextId } from '../../core/timeline/ids'
+import { updateMusic, type MusicPatch } from '../../core/timeline/musicOps'
+import { addText, updateText, type TextPresetId, type TextPatch } from '../../core/timeline/textOps'
+import { DEFAULT_TRANSITION, setTransition, transitionTargetClipId } from '../../core/timeline/transitionOps'
 import {
   deleteItem,
   duplicateItem,
   moveText as moveTextInTime,
   nextSpeed,
   projectIds,
+  type ClipPatch,
   reorderVideoClip,
   setClipProps,
   splitAt,
@@ -380,6 +391,10 @@ export const useEditorStore = defineStore('editor', {
       if (ref?.kind !== 'clip') return null
       return state.history.present.clips.find((c) => c.id === ref.id) ?? null
     },
+    /** The clip that a transition would be applied to; see transitionTargetClipId. */
+    transitionTargetId(state): string | null {
+      return transitionTargetClipId(state.history.present, state.selection, state.playheadMicros)
+    },
     canSplitAtPlayhead(state): boolean {
       const project = state.history.present
       return splitAt(project, state.playheadMicros, freshId(project, ID_PREFIX.clip)) !== project
@@ -614,6 +629,61 @@ export const useEditorStore = defineStore('editor', {
       const clip = this.selectedClip
       if (!clip) return
       this.commitProject(setClipProps(this.project, clip.id, { speed: nextSpeed(clip.speed) }))
+    },
+
+    /**
+     * Adds a text at the playhead and selects it. `text` is the initial content; the UI passes the
+     * localised default. Slider and typing edits pass a `key` so one drag or burst is one undo step.
+     */
+    addTextAtPlayhead(preset: TextPresetId = 'title', text = 'Text') {
+      const project = this.project
+      const id = freshId(project, ID_PREFIX.text)
+      const next = addText(project, id, this.playheadMicros, { preset, text })
+      if (next === project) return
+      this.commitProject(next)
+      this.selection = { kind: 'text', id }
+    },
+    updateSelectedText(patch: TextPatch, key?: string) {
+      const ref = this.selection
+      if (ref?.kind !== 'text') return
+      this.commitProject(updateText(this.project, ref.id, patch), key)
+    },
+    setSelectedClipProps(patch: ClipPatch, key?: string) {
+      const clip = this.selectedClip
+      if (!clip) return
+      this.commitProject(setClipProps(this.project, clip.id, patch), key)
+    },
+    /** Applies a transition to transitionTargetClipId and selects that clip, so its panel shows the result. */
+    applyTransition(type: TransitionType, duration: Micros = DEFAULT_TRANSITION, key?: string) {
+      const project = this.project
+      const id = transitionTargetClipId(project, this.selection, this.playheadMicros)
+      if (!id) return
+      this.selection = { kind: 'clip', id }
+      this.commitProject(setTransition(project, id, { type, duration }), key)
+    },
+    /** Removes the transition at the cut before the given clip, or before the selected clip when no id is given. */
+    removeTransition(clipId?: string) {
+      const id = clipId ?? this.selectedClip?.id
+      if (!id) return
+      this.commitProject(setTransition(this.project, id, null))
+    },
+    setRatio(ratio: FormatRatio) {
+      this.commitProject(setFormatRatio(this.project, ratio))
+    },
+    setBackground(background: FormatBackground, key?: string) {
+      this.commitProject(setFormatBackground(this.project, background), key)
+    },
+    /** Fit or Fill for the selected clip; with no clip selected (or a text or music item) for all clips. */
+    setFitForSelection(fit: FitMode, key?: string) {
+      const project = this.project
+      const clip = this.selectedClip
+      const next = clip ? setClipProps(project, clip.id, { transform: { fit } }) : setAllFit(project, fit)
+      this.commitProject(next, key)
+    },
+    updateSelectedMusic(patch: MusicPatch, key?: string) {
+      const ref = this.selection
+      if (ref?.kind !== 'music') return
+      this.commitProject(updateMusic(this.project, ref.id, patch), key)
     }
   }
 })

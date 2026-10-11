@@ -55,9 +55,20 @@ export default defineComponent({
     }
   },
   methods: {
-    ...mapActions(useEditorStore, ['setActiveTab', 'setActiveGroup']),
+    ...mapActions(useEditorStore, ['setActiveTab', 'setActiveGroup', 'select']),
+    /** Opening another tab leaves the selected item's panel. Transitions keep the selection: it is the target. */
+    leaveSelection(tab: TabId) {
+      if (tab !== 'transitions') this.select(null)
+    },
     selectGroup(group: GroupDef) {
-      this.setActiveGroup(group.key, group.tabs[0]!.id)
+      const first = group.tabs.find((t) => !t.soon)?.id ?? group.tabs[0]!.id
+      this.leaveSelection(first)
+      this.setActiveGroup(group.key, first)
+    },
+    selectTab(tab: TabDef) {
+      if (tab.soon) return
+      this.leaveSelection(tab.id)
+      this.setActiveTab(tab.id)
     }
   }
 })
@@ -91,7 +102,7 @@ export default defineComponent({
         ]"
         :disabled="tab.soon"
         :aria-pressed="activeTab === tab.id"
-        @click="setActiveTab(tab.id)"
+        @click="selectTab(tab)"
       >
         <Icon :name="tab.icon" class="size-4 shrink-0" />
         <span class="max-w-full truncate">{{ $t(`tabs.${tab.id}`) }}</span>

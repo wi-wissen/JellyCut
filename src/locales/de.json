@@ -67,7 +67,8 @@
       "unsupportedFormat": "Dieser Dateityp wird nicht unterstützt.",
       "noMedia": "Diese Datei enthält weder Bild noch Ton.",
       "missing": "Datei nicht verknüpft. Öffne sie erneut, um sie neu zu verknüpfen."
-    }
+    },
+    "audio": "Audio"
   },
   "actions": {
     "play": "Abspielen",
@@ -109,7 +110,23 @@
     "ratio": "Bildformat",
     "canvasLabel": "Vorschau des Videos",
     "empty": "Noch kein Video. Füge links Medien hinzu und klicke sie an, um sie in die Timeline zu legen.",
-    "noWebgl": "Dein Browser kann die Vorschau nicht darstellen (WebGL fehlt). Bitte Chrome oder Edge verwenden."
+    "noWebgl": "Dein Browser kann die Vorschau nicht darstellen (WebGL fehlt). Bitte Chrome oder Edge verwenden.",
+    "fitMode": "Einpassen",
+    "fillMode": "Füllen",
+    "fitToggle": "Einpassen oder Füllen umschalten, aktuell: {mode}",
+    "ratioDialog": "Bildformat und Hintergrund",
+    "ratioOptions": "Bildformat",
+    "background": "Hintergrund",
+    "blurBackground": "Weichzeichner",
+    "colorBackground": "Farbe",
+    "backgroundColor": "Hintergrundfarbe",
+    "ratioNames": {
+      "landscape": "Querformat",
+      "portrait": "Hochformat",
+      "square": "Quadrat",
+      "portraitTall": "Hochformat 4:5"
+    },
+    "close": "Schließen"
   },
   "landing": {
     "title": "Jelly Cut",
@@ -126,5 +143,150 @@
     "videos": "Videos",
     "credits": "Urheber nennen",
     "todo": "Diese Liste wird noch zusammengestellt und vor der Aufnahme auf Lizenz und Nutzungsbedingungen geprüft."
+  },
+  "leftPanel": {
+    "backToLibrary": "Zurück zur Bibliothek",
+    "recordSoon": "Aufnahme kommt bald",
+    "recordText": "Hier nimmst du bald direkt im Browser Ton und Video auf."
+  },
+  "units": {
+    "seconds": "{value} s",
+    "percent": "{value} %",
+    "tempo": "{value}x"
+  },
+  "clip": {
+    "header": "Clip · {name}",
+    "picture": "Bild im Format",
+    "fit": "Einpassen",
+    "fill": "Füllen",
+    "zoom": "Zoom",
+    "volume": "Lautstärke",
+    "originalAudio": "Originalton",
+    "tempo": "Tempo",
+    "transition": "Übergang am Schnitt",
+    "noTransition": "Kein Übergang",
+    "transitionSummary": "{name} · {seconds}",
+    "transitionChange": "Ändern",
+    "transitionRemove": "Entfernen",
+    "firstClip": "Der erste Clip hat keinen Schnitt davor. Übergänge gibt es nur zwischen zwei Clips."
+  },
+  "transitions": {
+    "title": "Übergänge",
+    "duration": "Dauer",
+    "target": "Schnitt vor {name}",
+    "pickClip": "Wähle einen Clip nach dem ersten aus, um einen Übergang zu setzen.",
+    "remove": "Übergang entfernen",
+    "types": {
+      "fade": "Überblenden",
+      "wipeLeft": "Wischen links",
+      "wipeRight": "Wischen rechts",
+      "wipeUp": "Wischen oben",
+      "wipeDown": "Wischen unten",
+      "slideLeft": "Schieben links",
+      "slideRight": "Schieben rechts",
+      "zoomIn": "Heranzoomen",
+      "zoomOut": "Herauszoomen",
+      "blur": "Unschärfe"
+    }
+  },
+  "text": {
+    "add": "Text hinzufügen",
+    "presets": "Vorlagen",
+    "defaultText": "Text",
+    "presetNames": {
+      "title": "Titel",
+      "subtitle": "Untertitel",
+      "neon": "Neon",
+      "poster": "Plakat",
+      "script": "Schreibschrift",
+      "note": "Notiz"
+    },
+    "header": "Text · \"{text}\"",
+    "content": "Inhalt",
+    "font": "Schrift",
+    "size": "Größe",
+    "color": "Farbe",
+    "customColor": "Eigene Farbe",
+    "swatch": "Farbe {hex}",
+    "outline": "Kontur",
+    "outlineColor": "Konturfarbe",
+    "position": "Position",
+    "top": "Oben",
+    "middle": "Mitte",
+    "bottom": "Unten",
+    "posX": "Horizontal",
+    "posY": "Vertikal",
+    "animation": "Animation",
+    "animIn": "Einblenden",
+    "animOut": "Ausblenden",
+    "anim": {
+      "none": "Keine",
+      "fade": "Weich",
+      "pop": "Pop",
+      "slideUp": "Nach oben"
+    },
+    "start": "Start (s)",
+    "duration": "Dauer (s)",
+    "sample": "Aa"
+  },
+  "music": {
+    "header": "Eigener Ton · {name}",
+    "volume": "Lautstärke",
+    "fadeIn": "Einblenden",
+    "fadeOut": "Ausblenden"
+  },
+
+  "export": {
+    "title": "Video exportieren",
+    "close": "Schließen",
+    "cancel": "Abbrechen",
+    "start": "Export starten",
+    "save": "Speichern",
+    "again": "Erneut exportieren",
+    "back": "Zurück",
+    "labels": {
+      "resolution": "Auflösung",
+      "fps": "Bilder pro Sekunde",
+      "quality": "Qualität",
+      "format": "Format"
+    },
+    "qualities": {
+      "good": "Gut",
+      "small": "Klein",
+      "tiny": "Sehr klein"
+    },
+    "formats": {
+      "mp4": "Video (MP4)",
+      "gif": "GIF",
+      "soon": "Demnächst"
+    },
+    "estimate": "Dauer {duration} · Größe ca. {size}",
+    "estimateNote": "Schätzung",
+    "encoder": "Codec {codec}",
+    "codecs": {
+      "avc": "H.264",
+      "vp9": "VP9",
+      "av1": "AV1"
+    },
+    "codecNote": "Manche Player können diese Datei nicht öffnen.",
+    "checking": "Kodierer werden geprüft …",
+    "running": "Wird erstellt …",
+    "percent": "{percent} %",
+    "elapsed": "Vergangen {time}",
+    "etaSeconds": "Noch etwa {value} Sek.",
+    "etaMinutes": "Noch etwa {value} Min.",
+    "keepOpen": "Lass diesen Tab geöffnet, bis der Export fertig ist.",
+    "progressLabel": "Fortschritt",
+    "done": "Fertig",
+    "doneText": "Die Datei ist bereit.",
+    "fileSize": "{name} · {size}",
+    "cancelled": "Der Export wurde abgebrochen.",
+    "errors": {
+      "noEncoder": "Dieser Browser kann kein Video kodieren. Bitte Chrome oder Edge verwenden.",
+      "empty": "Es gibt noch nichts zu exportieren. Lege zuerst einen Clip auf die Timeline.",
+      "missing": "Für den Export fehlen Dateien: {names}. Importiere sie in der Bibliothek erneut.",
+      "unsupported": "Dieser Browser kann dieses Projekt nicht exportieren.",
+      "failed": "Der Export ist fehlgeschlagen. {message}"
+    }
   }
 }

@@ -67,7 +67,8 @@
       "unsupportedFormat": "This file type is not supported.",
       "noMedia": "This file has no picture or sound.",
       "missing": "File not linked. Open it again to re-link."
-    }
+    },
+    "audio": "Audio"
   },
   "actions": {
     "play": "Play",
@@ -109,7 +110,23 @@
     "ratio": "Aspect ratio",
     "canvasLabel": "Video preview",
     "empty": "No video yet. Add media on the left and click it to put it on the timeline.",
-    "noWebgl": "Your browser cannot show the preview (WebGL is missing). Please use Chrome or Edge."
+    "noWebgl": "Your browser cannot show the preview (WebGL is missing). Please use Chrome or Edge.",
+    "fitMode": "Fit",
+    "fillMode": "Fill",
+    "fitToggle": "Toggle fit or fill, currently: {mode}",
+    "ratioDialog": "Picture format and background",
+    "ratioOptions": "Picture format",
+    "background": "Background",
+    "blurBackground": "Blur",
+    "colorBackground": "Colour",
+    "backgroundColor": "Background colour",
+    "ratioNames": {
+      "landscape": "Landscape",
+      "portrait": "Portrait",
+      "square": "Square",
+      "portraitTall": "Portrait 4:5"
+    },
+    "close": "Close"
   },
   "landing": {
     "title": "Jelly Cut",
@@ -126,5 +143,150 @@
     "videos": "Videos",
     "credits": "Crediting creators",
     "todo": "This list is still being put together and will be checked for licences and terms of use before anything is added."
+  },
+  "leftPanel": {
+    "backToLibrary": "Back to library",
+    "recordSoon": "Recording comes soon",
+    "recordText": "Soon you will be able to record sound and video right here in the browser."
+  },
+  "units": {
+    "seconds": "{value} s",
+    "percent": "{value} %",
+    "tempo": "{value}x"
+  },
+  "clip": {
+    "header": "Clip · {name}",
+    "picture": "Picture in format",
+    "fit": "Fit",
+    "fill": "Fill",
+    "zoom": "Zoom",
+    "volume": "Volume",
+    "originalAudio": "Original audio",
+    "tempo": "Tempo",
+    "transition": "Transition at the cut",
+    "noTransition": "No transition",
+    "transitionSummary": "{name} · {seconds}",
+    "transitionChange": "Change",
+    "transitionRemove": "Remove",
+    "firstClip": "The first clip has no cut before it. Transitions go between two clips."
+  },
+  "transitions": {
+    "title": "Transitions",
+    "duration": "Duration",
+    "target": "Cut before {name}",
+    "pickClip": "Select a clip after the first one to add a transition.",
+    "remove": "Remove transition",
+    "types": {
+      "fade": "Cross fade",
+      "wipeLeft": "Wipe left",
+      "wipeRight": "Wipe right",
+      "wipeUp": "Wipe up",
+      "wipeDown": "Wipe down",
+      "slideLeft": "Slide left",
+      "slideRight": "Slide right",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out",
+      "blur": "Blur"
+    }
+  },
+  "text": {
+    "add": "Add text",
+    "presets": "Presets",
+    "defaultText": "Text",
+    "presetNames": {
+      "title": "Title",
+      "subtitle": "Subtitle",
+      "neon": "Neon",
+      "poster": "Poster",
+      "script": "Script",
+      "note": "Note"
+    },
+    "header": "Text · \"{text}\"",
+    "content": "Content",
+    "font": "Font",
+    "size": "Size",
+    "color": "Colour",
+    "customColor": "Custom colour",
+    "swatch": "Colour {hex}",
+    "outline": "Outline",
+    "outlineColor": "Outline colour",
+    "position": "Position",
+    "top": "Top",
+    "middle": "Middle",
+    "bottom": "Bottom",
+    "posX": "Horizontal",
+    "posY": "Vertical",
+    "animation": "Animation",
+    "animIn": "In",
+    "animOut": "Out",
+    "anim": {
+      "none": "None",
+      "fade": "Fade",
+      "pop": "Pop",
+      "slideUp": "Slide up"
+    },
+    "start": "Start (s)",
+    "duration": "Duration (s)",
+    "sample": "Aa"
+  },
+  "music": {
+    "header": "Own sound · {name}",
+    "volume": "Volume",
+    "fadeIn": "Fade in",
+    "fadeOut": "Fade out"
+  },
+
+  "export": {
+    "title": "Export video",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Start export",
+    "save": "Save",
+    "again": "Export again",
+    "back": "Back",
+    "labels": {
+      "resolution": "Resolution",
+      "fps": "Frames per second",
+      "quality": "Quality",
+      "format": "Format"
+    },
+    "qualities": {
+      "good": "Good",
+      "small": "Small",
+      "tiny": "Very small"
+    },
+    "formats": {
+      "mp4": "Video (MP4)",
+      "gif": "GIF",
+      "soon": "Coming soon"
+    },
+    "estimate": "Length {duration} · size about {size}",
+    "estimateNote": "Estimate",
+    "encoder": "Codec {codec}",
+    "codecs": {
+      "avc": "H.264",
+      "vp9": "VP9",
+      "av1": "AV1"
+    },
+    "codecNote": "Some players may not open this file.",
+    "checking": "Checking encoders …",
+    "running": "Creating file …",
+    "percent": "{percent} %",
+    "elapsed": "Elapsed {time}",
+    "etaSeconds": "About {value} s left",
+    "etaMinutes": "About {value} min left",
+    "keepOpen": "Keep this tab open until the export is finished.",
+    "progressLabel": "Progress",
+    "done": "Done",
+    "doneText": "The file is ready.",
+    "fileSize": "{name} · {size}",
+    "cancelled": "The export was cancelled.",
+    "errors": {
+      "noEncoder": "This browser cannot encode video. Please use Chrome or Edge.",
+      "empty": "There is nothing to export yet. Put a clip on the timeline first.",
+      "missing": "Files are missing for the export: {names}. Import them again in the library.",
+      "unsupported": "This browser cannot export this project.",
+      "failed": "The export failed. {message}"
+    }
   }
 }
