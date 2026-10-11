@@ -38,7 +38,6 @@ import {
   Undo2,
   Video,
   VolumeX,
-  X,
   ZoomIn,
   ZoomOut
 } from 'lucide-vue-next'
@@ -67,7 +66,6 @@ const ICONS: Record<string, Component> = {
   camera: Video,
   screen: Monitor,
   stop: Square,
-  close: X,
   text: Type,
   sticker: Smile,
   draw: Pencil,
