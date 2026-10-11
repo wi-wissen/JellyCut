@@ -25,7 +25,7 @@ const failedRequests = []
 const requested = new Set()
 page.on('pageerror', (e) => errors.push(e.message))
 page.on('console', (m) => m.type() === 'error' && !/favicon/.test(m.text()) && errors.push(m.text()))
-page.on('requestfailed', (r) => failedRequests.push(r.url()))
+page.on('requestfailed', (r) => !/favicon/.test(r.url()) && failedRequests.push(r.url()))
 page.on('response', (r) => { requested.add(new URL(r.url()).pathname); if (r.status() >= 400 && !/favicon/.test(r.url())) failedRequests.push(`${r.status()} ${r.url()}`) })
 let failed = 0
 const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${ok ? '' : ' ' + detail}`); if (!ok) failed++ }
