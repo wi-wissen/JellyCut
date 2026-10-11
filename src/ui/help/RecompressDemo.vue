@@ -50,7 +50,8 @@ export default defineComponent({
   async mounted() {
     const image = new Image()
     image.src = turtleUrl
-    await image.decode()
+    // Leaving the page while the picture decodes rejects the promise; there is nothing to draw then.
+    if (await image.decode().then(() => false, () => true)) return
     const canvas = document.createElement('canvas')
     canvas.width = W
     canvas.height = H

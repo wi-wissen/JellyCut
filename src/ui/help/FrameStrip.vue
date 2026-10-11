@@ -61,7 +61,10 @@ export default defineComponent({
     }
   },
   async mounted() {
-    const [plate, sprite] = await Promise.all([loadPlate(WINDOW_W, WINDOW_H, WINDOW), loadSprite(SPRITE_W)])
+    // Leaving the page while the pictures decode rejects the promise; there is nothing to draw then.
+    const loaded = await Promise.all([loadPlate(WINDOW_W, WINDOW_H, WINDOW), loadSprite(SPRITE_W)]).catch(() => null)
+    if (!loaded) return
+    const [plate, sprite] = loaded
     const xs = Array.from({ length: CLIP_FRAMES }, (_, k) => START_X + k * STEP)
     this.frames = markRaw(buildFlipbook(plate, WINDOW_W, WINDOW_H, sprite, xs, TURTLE_Y).frames)
     this.paint()

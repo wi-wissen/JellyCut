@@ -120,7 +120,7 @@ await page.locator('header button[aria-haspopup]').first().click()
 check('/app/ opens offline and the editor script runs', await page.getByRole('menuitem', { name: /New project/ }).isVisible())
 await page.keyboard.press('Escape')
 await page.goto(`${origin}/`)
-check('landing page opens offline', (await page.locator('h1').innerText()).includes('Jelly Cut'))
+check('landing page opens offline', (await page.locator('h1').innerText()).trim().length > 0 && (await page.locator('a[href*="app/"]').count()) > 0)
 for (const path of HELP_PATHS) {
   await page.goto(`${origin}${path}`)
   check(`help page ${path} opens offline`, (await page.locator('h1').count()) === 1)

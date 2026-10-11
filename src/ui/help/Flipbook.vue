@@ -94,7 +94,10 @@ export default defineComponent({
     }
   },
   async mounted() {
-    const [plate, sprite] = await Promise.all([loadPlate(W, H), loadSprite(SPRITE_W)])
+    // Leaving the page while the pictures decode rejects the promise; there is nothing to draw then.
+    const loaded = await Promise.all([loadPlate(W, H), loadSprite(SPRITE_W)]).catch(() => null)
+    if (!loaded) return
+    const [plate, sprite] = loaded
     this.pixels = markRaw({ plate, sprite })
     this.ready = true
     this.build()
