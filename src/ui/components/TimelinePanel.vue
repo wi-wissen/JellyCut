@@ -39,6 +39,8 @@ const RESIZE_STEP_PX = 16
 const MENU_GAP_PX = 4
 /** Coarse pointers (touch): lanes and bars grow so every bar is at least 44 px tall. */
 const COARSE_LANE_HEIGHT_PX = 48
+/** Overlay rows on a mouse: compact, so the stacked stickers, shapes and pictures do not push the video lane out of view. */
+const OVERLAY_ROW_HEIGHT_PX = 28
 const BAR_INSET_PX = 4
 const COARSE_BAR_INSET_PX = 2
 /** Room after the last item, so the end of the track can be reached by scrolling. */
@@ -189,6 +191,9 @@ export default defineComponent({
     },
     laneHeight(): number {
       return this.coarse ? COARSE_LANE_HEIGHT_PX : LANE_HEIGHT_PX
+    },
+    overlayRowHeight(): number {
+      return this.coarse ? COARSE_LANE_HEIGHT_PX : OVERLAY_ROW_HEIGHT_PX
     },
     barInset(): number {
       return this.coarse ? COARSE_BAR_INSET_PX : BAR_INSET_PX
@@ -461,8 +466,12 @@ export default defineComponent({
     onPointerKindChange(event: MediaQueryListEvent) {
       this.coarse = event.matches
     },
+    /** Height of one row of a lane. Overlay rows are compact on a mouse; touch keeps the 44 px bars. */
+    rowHeightOf(lane: Lane): number {
+      return lane.id === 'overlay' ? this.overlayRowHeight : this.laneHeight
+    },
     laneHeightPx(lane: Lane): number {
-      return (lane.rows ?? 1) * this.laneHeight
+      return (lane.rows ?? 1) * this.rowHeightOf(lane)
     },
     /** Short label of an overlay bar: the emoji for stickers, the kind for shapes and strokes. */
     overlayName(item: OverlayItem): string {
@@ -574,8 +583,10 @@ export default defineComponent({
     revealLaneRow(laneId: string, row: number) {
       const body = this.$refs.body as HTMLElement | undefined
       if (!body) return
-      const top = this.laneTop(laneId) + row * this.laneHeight
-      const bottom = top + this.laneHeight
+      const lane = this.lanes.find((l) => l.id === laneId)
+      const height = lane ? this.rowHeightOf(lane) : this.laneHeight
+      const top = this.laneTop(laneId) + row * height
+      const bottom = top + height
       if (top < body.scrollTop) body.scrollTop = top
       else if (bottom > body.scrollTop + body.clientHeight) body.scrollTop = bottom - body.clientHeight
       this.updateHidden()
@@ -590,7 +601,7 @@ export default defineComponent({
       for (const lane of this.lanes) {
         const rows = lane.rows ?? 1
         for (let row = 0; row < rows; row++) {
-          if (top + row * this.laneHeight >= visibleBottom - 1) count++
+          if (top + row * this.rowHeightOf(lane) >= visibleBottom - 1) count++
         }
         top += this.laneHeightPx(lane)
       }
@@ -972,7 +983,7 @@ export default defineComponent({
               :aria-label="item.ariaLabel"
               :variant="item.variant"
               :row="item.row ?? 0"
-              :lane-height="laneHeight"
+              :lane-height="rowHeightOf(lane)"
               :inset="barInset"
               :tone="item.tone"
               :left="item.leftPx"
