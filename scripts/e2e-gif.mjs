@@ -327,7 +327,7 @@ const engine = await (async () => {
   // Cancel: a 40 s text over the clips, so the export runs long enough to cancel.
   await page.getByRole('button', { name: 'Export again', exact: true }).click()
   await waitPhase(page, 'ready', 5000)
-  await state(page, '(ed) => { ed.project.texts = [' + JSON.stringify(TEXT('long', 0, 40_000_000)) + ']; return 0 }')
+  await state(page, '(ed) => { const c = ed.project.clips[0]; ed.project.clips = [{ ...c, speed: (c.srcOut - c.srcIn) / 40000000 }]; ed.project.texts = []; return 0 }') // the export length comes from the clips
   await waitFor(async () => (await state(page, '(ed) => ed.totalDuration')) === 40_000_000, 3000)
   await startButton(page).click()
   const midway = await waitFor(async () => ((await state(page, '(ed, ex) => ex.progress?.fraction ?? 0')) || 0) >= 0.05, 60_000, 50)
@@ -339,7 +339,7 @@ const engine = await (async () => {
   check('after a cancelled GIF the dialog is usable again', await startButton(page).isEnabled())
 
   // Long project: a 90 s item. The GIF is refused before it starts.
-  await state(page, '(ed) => { ed.project.texts = [' + JSON.stringify(TEXT('long90', 0, 90_000_000)) + ']; return 0 }')
+  await state(page, '(ed) => { const c = ed.project.clips[0]; ed.project.clips = [{ ...c, speed: (c.srcOut - c.srcIn) / 90000000 }]; ed.project.texts = []; return 0 }')
   await waitFor(async () => (await state(page, '(ed) => ed.totalDuration')) === 90_000_000, 3000)
   await waitFor(async () => (await state(page, '(ed, ex) => ex.gifTooBig')) === true, 3000)
   const warning = dialog(page).getByRole('alert')

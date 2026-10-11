@@ -114,11 +114,9 @@ await page.getByRole('radio', { name: '480p', exact: true }).click({ force: true
 await page.getByRole('radio', { name: '30', exact: true }).click({ force: true })
 const start = page.getByRole('button', { name: 'Start export', exact: true })
 for (let i = 0; i < 150 && !(await start.isEnabled().catch(() => false)); i++) await page.waitForTimeout(100)
+// The finished file is saved automatically (download path, no file dialog in headless Chromium).
+const downloadPromise = page.waitForEvent('download', { timeout: 120_000 })
 await start.click()
-const save = dialog.getByRole('button', { name: 'Save', exact: true })
-await save.waitFor({ timeout: 120_000 })
-const downloadPromise = page.waitForEvent('download', { timeout: 15_000 })
-await save.click()
 const download = await downloadPromise
 const savedPath = join(SHOT_DIR, 'freeze-export.mp4')
 await download.saveAs(savedPath)
