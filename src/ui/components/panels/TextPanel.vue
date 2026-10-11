@@ -33,6 +33,8 @@ export default defineComponent({
 
 <template>
   <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
+    <h2 class="text-sm font-bold">{{ $t('tabs.text') }}</h2>
+    <p class="text-xs leading-relaxed text-muted">{{ $t('text.whySeparate') }}</p>
     <button
       type="button"
       class="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-fill text-sm font-bold text-fill-fg hover:opacity-90"
@@ -42,7 +44,7 @@ export default defineComponent({
       {{ $t('text.add') }}
     </button>
 
-    <h2 class="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">{{ $t('text.presets') }}</h2>
+    <h3 class="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">{{ $t('text.presets') }}</h3>
     <div class="grid grid-cols-2 gap-2.5">
       <button
         v-for="preset in presets"

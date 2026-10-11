@@ -294,16 +294,16 @@ const engine = await (async () => {
   check('no size warning for a normal GIF', (await dialog(page).getByRole('alert').count()) === 0)
 
   const projectFrames = Math.ceil(((await state(page, '(ed) => ed.totalDuration')) * 10) / 1_000_000)
+  // The file is saved automatically when the export is ready (no Save click).
+  const downloadPromise = page.waitForEvent('download', { timeout: 120_000 }).catch(() => null)
   await startButton(page).click()
   const done = await waitPhase(page, 'done', 120_000)
   check('GIF export finishes in the done state', done, `phase=${await state(page, '(ed, ex) => ex.phase')} error=${JSON.stringify(await state(page, '(ed, ex) => ex.error'))}`)
   check('done state names the GIF file', done && (await dialog(page).innerText()).includes('New project.gif'))
   const storedGif = await page.evaluate(() => localStorage.getItem('jellycut.export.gif'))
   check('the first GIF export stores its size calibration under jellycut.export.gif', storedGif !== null && typeof JSON.parse(storedGif).bytesPerPixel === 'number', String(storedGif))
-  const downloadPromise = page.waitForEvent('download', { timeout: 15_000 }).catch(() => null)
-  await page.getByRole('button', { name: 'Save', exact: true }).click()
   const download = await downloadPromise
-  check('Save starts a download named New project.gif', download !== null && download.suggestedFilename() === 'New project.gif', download?.suggestedFilename())
+  check('the finished export downloads automatically as New project.gif', download !== null && download.suggestedFilename() === 'New project.gif', download?.suggestedFilename())
   if (download) {
     const path = join(SHOT_DIR, 'gif-download.gif')
     await download.saveAs(path)

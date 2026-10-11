@@ -1,0 +1,194 @@
+{
+  "help": {
+    "glossary": {
+      "title": "Fachbegriffe",
+      "lead": "Hier stehen die Wörter, die in Jelly Cut und auf diesen Seiten vorkommen. Tippe ein Wort in die Suche.",
+      "search": {
+        "label": "Begriff suchen",
+        "placeholder": "z. B. Bildrate oder Ton",
+        "clear": "Suche leeren"
+      },
+      "count": "{count} Begriffe gefunden",
+      "empty": "Kein Treffer. Probiere ein anderes Wort, zum Beispiel Ton oder Datei.",
+      "seeAlso": "Siehe auch",
+      "lettersLabel": "Springe zu einem Buchstaben",
+      "terms": {
+        "abspielkopf": {
+          "term": "Abspielkopf",
+          "text": "Der senkrechte Strich auf der Zeitleiste. Er zeigt, welches Bild du gerade siehst. Du kannst ihn mit der Maus verschieben.",
+          "keys": "Playhead Zeitposition Strich Position"
+        },
+        "abtastrate": {
+          "term": "Abtastrate",
+          "text": "Wie oft pro Sekunde der Ton gemessen wird. 48.000 Mal pro Sekunde ist bei Videos üblich. Mehr Messungen klingen genauer, machen die Datei aber größer.",
+          "keys": "Sample Rate Hertz kHz 48000"
+        },
+        "aufkleber": {
+          "term": "Aufkleber",
+          "text": "Ein kleines Bild oder Zeichen, das du über das Video legst, zum Beispiel einen Stern oder einen Daumen hoch. Du kannst ihn verschieben, drehen und vergrößern.",
+          "keys": "Sticker Emoji Stern Herz"
+        },
+        "aufloesung": {
+          "term": "Auflösung",
+          "text": "Wie viele Punkte (Pixel) ein Bild hat, zum Beispiel 1920 × 1080. Mehr Pixel zeigen mehr Details, machen die Datei aber größer.",
+          "keys": "Resolution Pixel 1080p 720p 4K HD Full HD"
+        },
+        "autosave": {
+          "term": "Autosave",
+          "text": "Jelly Cut speichert deine Arbeit automatisch in diesem Browser. Die Anzeige oben zeigt, ob alles gesichert ist. Zusätzlich kannst du das Projekt als Datei speichern.",
+          "keys": "Automatisch speichern Speicherstand Sichern"
+        },
+        "bild": {
+          "term": "Bild (Frame)",
+          "text": "Ein einzelnes Standbild. Ein Video ist eine schnelle Folge vieler Bilder. Auf Englisch heißt ein Bild Frame.",
+          "keys": "Frame Standbild Einzelbild Picture"
+        },
+        "bildrate": {
+          "term": "Bildrate (fps)",
+          "text": "Wie viele Bilder pro Sekunde ein Video hat, zum Beispiel 30 fps (frames per second). Mehr Bilder wirken flüssiger, machen die Datei aber größer.",
+          "keys": "fps frames per second Bilder pro Sekunde FPS Framerate"
+        },
+        "bitrate": {
+          "term": "Bitrate",
+          "text": "Wie viele Daten pro Sekunde in der Datei stehen, zum Beispiel 8 Megabit pro Sekunde. In Jelly Cut stellst du die Qualität ein, die Bitrate folgt daraus. Höher heißt bessere Qualität und größere Datei.",
+          "keys": "Datenmenge Megabit Qualität Gut Klein"
+        },
+        "clip": {
+          "term": "Clip",
+          "text": "Ein Stück Video, Bild oder Ton, das auf der Zeitleiste liegt. Du kannst einen Clip teilen, kürzen und verschieben.",
+          "keys": "Ausschnitt Stück Teil Video"
+        },
+        "codec": {
+          "term": "Codec",
+          "text": "Das Rezept, mit dem Bilder gepackt und wieder ausgepackt werden, zum Beispiel H.264, VP9 oder AV1. Sender und Empfänger brauchen dasselbe Rezept.",
+          "keys": "Kodierer Dekodierer H.264 VP9 AV1 Packverfahren"
+        },
+        "container": {
+          "term": "Container",
+          "text": "Die Box, in der Bilder, Ton und Angaben stecken. Die Endung wie .mp4 oder .webm sagt, welche Box es ist.",
+          "keys": "Box Behälter Datei Endung mp4 webm mov mkv"
+        },
+        "credits": {
+          "term": "Credits",
+          "text": "Die Namen der Urheber und die Quellen von Bildern, Musik und Videos, die du verwendest. Jelly Cut erstellt daraus einen Text zum Kopieren.",
+          "keys": "Quelle Urheber Nennung Quellenangabe"
+        },
+        "einpassen-fuellen": {
+          "term": "Einpassen und Füllen",
+          "text": "Einpassen zeigt das ganze Bild, mit Balken an den Seiten. Füllen schneidet das Bild zu, damit der Bildschirm ganz gefüllt ist.",
+          "keys": "Fit Fill Balken Zuschneiden"
+        },
+        "export": {
+          "term": "Export",
+          "text": "Das fertige Video als Datei speichern. Dabei werden alle Clips, Texte und Filter zusammen berechnet und kodiert.",
+          "keys": "Speichern Datei fertig Video ausgeben"
+        },
+        "feinschnitt": {
+          "term": "Feinschnitt",
+          "text": "Ein Werkzeug, mit dem du Bild für Bild vorgehst und genau an einer Stelle schneidest. Dabei siehst du auch die Keyframes.",
+          "keys": "Frame genau schneiden Keyframe Bild für Bild"
+        },
+        "filter": {
+          "term": "Filter",
+          "text": "Ein Farblook, zum Beispiel Schwarzweiß, Sepia oder Retro. Mit Helligkeit, Kontrast und Sättigung passt du die Farben selbst an.",
+          "keys": "Farben Look Schwarzweiß Sepia Helligkeit Kontrast Sättigung"
+        },
+        "format": {
+          "term": "Format (Dateityp)",
+          "text": "Die Art der fertigen Datei. MP4 ist ein Video, das fast überall läuft. GIF ist eine kurze, stumme Schleife, die sich endlos wiederholt.",
+          "keys": "MP4 GIF Dateityp Dateiart Schleife"
+        },
+        "keyframe": {
+          "term": "Keyframe (Schlüsselbild)",
+          "text": "Ein vollständiges Bild im Video. Die Bilder danach speichern oft nur, was sich ändert. Darum lässt sich ein Video an Keyframes am leichtesten schneiden und abspielen.",
+          "keys": "Schlüsselbild I-Frame Vollbild K"
+        },
+        "kodieren": {
+          "term": "Kodieren und Dekodieren",
+          "text": "Kodieren packt Bilder in eine kleinere Datei. Dekodieren baut die Bilder wieder auf, damit man sie anschauen oder bearbeiten kann.",
+          "keys": "Encode Decode packen auspacken Codec"
+        },
+        "lautstaerke": {
+          "term": "Lautstärke",
+          "text": "Wie laut ein Clip oder Ton ist. In Jelly Cut stellst du sie in Prozent ein: 100 % ist unverändert.",
+          "keys": "Volume Ton laut Prozent"
+        },
+        "lizenz": {
+          "term": "Lizenz",
+          "text": "Die Regel, die festlegt, was du mit einem Bild, Video oder Ton machen darfst. Sie steht auf der Seite, auf der du das Material findest.",
+          "keys": "License CC0 CC BY Nutzung Erlaubnis"
+        },
+        "mono-stereo": {
+          "term": "Mono und Stereo",
+          "text": "Mono hat einen Tonkanal, Stereo hat zwei: einen für links und einen für rechts. Stereo klingt räumlicher.",
+          "keys": "Kanal links rechts Tonkanal channels"
+        },
+        "seitenverhaeltnis": {
+          "term": "Seitenverhältnis (Bildformat)",
+          "text": "Das Verhältnis von Breite zu Höhe eines Bildes. Querformat ist breit, wie ein Fernseher. Hochformat ist hoch, wie ein Handy. Quadrat ist gleich breit und hoch.",
+          "keys": "Querformat Hochformat Quadrat Format Breite Höhe"
+        },
+        "spur": {
+          "term": "Spur",
+          "text": "Eine Reihe in der Zeitleiste oder ein Teil der Datei. Video, Ton, Musik, Text und Überlagerungen haben jeweils eigene Spuren. Auf Englisch heißt sie Track.",
+          "keys": "Track Lane Reihe Zeile"
+        },
+        "standbild": {
+          "term": "Standbild",
+          "text": "Ein Bild, das angehalten wird und eine Weile stehen bleibt. Dabei gibt es keinen Ton.",
+          "keys": "Freeze Frame Stillstehen Pause"
+        },
+        "tempo": {
+          "term": "Tempo",
+          "text": "Wie schnell ein Clip abläuft. Bei doppeltem Tempo läuft der Clip doppelt so schnell und ist halb so lang.",
+          "keys": "Geschwindigkeit Speed schneller langsamer"
+        },
+        "transparenz": {
+          "term": "Transparenz (Deckkraft)",
+          "text": "Wie durchsichtig ein Bild, ein Text oder ein Aufkleber ist. 100 % ist undurchsichtig, 0 % ist unsichtbar. Den durchsichtigen Teil eines Bildes speichert man im Alpha-Kanal.",
+          "keys": "Alpha Deckkraft opacity durchsichtig"
+        },
+        "uebergang": {
+          "term": "Übergang",
+          "text": "Die Art, wie ein Clip in den nächsten übergeht. Zum Beispiel mit Überblenden, einem Wischen oder einem Zoom.",
+          "keys": "Transition Wischen Zoom Schnitt"
+        },
+        "ueberblenden": {
+          "term": "Überblenden",
+          "text": "Ein Übergang: Das eine Bild wird langsam durchsichtig, während das nächste erscheint. Ein Klassiker.",
+          "keys": "Fade Crossfade Übergang weich"
+        },
+        "ueberlagerung": {
+          "term": "Überlagerung (Overlay)",
+          "text": "Etwas, das über dem Video liegt: Text, Aufkleber, Formen, Zeichnungen oder ein zweites Bild. Es hat eine eigene Spur auf der Zeitleiste.",
+          "keys": "Overlay Text Aufkleber Form Zeichnung Spur"
+        },
+        "untertitel": {
+          "term": "Untertitel",
+          "text": "Text unten im Bild, der zu den gesprochenen Worten passt. Jeder Untertitel hat eine Start- und eine Endzeit.",
+          "keys": "Subtitles Text Captions Sprache"
+        },
+        "verpixeln": {
+          "term": "Verpixeln",
+          "text": "Ein Bereich wird in große Kästchen zerlegt, sodass man Details nicht mehr erkennt. Zum Beispiel bei Gesichtern oder Autokennzeichen.",
+          "keys": "Pixelate Mosaik Gesicht Kennzeichen unkenntlich"
+        },
+        "weichzeichnen": {
+          "term": "Weichzeichnen (Blur)",
+          "text": "Ein Bereich wird unscharf gemacht. Das ist gut, um Personen oder Schrift unkenntlich zu machen.",
+          "keys": "Blur Unschärfe unscharf"
+        },
+        "wellenform": {
+          "term": "Wellenform",
+          "text": "Eine Linie, die zeigt, wie laut der Ton zu jedem Zeitpunkt ist. Hohe Ausschläge sind laute Stellen.",
+          "keys": "Waveform Ton Lautstärke Ausschlag"
+        },
+        "zeitleiste": {
+          "term": "Zeitleiste (Timeline)",
+          "text": "Die Leiste unten, auf der alle Clips, Texte und Töne in ihrer Reihenfolge liegen. Die Zeit läuft von links nach rechts.",
+          "keys": "Timeline Leiste Spuren Clips"
+        }
+      }
+    }
+  }
+}

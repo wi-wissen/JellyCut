@@ -30,6 +30,7 @@ import { overlayBox } from '../../core/render/overlayLayout'
 import { findClipAt } from '../../core/timeline/edit'
 import type { Clip, OverlayItem, Project, TextItem } from '../../core/project/types'
 import { clearTextMeasureCache, measureLine } from '../player/textMeasure'
+import { useFineCutStore } from '../stores/fineCut'
 
 /** Snap distance in screen pixels, converted to output fractions per axis. */
 const SNAP_PX = 8
@@ -116,6 +117,7 @@ export default defineComponent({
   },
   computed: {
     ...mapState(useEditorStore, ['project', 'selection', 'selectedClip', 'selectedOverlay', 'playheadMicros', 'drawing', 'overlayColor', 'penWidth']),
+    ...mapState(useFineCutStore, { fineCutOpen: 'isOpen' }),
     /** Pen width on screen, as the stroke will be drawn in the output. */
     livePenPx(): number {
       return LINE_WIDTHS[this.penWidth] * this.outH
@@ -175,6 +177,7 @@ export default defineComponent({
     }
   },
   mounted() {
+    window.addEventListener('keydown', this.onWindowKey)
     void Promise.all(CURATED_FONTS.map((f) => document.fonts.load(canvasFont(f.family, 32))))
       .catch(() => undefined)
       .then(() => {
@@ -183,6 +186,7 @@ export default defineComponent({
       })
   },
   beforeUnmount() {
+    window.removeEventListener('keydown', this.onWindowKey)
     if (drag) this.endPress()
   },
   methods: {
@@ -420,18 +424,6 @@ export default defineComponent({
       const id = d.id
       this.editProject((base) => updateOverlay(base, id, { rotation }), `overlay-rotate:${id}`)
     },
-    onOverlayKey(event: KeyboardEvent, view: BoxView): void {
-      if (this.handleCommonKey(event)) return
-      const item = this.selectedOverlay
-      if (!item) return
-      const delta = arrowDelta(event.key, event.shiftKey ? NUDGE_LARGE : NUDGE)
-      if (!delta) return
-      event.preventDefault()
-      const x = clamp(item.pos.x + delta.x, 0, 1)
-      const y = clamp(item.pos.y + delta.y, 0, 1)
-      this.editProject((base) => updateOverlay(base, view.id, { pos: { x, y } }), `overlay-nudge:${view.id}`)
-    },
-
     // --- drawing mode: one pointer press makes one stroke ---
     onDrawDown(event: PointerEvent): void {
       if (event.button !== 0) return
@@ -564,35 +556,45 @@ export default defineComponent({
     onClipDoubleClick(): void {
       this.setSelectedClipProps({ transform: { scale: 1, x: 0, y: 0 } })
     },
-    onTextKey(event: KeyboardEvent, view: BoxView): void {
-      if (this.handleCommonKey(event)) return
-      const step = event.shiftKey ? NUDGE_LARGE : NUDGE
-      const item = this.selectedText
-      if (!item) return
-      const delta = arrowDelta(event.key, step)
+    /**
+     * Arrow keys move the selected item (Shift: bigger steps) and Delete removes it. One window listener, so it
+     * works after a click on the picture, after a pick in a panel and while a box has the focus. Typing, lists,
+     * sliders, dialogs and the fine cut view keep their own keys.
+     */
+    onWindowKey(event: KeyboardEvent): void {
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || this.fineCutOpen) return
+      if (!this.selection || this.drawing || document.querySelector('[aria-modal="true"]')) return
+      if (!this.keyAllowed(event.target)) return
+      if (event.key === 'Delete') {
+        event.preventDefault()
+        this.deleteSelected()
+        return
+      }
+      const delta = arrowDelta(event.key, event.shiftKey ? NUDGE_LARGE : NUDGE)
       if (!delta) return
       event.preventDefault()
-      const x = clamp(item.pos.x + delta.x, 0, 1)
-      const y = clamp(item.pos.y + delta.y, 0, 1)
-      this.updateSelectedText({ pos: { x, y } }, `text-nudge:${view.id}`)
+      this.nudgeSelection(delta)
     },
-    onClipKey(event: KeyboardEvent, view: BoxView): void {
-      if (this.handleCommonKey(event)) return
-      const step = event.shiftKey ? NUDGE_LARGE : NUDGE
-      const clip = this.selectedClip
-      if (!clip) return
-      const delta = arrowDelta(event.key, step)
-      if (!delta) return
-      event.preventDefault()
-      const x = clamp(clip.transform.x + delta.x, -1, 1)
-      const y = clamp(clip.transform.y + delta.y, -1, 1)
-      this.setSelectedClipProps({ transform: { x, y } }, `clip-nudge:${view.id}`)
+    /** Focus on the page, in the player or on a selection box; not in a field, a list or a button elsewhere. */
+    keyAllowed(target: EventTarget | null): boolean {
+      if (!(target instanceof HTMLElement) || target === document.body || target === document.documentElement) return true
+      return target.closest('[data-player-overlay]') !== null
     },
-    handleCommonKey(event: KeyboardEvent): boolean {
-      if (event.key !== 'Delete') return false
-      event.preventDefault()
-      this.deleteSelected()
-      return true
+    nudgeSelection(delta: Point): void {
+      const ref = this.selection
+      if (!ref) return
+      if (ref.kind === 'overlay' && this.selectedOverlay) {
+        const item = this.selectedOverlay
+        const pos = { x: clamp(item.pos.x + delta.x, 0, 1), y: clamp(item.pos.y + delta.y, 0, 1) }
+        this.editProject((base) => updateOverlay(base, item.id, { pos }), `overlay-nudge:${item.id}`)
+      } else if (ref.kind === 'text' && this.selectedText) {
+        const item = this.selectedText
+        this.updateSelectedText({ pos: { x: clamp(item.pos.x + delta.x, 0, 1), y: clamp(item.pos.y + delta.y, 0, 1) } }, `text-nudge:${item.id}`)
+      } else if (ref.kind === 'clip' && this.selectedClip) {
+        const clip = this.selectedClip
+        const transform = { x: clamp(clip.transform.x + delta.x, -1, 1), y: clamp(clip.transform.y + delta.y, -1, 1) }
+        this.setSelectedClipProps({ transform }, `clip-nudge:${clip.id}`)
+      }
     }
   }
 })
@@ -707,7 +709,6 @@ function arrowDelta(key: string, step: number): Point | null {
       @pointermove="onMove"
       @pointerup="onUp"
       @pointercancel="onUp"
-      @keydown="onOverlayKey($event, overlayView)"
     >
       <button
         v-for="corner in corners"
@@ -753,7 +754,6 @@ function arrowDelta(key: string, step: number): Point | null {
       @pointerup="onUp"
       @pointercancel="onUp"
       @dblclick="onClipDoubleClick()"
-      @keydown="onClipKey($event, clipView)"
     >
       <button
         v-for="corner in corners"
@@ -791,7 +791,6 @@ function arrowDelta(key: string, step: number): Point | null {
       @pointerup="onUp"
       @pointercancel="onUp"
       @dblclick="onTextDoubleClick(textView)"
-      @keydown="onTextKey($event, textView)"
     >
       <button
         v-for="corner in corners"

@@ -98,7 +98,8 @@ export default defineComponent({
         height: `${this.laneHeight - 2 * this.inset}px`,
         transform: lifted ? `${shift} scale(1.04)`.trim() : shift || 'none',
         filter: lifted ? 'drop-shadow(0 6px 10px rgb(0 0 0 / 0.35))' : 'none',
-        zIndex: this.offset || lifted ? 10 : 'auto'
+        // The selected bar stays on top of any bars it overlaps in the same row.
+        zIndex: this.offset || lifted ? 10 : this.selected ? 2 : 'auto'
       }
     }
   },

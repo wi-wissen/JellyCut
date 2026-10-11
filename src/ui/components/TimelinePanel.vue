@@ -15,7 +15,7 @@ import { planTimeline } from '../../core/render/scene'
 import { formatNumber } from '../numberFormat'
 import type { ItemRef } from '../../core/timeline/ops'
 import { collectSnapPoints, snapTime } from '../../core/timeline/snap'
-import { packRows } from '../../core/timeline/overlayRows'
+import { OVERLAY_ROW_LIMIT, packRows } from '../../core/timeline/overlayRows'
 import {
   clampPxPerSecond,
   DEFAULT_PX_PER_SECOND,
@@ -268,7 +268,11 @@ export default defineComponent({
         }
       })
       // Overlapping stickers, shapes and strokes stack in rows instead of covering each other.
-      const overlayRows = packRows(project.overlays.map((o) => ({ start: o.start, end: o.start + o.duration })))
+      // At most OVERLAY_ROW_LIMIT rows; the overlaps beyond that stack in the last row, the selected bar on top.
+      const overlayRows = packRows(
+        project.overlays.map((o) => ({ start: o.start, end: o.start + o.duration })),
+        OVERLAY_ROW_LIMIT
+      )
       const overlayItems = project.overlays.map((overlay, i): LaneItem => {
         const name = this.overlayName(overlay)
         const end = overlay.start + overlay.duration

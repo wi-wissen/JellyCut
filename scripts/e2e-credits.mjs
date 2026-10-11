@@ -269,21 +269,22 @@ async function guideCheck(locale, lang, title) {
   )
   const wantedLinks = [
     'https://pixabay.com', 'https://www.pexels.com', 'https://unsplash.com', 'https://commons.wikimedia.org', 'https://openverse.org',
-    'https://www.pexels.com/videos/', 'https://pixabay.com/videos/', 'https://freesound.org', 'https://pixabay.com/music/',
-    'https://freemusicarchive.org', 'https://incompetech.com'
+    'https://www.pexels.com/videos/', 'https://pixabay.com/videos/', 'https://pixabay.com/music/',
+    'https://freemusicarchive.org/home'
   ]
+  check(`guide (${locale}): no links to the removed sources`, !external.some((l) => /freesound|incompetech/.test(l.href)))
   check(`guide (${locale}): every listed source is linked (${external.length} links)`, wantedLinks.every((h) => external.some((l) => l.href === h)))
   check(`guide (${locale}): external links open in a new tab with noopener`, external.length > 0 && external.every((l) => l.target === '_blank' && l.rel.split(' ').includes('noopener') && l.rel.split(' ').includes('noreferrer')), JSON.stringify(external.filter((l) => !(l.target === '_blank' && l.rel.includes('noopener')))))
   check(`guide (${locale}): each external link has a visible indicator`, (await p.locator('main a[target=_blank] svg').count()) === external.length)
 
-  const backHref = await p.getByRole('link', { name: /Back to the editor|Zurück zum Editor/ }).getAttribute('href')
-  check(`guide (${locale}): back link points to the editor`, backHref === '../../app/')
-  const startHref = await p.getByRole('link', { name: /Jelly Cut start page|Startseite von Jelly Cut/ }).getAttribute('href')
+  const backHref = await p.getByRole('link', { name: /Open app|App öffnen/ }).first().getAttribute('href')
+  check(`guide (${locale}): open-app link points to the editor`, backHref === '../../app/')
+  const startHref = await p.getByRole('link', { name: 'Jelly Cut', exact: true }).getAttribute('href')
   check(`guide (${locale}): link to the landing page`, startHref === '../../')
 
   // Table of contents: every anchor scrolls its section to the top.
   const anchors = await p.locator('nav a[href^="#"]').evaluateAll((els) => els.map((a) => a.getAttribute('href')))
-  check(`guide (${locale}): table of contents has all 8 sections`, anchors.length === 8, anchors.join(' '))
+  check(`guide (${locale}): table of contents has all 7 sections`, anchors.length === 7, anchors.join(' '))
   let anchorsOk = true
   for (const id of anchors) {
     await p.locator(`nav a[href="${id}"]`).first().click()

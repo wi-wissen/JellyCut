@@ -1,0 +1,89 @@
+{
+  "landing": {
+    "help": "Hilfe",
+    "open": "Editor öffnen",
+    "eyebrow": "Kostenlos · direkt im Browser",
+    "headline": "Schneide Videos, die man",
+    "headlineMark": "gern anschaut",
+    "tagline": "Jelly Cut ist ein einfacher Videoschnitt für Schule und Freizeit. Kein Konto, keine Installation. Deine Videos verlassen dein Gerät nie.",
+    "ctaHint": "Ein Klick, und du bist drin.",
+    "trust": {
+      "account": "Ohne Konto",
+      "ads": "Ohne Werbung",
+      "paywall": "Ohne Paywall"
+    },
+    "mock": {
+      "label": "Animierte Vorschau des Editors: Clips rutschen auf die Zeitleiste, ein Sticker erscheint und eine Blende wischt zur nächsten Szene.",
+      "project": "Mein erstes Video",
+      "sticker": "Wow!",
+      "clipIntro": "Intro",
+      "clipTurtle": "Schildkröte",
+      "clipReef": "Riff",
+      "text": "Titel"
+    },
+    "features": {
+      "title": "Alles, was du brauchst. Nicht mehr.",
+      "intro": "Ein Werkzeugkasten ohne Schnickschnack, der trotzdem richtig gut aussieht.",
+      "cut": {
+        "title": "Schneiden & trimmen",
+        "text": "Teile Clips genau an der richtigen Stelle und wirf Pausen raus."
+      },
+      "text": {
+        "title": "Texte & Sticker",
+        "text": "Titel und Sprechblasen, die mit Schwung auftauchen."
+      },
+      "transitions": {
+        "title": "Übergänge & Filter",
+        "text": "Wischen, überblenden oder Farben für den passenden Vibe."
+      },
+      "blur": {
+        "title": "Unkenntlich machen",
+        "text": "Gesichter oder Namen verwischen, bevor du etwas teilst."
+      },
+      "record": {
+        "title": "Aufnehmen",
+        "text": "Bildschirm oder Stimme direkt im Editor aufnehmen."
+      },
+      "export": {
+        "title": "Exportieren",
+        "text": "Als MP4 oder GIF speichern, bereit für Präsentation, Chat oder Schulportal."
+      }
+    },
+    "privacy": {
+      "title": "Privat von Anfang an",
+      "text": "Jelly Cut hat keinen Server für deine Videos. Alles passiert in deinem Browser, auf deinem Gerät.",
+      "account": "Kein Konto und keine Anmeldung.",
+      "ads": "Keine Werbung und keine Paywall.",
+      "upload": "Deine Videos werden nie hochgeladen.",
+      "art": "Ein Gerät mit Schloss. Die Wolke daneben ist durchgestrichen, weil nichts hochgeladen wird."
+    },
+    "school": {
+      "title": "Gebaut für die Schule",
+      "browser": {
+        "title": "Ohne Installation",
+        "text": "Läuft im Browser, auch auf Schulrechnern ohne Adminrechte."
+      },
+      "offline": {
+        "title": "Auch ohne Netz"
+      },
+      "guide": {
+        "title": "Quellen & Recht",
+        "text": "Kostenlose Musik und Bilder finden und wissen, was erlaubt ist.",
+        "link": "Zur Hilfe"
+      }
+    },
+    "strip": {
+      "cut": "Schnitt",
+      "text": "Text",
+      "transitions": "Übergang",
+      "filter": "Filter",
+      "sticker": "Sticker",
+      "export": "Export"
+    },
+    "final": {
+      "title": "Bereit für dein erstes Video?",
+      "text": "Der Editor wartet. Einfach öffnen und loslegen."
+    },
+    "brand": "Jelly Cut"
+  }
+}

@@ -133,3 +133,59 @@ describe('editor store: panel actions', () => {
     expect(store.project).toBe(before)
   })
 })
+
+describe('editor store: design tabs', () => {
+  beforeEach(() => {
+    vi.stubGlobal('location', { search: '?demo=1' })
+    setActivePinia(createPinia())
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('leaving the draw tab ends drawing; the tabs of the design group start with text', () => {
+    const store = useEditorStore()
+    store.setActiveGroup('design', 'draw')
+    store.setDrawing(true)
+    expect(store.drawing).toBe(true)
+    store.setActiveTab('region')
+    expect(store.activeTab).toBe('region')
+    expect(store.drawing).toBe(false)
+    store.setActiveGroup('design', 'text')
+    expect(store.activeTab).toBe('text')
+  })
+
+  it('a new blur or pixelate area takes the chosen shape and is selected', () => {
+    const store = useEditorStore()
+    store.setRegionShape('roundRect')
+    store.setPlayhead(s(4))
+    store.addRegionAtPlayhead('pixelate')
+    const added = store.project.overlays.at(-1)!
+    expect(added).toMatchObject({ kind: 'region', shape: 'roundRect', effect: 'pixelate' })
+    expect(store.selection).toEqual({ kind: 'overlay', id: added.id })
+  })
+
+  it('a library video becomes a picture in the picture at the playhead and is selected', () => {
+    const store = useEditorStore()
+    store.setPlayhead(s(3))
+    store.addMediaAtPlayhead('asset-beach')
+    const added = store.project.overlays.at(-1)!
+    expect(added).toMatchObject({ kind: 'media', assetId: 'asset-beach', start: s(3) })
+    expect(store.selection).toEqual({ kind: 'overlay', id: added.id })
+    expect(validateProject(store.project).ok).toBe(true)
+  })
+
+  it('arrow-key nudges of a selected overlay coalesce into one undo step', () => {
+    const store = useEditorStore()
+    store.addRegionAtPlayhead('blur')
+    store.endGesture()
+    const id = store.selection!.id
+    const before = store.project.overlays.find((o) => o.id === id)!.pos.x
+    store.editProject((base) => updateOverlayForTest(base, id, { pos: { x: before + 0.01 } }), `overlay-nudge:${id}`)
+    store.editProject((base) => updateOverlayForTest(base, id, { pos: { x: before + 0.02 } }), `overlay-nudge:${id}`)
+    expect(store.project.overlays.find((o) => o.id === id)!.pos.x).toBeCloseTo(before + 0.02)
+    store.endGesture()
+    store.undo()
+    expect(store.project.overlays.find((o) => o.id === id)!.pos.x).toBeCloseTo(before)
+  })
+})
+
+import { updateOverlay as updateOverlayForTest } from '../../core/timeline/overlayOps'

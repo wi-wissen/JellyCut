@@ -1,0 +1,105 @@
+{
+  "help": {
+    "compression": {
+      "title": "How does a video get small?",
+      "lead": "A video is a flipbook of many pictures. Without tricks, the file would be huge. Here are the tricks.",
+      "merkeLabel": "Remember:",
+      "merke": "A video gets small because its pictures look alike. Only what is new gets saved, and details that the eye hardly sees may go.",
+      "basics": {
+        "heading": "1. Picture, frame rate and resolution",
+        "text": "A frame is a single picture. A video shows many of them one after another, so fast that we see movement. Three numbers decide the size:",
+        "fps": {
+          "term": "Frame rate (fps):",
+          "text": "How many pictures per second. 30 fps means 30 pictures in every second."
+        },
+        "resolution": {
+          "term": "Resolution:",
+          "text": "How many pixels a picture has. 1920 × 1080 pixels is called Full HD."
+        },
+        "bitrate": {
+          "term": "Bitrate:",
+          "text": "How much data per second is stored in the file. The higher, the more detail and the bigger the file."
+        }
+      },
+      "raw": {
+        "heading": "2. Why raw video is huge",
+        "text": "Every pixel has red, green and blue, and each of these colours needs one byte. Then you calculate: width × height × 3 × pictures per second × seconds. Try it.",
+        "afterText": "A compressed video needs only a small part of that. In the example above it is about 10 megabit per second."
+      },
+      "calc": {
+        "resolutionLabel": "Resolution",
+        "resolutions": {
+          "hd": "HD",
+          "fullHd": "Full HD",
+          "uhd": "4K"
+        },
+        "fpsLabel": "Pictures per second",
+        "secondsLabel": "Length of the video",
+        "resultLabel": "Without compression the file would be:",
+        "formula": "{width} × {height} × 3 × {fps} × {seconds} = {bytes} bytes",
+        "rawBar": "Raw video",
+        "compressedBar": "Compressed (example, 10 megabit per second)",
+        "factor": "Compressed, it is about {factor} times smaller.",
+        "gb": "{value} GB",
+        "mb": "{value} MB",
+        "kb": "{value} kB"
+      },
+      "flip": {
+        "heading": "3. Trick 1: save only what is new",
+        "text": "The first picture is a keyframe. It is a complete picture. The following pictures are change pictures: they only save what changed since the picture before.",
+        "text2": "Press play or drag the slider. The turtle swims, the background stays the same. That is why most pictures have almost nothing to save.",
+        "note": "Real videos are even cleverer and often only remember where a part has moved. Here we simply count the changed pixels.",
+        "liveLabel": "Picture {n} from the film. Changed pixels are marked purple.",
+        "liveCaption": "The picture as you see it. Purple: it has changed.",
+        "storedKeyLabel": "Stored: the whole picture",
+        "storedKeyCaption": "The whole picture is stored, because it is a keyframe.",
+        "storedChangeLabel": "Stored: only the changed pixels",
+        "storedChangeCaption": "Only the changed pixels are stored. The rest stays empty.",
+        "play": "Play",
+        "pause": "Pause",
+        "changed": "Changed pixels: {count} of {total}",
+        "frameLabel": "Picture",
+        "keyframeLabel": "Keyframe every",
+        "keyframeValue": "every {n} pictures",
+        "motionLabel": "Movement",
+        "motionLevels": {
+          "0": "none",
+          "1": "a little",
+          "2": "medium",
+          "3": "a lot",
+          "4": "very much"
+        },
+        "chartLabel": "Stored amount per picture",
+        "barLabel": "Picture {n}: {percent} % stored, {kind}",
+        "kindKey": "keyframe",
+        "kindChange": "changes",
+        "total": "In total: {percent} % of the file compared to {frames} full pictures. {keyframes} of them are keyframes."
+      },
+      "seek": {
+        "heading": "4. Jumping into the middle of a video",
+        "text": "If you want to start at second 30, you cannot simply jump there. A change picture needs the picture before it. So the app starts at the last keyframe and rebuilds all pictures up to the target.",
+        "intervalLabel": "Distance between keyframes",
+        "every": "every {n} s",
+        "jump": "Jump to second {target}",
+        "reset": "Back to the start",
+        "resultDirect": "Second {target} is a keyframe itself. The app jumps straight there.",
+        "resultPlan": "The app starts at second {keyframe}, the last keyframe before it. Then it rebuilds {frames} pictures up to second {target}."
+      },
+      "lossy": {
+        "heading": "5. Trick 2: leave out details",
+        "text": "Some details the eye hardly sees. Lossy compression throws them away. That saves a lot of space. If you throw away too much, small blocks become visible.",
+        "note": "The blocks are called blocks. JPEG compression works with blocks of 8 × 8 pixels. Turn on the blocks to see them."
+      },
+      "jpeg": {
+        "size": "This section of the picture: {value} kB",
+        "raw": "Without compression the whole picture would be {value} MB",
+        "originalLabel": "Section of the original picture, enlarged",
+        "originalCaption": "Original",
+        "compressedLabel": "Section after compression at quality {quality} percent, enlarged",
+        "compressedCaption": "Compressed at quality {quality} %",
+        "qualityLabel": "Quality",
+        "grid": "Show 8 × 8 pixel blocks"
+      }
+    }
+  }
+}

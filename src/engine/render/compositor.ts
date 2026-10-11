@@ -2,6 +2,7 @@ import { TRANSITION_TYPES } from '../../core/render/types'
 import type { LayerTransition, OverlayLayer, Scene, TextLayer, VideoLayer } from '../../core/render/types'
 import type { MediaOverlay, ProjectFormat, RegionOverlay, TextStyle, Transform } from '../../core/project/types'
 import { rectCorners } from '../../core/render/layout'
+import { DEFAULT_REGION_RADIUS } from '../../core/timeline/overlayCatalog'
 import { isDrawnOverlay, overlayBox, regionBlurSigma, regionCellSize } from '../../core/render/overlayLayout'
 import { isIdentity, type Grade } from '../../core/filters/filters'
 import { FRAGMENT_BLUR, FRAGMENT_COPY, FRAGMENT_FRAME, FRAGMENT_GRADED_FRAME, FRAGMENT_MEDIA, FRAGMENT_MIX, FRAGMENT_REGION, FRAGMENT_TEXT } from './shaders'
@@ -656,6 +657,8 @@ export class Compositor {
     gl.uniform1i(p.uniform('u_ellipse'), item.shape === 'ellipse' ? 1 : 0)
     gl.uniform1i(p.uniform('u_pixelate'), pixelate ? 1 : 0)
     gl.uniform1f(p.uniform('u_cell'), Math.max(2, regionCellSize(item.strength, target.h)))
+    const radius = item.shape === 'roundRect' ? (item.radius ?? DEFAULT_REGION_RADIUS) : 0
+    gl.uniform1f(p.uniform('u_radius'), Math.min(Math.max(0, radius) * target.h, box.w / 2, box.h / 2))
     gl.uniform1f(p.uniform('u_alpha'), layer.alpha)
     this.drawQuad(FULL_QUAD, UV_UPRIGHT)
     gl.activeTexture(gl.TEXTURE0)

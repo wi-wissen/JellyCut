@@ -45,10 +45,6 @@
     "media": "Media",
     "audio": "Audio",
     "record": "Record",
-    "text": "Text",
-    "sticker": "Stickers",
-    "draw": "Draw",
-    "captions": "Captions",
     "filter": "Filters",
     "transitions": "Transitions"
   },
@@ -143,12 +139,6 @@
       "keys": "Arrow keys move, Shift for bigger steps, Delete removes. Double-click the text to edit it."
     }
   },
-  "landing": {
-    "title": "Jelly Cut",
-    "tagline": "Simple video editing for schools. Right in your browser, no account, no ads.",
-    "open": "Open editor",
-    "soon": "This page will be designed later."
-  },
   "guide": {
     "back": "Back",
     "sourcesTitle": "Free images, music and videos",
@@ -213,56 +203,6 @@
       "zoomOut": "Zoom out",
       "blur": "Blur"
     }
-  },
-  "text": {
-    "add": "Add text",
-    "presets": "Presets",
-    "defaultText": "Text",
-    "presetNames": {
-      "title": "Title",
-      "subtitle": "Subtitle",
-      "neon": "Neon",
-      "poster": "Poster",
-      "script": "Script",
-      "note": "Note"
-    },
-    "header": "Text · \"{text}\"",
-    "content": "Content",
-    "font": "Font",
-    "size": "Size",
-    "color": "Colour",
-    "customColor": "Custom colour",
-    "swatch": "Colour {hex}",
-    "outline": "Outline",
-    "outlineColor": "Outline colour",
-    "position": "Position",
-    "top": "Top",
-    "middle": "Middle",
-    "bottom": "Bottom",
-    "posX": "Horizontal",
-    "posY": "Vertical",
-    "animation": "Animation",
-    "animIn": "In",
-    "animOut": "Out",
-    "anim": {
-      "none": "None",
-      "fade": "Fade",
-      "pop": "Pop",
-      "slideUp": "Slide up"
-    },
-    "start": "Start (s)",
-    "duration": "Duration (s)",
-    "sample": "Aa",
-    "swatchText": "Text colour {hex}",
-    "swatchOutline": "Outline colour {hex}",
-    "customTextColor": "Custom text colour",
-    "customOutlineColor": "Custom outline colour",
-    "presetAria": "Preset {name}",
-    "dragHint": "Drag the text in the picture to place it",
-    "posLeft": "Left",
-    "posCenter": "Centre",
-    "posRight": "Right",
-    "fontSample": "Aa Hello"
   },
   "music": {
     "header": "Own sound · {name}",
@@ -608,81 +548,8 @@
     "copyFailed": "Copying did not work. Select the text and copy it by hand.",
     "close": "Close"
   },
-  "sources": {
-    "title": "Free images, music and videos",
-    "intro": "Here you find places for material that you may use in your videos, and learn how to name the people who made it. Before you use anything, read the licence on the page where you found it.",
-    "contents": "Contents",
-    "backToEditor": "Back to the editor",
-    "toStart": "Jelly Cut start page",
-    "newTab": "opens in a new tab",
-    "own": {
-      "title": "1. Best: record or create it yourself",
-      "text": "Your own photos, videos, sound recordings and drawings are the safest choice. You do not have to credit a source for them. In Jelly Cut, choose the licence “Own work”; the credits text then stays empty for them.",
-      "more": "Check your own recordings too: ask people before you film them, and make sure no music can be heard in the background that you are not allowed to use."
-    },
-    "images": {
-      "title": "2. Free images",
-      "text": "These sites offer images that are usually free to use. Their terms can change and differ from site to site, so check them on the site itself.",
-      "pixabay": "Photos and illustrations. Licence: Pixabay Content License.",
-      "pexels": "Photos. Licence: Pexels License.",
-      "unsplash": "Photos. Licence: Unsplash License.",
-      "commons": "Files of many kinds, each with its own licence. Read the licence of every file.",
-      "openverse": "Search engine for openly licensed works, including images. Read the licence of every result."
-    },
-    "videos": {
-      "title": "3. Free videos",
-      "text": "Video clips are often offered in the same places.",
-      "pexels": "Videos from Pexels. Licence: Pexels License.",
-      "pixabay": "Videos from Pixabay. Licence: Pixabay Content License.",
-      "commons": "Wikimedia Commons, see above. Read the licence of every file."
-    },
-    "music": {
-      "title": "4. Free music and sounds",
-      "text": "Music and sounds have their own licences. Some are free to use, others need a credit, and the licence can differ from track to track.",
-      "freesound": "Sounds and recordings. Check the licence of every single sound and use only CC0 or CC BY.",
-      "pixabay": "Music. Licence: Pixabay Content License.",
-      "fma": "Free Music Archive. Licences differ from track to track, so check each one.",
-      "incompetech": "Music under CC BY. The composer must be named. Check the licence of each track."
-    },
-    "licences": {
-      "title": "5. What the licences mean",
-      "text": "The licence is shown on the page where you found the material. These are the common cases:",
-      "head": {
-        "licence": "Licence",
-        "meaning": "What it means for you"
-      },
-      "cc0": "CC0 and public domain",
-      "cc0Meaning": "You may use it freely. You do not have to name the creator.",
-      "by": "CC BY",
-      "byMeaning": "You may use it and change it. You must name the author, the title, the source and the licence.",
-      "bySa": "CC BY-SA",
-      "bySaMeaning": "Like CC BY. If you change the material, you must release your version under the same licence (share-alike).",
-      "reserved": "All rights reserved",
-      "reservedMeaning": "Do not use it unless the owner has given you written permission."
-    },
-    "avoid": {
-      "title": "Do not use",
-      "streaming": "Music from streaming services. Being able to listen to a song does not mean you may use it in a video.",
-      "video": "Videos from YouTube or similar platforms, unless the licence on the video page clearly allows reuse.",
-      "search": "Images from a normal web search. They are usually protected by copyright.",
-      "film": "Film clips from films or series."
-    },
-    "credit": {
-      "title": "6. How to name the creators",
-      "text": "Jelly Cut keeps the source and licence of each medium. Open “Credits” in the project menu, or click “Credit” on a tile in the library. Fill in title, author, source, link and licence, then copy the generated text into the video description or onto the closing slide.",
-      "exampleLabel": "Example",
-      "example": "Waves at the beach by Lena Example, source: Freesound (https://freesound.org), licence: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)",
-      "tip": "If you have the link to the page of the single file, use that instead of the start page. Jelly Cut adds the closing line “Edited with Jelly Cut” by itself."
-    },
-    "check": {
-      "title": "7. Always read the licence on the page itself",
-      "text": "Read the licence on the page where you found the material before you use it. Rules can change, so this guide is a starting point and not legal advice.",
-      "school": "For school use: if you publish a video outside school, for example on a video platform or on a school website, the same rules apply."
-    }
-  },
   "a11y": {
-    "fileInput": "Choose media files",
-    "guideNav": "Guide navigation"
+    "fileInput": "Choose media files"
   },
   "responsive": {
     "more": "More",
@@ -690,114 +557,12 @@
     "showTools": "Show tools",
     "hideTools": "Hide tools"
   },
-  "overlays": {
-    "panel": "Stickers",
-    "stickerHint": "Click a sticker. It appears at the playhead and can be moved, scaled and rotated in the preview.",
-    "stickerNames": {
-      "star": "Star",
-      "heart": "Heart",
-      "smile": "Smile",
-      "thumbsUp": "Thumbs up",
-      "party": "Party",
-      "fire": "Fire",
-      "sparkles": "Sparkles",
-      "check": "Check",
-      "cross": "Cross",
-      "hundred": "Hundred",
-      "rocket": "Rocket",
-      "laugh": "Laugh"
-    },
-    "shapes": "Shapes",
-    "shape": {
-      "rect": "Frame",
-      "ellipse": "Ellipse",
-      "arrow": "Arrow"
-    },
-    "shapeHint": "The shape appears at the playhead. Drag the handles to move, scale or rotate it.",
-    "drawPanel": "Draw",
-    "drawToggle": "Draw on the preview",
-    "drawOn": "On",
-    "drawOff": "Off",
-    "drawHint": "Turn drawing on, then paint over the preview with a mouse or your finger. Each stroke appears at the playhead.",
-    "penWidth": "Line width",
-    "penWidths": {
-      "thin": "Thin",
-      "medium": "Medium",
-      "thick": "Thick"
-    },
-    "undoStroke": "Undo last stroke",
-    "noStrokes": "No strokes in this project yet.",
-    "color": "Colour",
-    "size": "Size",
-    "rotation": "Rotation",
-    "lineWidth": "Line width",
-    "width": "Width",
-    "height": "Height",
-    "start": "Start",
-    "duration": "Duration",
-    "header": {
-      "sticker": "Sticker · {name}",
-      "shape": "Shape · {name}",
-      "stroke": "Stroke"
-    },
-    "timelineLabel": "Overlay: {name}",
-    "player": {
-      "box": "Overlay {name}",
-      "move": "Move",
-      "scale": "Resize",
-      "rotate": "Rotate",
-      "surface": "Drawing surface: paint with a mouse or your finger",
-      "drawing": "Drawing"
-    }
-  },
   "pwa": {
     "updateAvailable": "Update available",
     "reload": "Reload",
     "offline": "Works offline: after the first visit, Jelly Cut also runs without an internet connection. Use the browser menu to install it like an app."
   },
   "overlays2": {
-    "opacity": "Opacity",
-    "animation": "Animation",
-    "animIn": "Enter",
-    "animOut": "Exit",
-    "loop": "Loop",
-    "none": "None",
-    "anim": {
-      "fade": "Fade in",
-      "pop": "Pop",
-      "slideUp": "Slide up"
-    },
-    "loops": {
-      "wiggle": "Wiggle"
-    },
-    "effect": "Effect",
-    "effects": {
-      "blur": "Blur",
-      "pixelate": "Pixelate"
-    },
-    "strength": "Strength",
-    "regionShape": {
-      "rect": "Rectangle",
-      "ellipse": "Ellipse"
-    },
-    "regionHeader": "Area · {name}",
-    "regionHint": "The area blurs or pixelates what lies under it, for example a face or a number plate. It appears at the playhead.",
-    "regionsTitle": "Areas",
-    "blurAction": "Blur a region",
-    "pixelateAction": "Pixelate a region",
-    "picturesTitle": "Picture or video",
-    "pictureHint": "An image or video from the library appears over the video at the playhead.",
-    "noPictures": "No images or videos in the library.",
-    "addPicture": "Add {name} at the playhead",
-    "pictureKind": {
-      "image": "Image",
-      "video": "Video"
-    },
-    "pictureHeader": "Picture · {name}",
-    "pictureSound": "The sound of a video is not played.",
-    "radius": "Corners",
-    "border": "Border",
-    "borderColor": "Border colour",
     "confirmPictures": "{count} picture over the video also uses this file. It is removed too. | {count} pictures over the video also use this file. They are removed too."
   },
   "polish": {
@@ -832,54 +597,6 @@
     "timeline": {
       "moreLanes": "{count} more lane | {count} more lanes below",
       "resize": "Resize the timeline"
-    }
-  },
-  "overlays3": {
-    "penOpacity": "Opacity",
-    "markerPreset": "Marker (highlighter)",
-    "anim": {
-      "fade": "Fade",
-      "pop": "Pop",
-      "slideFromTop": "Slide in from top",
-      "slideFromBottom": "Slide in from bottom",
-      "slideFromLeft": "Slide in from left",
-      "slideFromRight": "Slide in from right",
-      "slideToTop": "Slide out to top",
-      "slideToBottom": "Slide out to bottom",
-      "slideToLeft": "Slide out to left",
-      "slideToRight": "Slide out to right"
-    },
-    "sticker": {
-      "star": "Star",
-      "heart": "Heart",
-      "check": "Check mark",
-      "cross": "Cross",
-      "arrowRight": "Arrow right",
-      "arrowUp": "Arrow up",
-      "speech": "Speech bubble",
-      "thought": "Thought bubble",
-      "exclamation": "Exclamation mark",
-      "question": "Question mark",
-      "lightbulb": "Idea",
-      "thumbsUp": "Thumbs up",
-      "smile": "Smile",
-      "sun": "Sun",
-      "cloud": "Cloud",
-      "lightning": "Lightning",
-      "flag": "Flag",
-      "music": "Music note",
-      "camera": "Camera",
-      "play": "Play button",
-      "crown": "Crown",
-      "sparkles": "Sparkles",
-      "badge1": "Badge 1",
-      "badge2": "Badge 2",
-      "badge3": "Badge 3"
-    },
-    "regionShape": {
-      "rect": "Rectangle",
-      "ellipse": "Ellipse",
-      "roundRect": "Rounded rectangle"
     }
   },
   "export2": {

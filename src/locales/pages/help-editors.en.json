@@ -1,0 +1,149 @@
+{
+  "help": {
+    "editors": {
+      "title": "Other video editors at a glance",
+      "lead": "Jelly Cut is only one of many options. Here are the main programs and what to check before you choose.",
+      "stand": "As of October 2026",
+      "hint": "Prices, plans and terms change often. Check the official website of the program before you start. The details were checked on the providers' websites in October 2026, without guarantee.",
+      "linkNote": "The names lead to the official website and open in a new tab.",
+      "tableCaption": "Video editors compared",
+      "sectionTable": "Compared",
+      "sectionChoose": "How to choose",
+      "columns": {
+        "tool": "Program",
+        "type": "Type",
+        "cost": "Cost",
+        "platforms": "Platforms",
+        "account": "Account needed?",
+        "strong": "Strong at",
+        "watch": "Watch out for"
+      },
+      "types": {
+        "commercial": "Commercial",
+        "openSource": "Open source",
+        "os": "From the system vendor",
+        "historic": "Historic",
+        "reference": "This project"
+      },
+      "tools": {
+        "capcut": {
+          "cost": "Free download. Check plans on the website",
+          "platforms": "Windows, macOS, smartphone, browser",
+          "account": "Sign-in for cloud projects",
+          "strong": "Fast, many templates, automatic subtitles. Easy to start (own assessment)",
+          "watch": "Owned by ByteDance. Broad licence on your content. Minimum age 13 for music and templates"
+        },
+        "premiere": {
+          "cost": "Subscription with a 7-day trial. From 22.99 US dollars a month (annual plan)",
+          "platforms": "Windows, macOS. The phone app is free, a separate program",
+          "account": "Yes, Adobe account",
+          "strong": "Industry standard with very many professional features. Hard to learn (own assessment)",
+          "watch": "Ongoing costs. Premiere Rush has been discontinued, support ends on 30 September 2026"
+        },
+        "shotcut": {
+          "cost": "Free (GPL-3.0 licence)",
+          "platforms": "Windows, macOS, Linux",
+          "account": "Not stated",
+          "strong": "Many formats, colour grading, keyframes. Medium to learn (own assessment)",
+          "watch": "The interface feels technical"
+        },
+        "openshot": {
+          "cost": "Free, according to the website without watermarks or project limits",
+          "platforms": "Windows, macOS, Linux",
+          "account": "Not stated",
+          "strong": "Clear interface, effects, keyframes. Easy to start (own assessment)",
+          "watch": "Fewer professional tools than Premiere or Shotcut"
+        },
+        "filmcraft": {
+          "cost": "Free (MIT or Apache-2.0 licence)",
+          "platforms": "Windows, macOS, Linux. Web version to host yourself",
+          "account": "Not stated",
+          "strong": "Multi-track timeline, about 55 effects, Premiere-like interface. Medium to learn (own assessment)",
+          "watch": "Open-source clone of Adobe Premiere Pro, largely built by AI agents (no Adobe code). Still young, alpha stage"
+        },
+        "imovie": {
+          "cost": "Free",
+          "platforms": "macOS, iPhone, iPad",
+          "account": "Not needed. The App Store download needs an Apple ID",
+          "strong": "Very simple, works well with Apple devices. Easy to start (own assessment)",
+          "watch": "Only for Apple devices"
+        },
+        "clipchamp": {
+          "cost": "Free with a Microsoft account. Premium with Microsoft 365",
+          "platforms": "Browser, Windows 10 and 11",
+          "account": "Yes, Microsoft account",
+          "strong": "Simple, HD export without watermarks according to the website. Easy to start (own assessment)",
+          "watch": "Premium content only with a Microsoft 365 subscription"
+        },
+        "windowsMovieMaker": {
+          "cost": "No longer available",
+          "platforms": "Windows (old versions only)",
+          "account": "Not applicable",
+          "strong": "Used to be an easy start. Not recommended today",
+          "watch": "No support since 2017. Downloads from third-party sites can contain malware. Successor on Windows: Clipchamp"
+        },
+        "jellycut": {
+          "cost": "Free, no paywall",
+          "platforms": "Browser, no installation",
+          "account": "No",
+          "strong": "Videos stay on your device. No ads",
+          "watch": "Fewer features than professional programs"
+        }
+      },
+      "chooser": {
+        "intro": "Answer the questions. Below are the programs that fit all of your answers. This is a guide, not a rule.",
+        "empty": "Answer at least one question to see matching programs.",
+        "resultTitle": "Matching programs",
+        "resultCount": "Matching suggestions: {count}",
+        "none": "No program fits this combination. Change one answer, for example the account question.",
+        "reset": "Reset answers"
+      },
+      "questions": {
+        "device": {
+          "label": "What do you mainly work on?",
+          "options": {
+            "pc": "Windows PC",
+            "mac": "Mac",
+            "mobile": "Smartphone or tablet",
+            "browser": "Doesn't matter, in the browser"
+          }
+        },
+        "files": {
+          "label": "Should your files stay on your device?",
+          "options": {
+            "yes": "Yes",
+            "no": "I don't mind"
+          }
+        },
+        "account": {
+          "label": "Should it work without an account?",
+          "options": {
+            "yes": "Yes, without an account",
+            "no": "An account is fine"
+          }
+        },
+        "goal": {
+          "label": "What do you want to do with it?",
+          "options": {
+            "simple": "Simple school videos",
+            "pro": "Learn professional editing"
+          }
+        },
+        "school": {
+          "label": "Does your school prescribe programs or accounts?",
+          "options": {
+            "yes": "Yes",
+            "no": "No"
+          },
+          "note": "Ask your teacher first which programs and accounts are allowed. Services with a minimum age may need your parents' consent."
+        }
+      },
+      "merke": "A free app sometimes earns money through ads, data or a watermark. Read the licence and the terms before you upload your own videos.",
+      "rightsText": "What you need to consider for other people's music, images and videos is explained under “Darauf musst du achten” (rights). Free material is listed under “Quellen” (sources).",
+      "links": {
+        "rights": "Darauf musst du achten (rights)",
+        "sources": "Sources"
+      }
+    }
+  }
+}

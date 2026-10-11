@@ -1,0 +1,24 @@
+{
+  "help": {
+    "index": {
+      "title": "Starthilfe",
+      "lead": "Hallo! Hier erfährst du, wie Videos aufgebaut sind, warum sie manchmal so groß sind und worauf du beim Veröffentlichen achten solltest. Du musst nicht alles auf einmal lesen.",
+      "readingTitle": "Empfohlene Reihenfolge",
+      "readingText": "Die Seiten bauen aufeinander auf. Du kannst aber auch direkt zu dem springen, was dich gerade interessiert.",
+      "cards": {
+        "container": "Ein Video ist wie ein Paket: Bilder, Ton und Informationen stecken in einer Datei. Hier siehst du, was drin ist.",
+        "compression": "Ein Film kann viele Gigabyte groß sein. Hier siehst du, wie Kompression ihn klein macht.",
+        "encoding": "Ein Computer packt ein Video, bevor er es speichert, und packt es vor dem Abspielen wieder aus. Das heißt Kodieren und Dekodieren.",
+        "glossary": "Codec, Bitrate, Auflösung: Die wichtigsten Wörter, kurz und einfach erklärt.",
+        "sources": "Wo du Bilder, Musik und Videos findest, die du verwenden darfst, und wie du die Urheber nennst.",
+        "rights": "Nicht alles aus dem Netz darfst du benutzen. Außerdem: Wer darf in einem Video zu sehen sein, und ab wann gibt es eigene Konten?",
+        "tech": "Welche Bausteine hinter Jelly Cut stecken. Deine Videos bleiben dabei auf deinem Gerät.",
+        "editors": "Ein Überblick über andere Videoprogramme und worauf du bei der Wahl achten solltest."
+      },
+      "tipText": "Fang mit „Wie ist ein Video aufgebaut?“ an. Danach fallen dir die anderen Seiten leichter.",
+      "appTitle": "Lieber gleich ausprobieren?",
+      "appText": "Im Editor kannst du dein erstes Video schneiden. Alles passiert in deinem Browser.",
+      "appLink": "Zum Editor"
+    }
+  }
+}

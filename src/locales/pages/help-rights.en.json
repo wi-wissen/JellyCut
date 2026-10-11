@@ -1,0 +1,47 @@
+{
+  "help": {
+    "rights": {
+      "title": "Things to watch out for",
+      "lead": "A video is published quickly, but not everything may simply be shown. Here are the most important points.",
+      "generalNote": "This is general information, not legal advice. The notes mainly refer to Germany. Laws and platform rules can change. For specific questions, ask your teacher or your school.",
+      "avoidTitle": "1. What you should not use",
+      "avoidIntro": "If you did not make something yourself and have no permission for it, leave it out or ask.",
+      "avoid": {
+        "streaming": "Music from streaming services. Being able to hear a song does not mean you may use it in a video.",
+        "video": "Videos from YouTube or similar platforms, unless the licence on the video page explicitly allows reuse.",
+        "search": "Pictures from a normal web search. They are usually protected by copyright.",
+        "film": "Clips from films or series.",
+        "memes": "Memes, screenshots of chats or posts, and photos from websites of other people.",
+        "logos": "Logos and trademarks of companies when it looks as if the company stands behind your video."
+      },
+      "avoidSources": "Material you may use is listed on the page:",
+      "imageTitle": "2. The right to your own image",
+      "imageText": "Every person decides for themselves whether and in which videos they may be publicly seen. This often applies even when you only want to show the video to a small group.",
+      "image": {
+        "ask": "Ask before you film. Best ask clearly whether the person may appear in a video.",
+        "askAgain": "Ask again before you publish. Agreeing to be filmed does not automatically mean agreeing to publication.",
+        "background": "Watch out for people in the background. They can be recognisable too and should not be shown against their will.",
+        "cut": "When in doubt, leave the scene out. That is better than showing a person against their will."
+      },
+      "blurNote": "The blur tool in Jelly Cut can make faces or number plates unrecognisable. It is a helpful tool, but not a replacement for asking.",
+      "schoolNote": "Teachers and schools often have their own rules, for example for recordings in class. Ask your school which rules apply.",
+      "ageTitle": "3. Minimum ages for platforms",
+      "ageText": "Many platforms require a minimum age for an own account, for example YouTube, TikTok, Instagram or Snapchat. It is often 13 years. In the EU it is often between 13 and 16 years, depending on the country and the service. The current rules are on the pages of each service and can change.",
+      "ageYoutube": "YouTube requires at least 13 years for an own account. For younger children there are options managed by parents. Separate rules apply there too.",
+      "ageNoAccount": "If you are under the minimum age, you usually do not have your own account there and may not publish yourself.",
+      "ageAsk": "Then ask a parent or a teacher before you upload anything.",
+      "ageAlternative": "An alternative is publishing inside the school, for example on the school learning platform or via a link that is not public. The rights of the people shown still matter there.",
+      "doubtTitle": "4. When in doubt: checklist",
+      "doubtIntro": "Go through these questions before you publish a video.",
+      "checklist": {
+        "material": "Did I make everything myself, or do I have clear permission for each piece?",
+        "consent": "Have all recognisable people agreed to this exact video?",
+        "background": "Is anyone recognisable in the background who was not asked?",
+        "music": "May I use this music in the video, not just listen to it?",
+        "age": "Does the minimum age of the service I publish on fit?",
+        "school": "For recordings from school, did I ask the teacher or the school?",
+        "lastly": "If I am not sure: leave it out, ask, or only show it inside the school."
+      }
+    }
+  }
+}

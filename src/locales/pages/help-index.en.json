@@ -1,0 +1,24 @@
+{
+  "help": {
+    "index": {
+      "title": "Start help",
+      "lead": "Hi! Here you learn how videos are built, why they are sometimes so big and what to watch out for when you publish. You do not have to read everything at once.",
+      "readingTitle": "Suggested reading order",
+      "readingText": "The pages build on each other. You can also jump straight to what interests you right now.",
+      "cards": {
+        "container": "A video is like a parcel: pictures, sound and information are packed into one file. Here you see what is inside.",
+        "compression": "A film can be many gigabytes big. Here you see how compression makes it small.",
+        "encoding": "A computer packs a video before it saves it and unpacks it before it plays it. That is called encoding and decoding.",
+        "glossary": "Codec, bitrate, resolution: the most important words, explained briefly and simply.",
+        "sources": "Where you find pictures, music and videos you may use, and how you name their creators.",
+        "rights": "Not everything online may be used. Also: who may be visible in a video, and from which age you may have your own accounts?",
+        "tech": "The building blocks behind Jelly Cut. Your videos stay on your device.",
+        "editors": "An overview of other video programs and what to consider when choosing one."
+      },
+      "tipText": "Start with \"How is a video built?\" After that the other pages will be easier to follow.",
+      "appTitle": "Want to try it right away?",
+      "appText": "In the editor you can cut your first video. Everything happens in your browser.",
+      "appLink": "Open the editor"
+    }
+  }
+}

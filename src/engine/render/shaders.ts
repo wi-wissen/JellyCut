@@ -191,6 +191,7 @@ uniform vec2 u_rot;
 uniform int u_ellipse;
 uniform int u_pixelate;
 uniform float u_cell;
+uniform float u_radius;
 uniform float u_alpha;
 in vec2 v_uv;
 out vec4 o;
@@ -202,8 +203,10 @@ void main() {
   if (u_ellipse == 1) {
     sd = (length(l / u_half) - 1.0) * min(u_half.x, u_half.y);
   } else {
-    vec2 q = abs(l) - u_half;
-    sd = max(q.x, q.y);
+    // Rounded rectangle SDF in pixels; a zero radius is the plain rectangle.
+    float r = u_radius;
+    vec2 q = abs(l) - u_half + r;
+    sd = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
   }
   float m = (1.0 - smoothstep(-0.5, 0.5, sd)) * u_alpha;
   vec4 src = texture(u_src, v_uv);

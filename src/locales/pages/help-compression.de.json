@@ -1,0 +1,105 @@
+{
+  "help": {
+    "compression": {
+      "title": "Wie wird ein Video klein?",
+      "lead": "Ein Video ist ein Daumenkino aus vielen Bildern. Ohne Tricks wäre die Datei riesig. Hier sind die Tricks.",
+      "merkeLabel": "Merke:",
+      "merke": "Ein Video wird klein, weil sich Bilder ähneln. Gespeichert wird nur das Neue, und Details, die das Auge kaum sieht, dürfen gehen.",
+      "basics": {
+        "heading": "1. Bild, Bildrate und Auflösung",
+        "text": "Ein Frame ist ein einzelnes Bild. Ein Video zeigt viele davon hintereinander, so schnell, dass wir Bewegung sehen. Drei Zahlen bestimmen die Größe:",
+        "fps": {
+          "term": "Bildrate (fps):",
+          "text": "Wie viele Bilder pro Sekunde. 30 fps heißt: 30 Bilder in jeder Sekunde."
+        },
+        "resolution": {
+          "term": "Auflösung:",
+          "text": "Wie viele Pixel ein Bild hat. 1920 × 1080 Pixel nennt man Full HD."
+        },
+        "bitrate": {
+          "term": "Bitrate:",
+          "text": "Wie viele Daten pro Sekunde in der Datei stehen. Je höher, desto mehr Details und desto größer die Datei."
+        }
+      },
+      "raw": {
+        "heading": "2. Warum Rohvideo riesig ist",
+        "text": "Jeder Pixel hat Rot, Grün und Blau, und jede dieser Farben braucht ein Byte. Dann rechnest du: Breite × Höhe × 3 × Bilder pro Sekunde × Sekunden. Probiere es aus.",
+        "afterText": "Ein komprimiertes Video braucht dagegen nur einen kleinen Bruchteil davon. Im Beispiel oben sind es etwa 10 Megabit pro Sekunde."
+      },
+      "calc": {
+        "resolutionLabel": "Auflösung",
+        "resolutions": {
+          "hd": "HD",
+          "fullHd": "Full HD",
+          "uhd": "4K"
+        },
+        "fpsLabel": "Bilder pro Sekunde",
+        "secondsLabel": "Länge des Videos",
+        "resultLabel": "Ohne Kompression wäre die Datei:",
+        "formula": "{width} × {height} × 3 × {fps} × {seconds} = {bytes} Byte",
+        "rawBar": "Rohvideo",
+        "compressedBar": "Komprimiert (Beispiel, 10 Megabit pro Sekunde)",
+        "factor": "Komprimiert ist es etwa {factor}-mal kleiner.",
+        "gb": "{value} GB",
+        "mb": "{value} MB",
+        "kb": "{value} kB"
+      },
+      "flip": {
+        "heading": "3. Trick 1: Nur das Neue speichern",
+        "text": "Das erste Bild ist ein Schlüsselbild, auf Englisch Keyframe. Es ist ein komplettes Bild. Die folgenden Bilder sind Änderungsbilder: Sie speichern nur, was sich seit dem Bild davor geändert hat.",
+        "text2": "Drück auf Abspielen oder zieh am Regler. Die Schildkröte schwimmt, der Hintergrund bleibt gleich. Deshalb ist für die meisten Bilder kaum etwas zu speichern.",
+        "note": "Echte Videos sind noch cleverer und merken sich oft nur, wohin sich ein Teil bewegt hat. Hier zählen wir einfach die geänderten Pixel.",
+        "liveLabel": "Bild {n} aus dem Film. Geänderte Pixel sind lila markiert.",
+        "liveCaption": "Das Bild, wie du es siehst. Lila: hat sich geändert.",
+        "storedKeyLabel": "Gespeichert: das ganze Bild",
+        "storedKeyCaption": "Gespeichert wird das ganze Bild, weil es ein Schlüsselbild ist.",
+        "storedChangeLabel": "Gespeichert: nur die geänderten Pixel",
+        "storedChangeCaption": "Gespeichert werden nur die geänderten Pixel. Der Rest bleibt leer.",
+        "play": "Abspielen",
+        "pause": "Pause",
+        "changed": "Geänderte Pixel: {count} von {total}",
+        "frameLabel": "Bild",
+        "keyframeLabel": "Schlüsselbild alle",
+        "keyframeValue": "alle {n} Bilder",
+        "motionLabel": "Bewegung",
+        "motionLevels": {
+          "0": "keine",
+          "1": "wenig",
+          "2": "mittel",
+          "3": "viel",
+          "4": "sehr viel"
+        },
+        "chartLabel": "Gespeicherte Menge pro Bild",
+        "barLabel": "Bild {n}: {percent} % gespeichert, {kind}",
+        "kindKey": "Schlüsselbild",
+        "kindChange": "Änderungen",
+        "total": "Insgesamt: {percent} % der Datei im Vergleich zu {frames} vollen Bildern. Davon sind {keyframes} Schlüsselbilder."
+      },
+      "seek": {
+        "heading": "4. Mitten ins Video springen",
+        "text": "Wenn du bei Sekunde 30 startest, reicht es nicht, dort einfach hinzuspringen. Ein Änderungsbild braucht das Bild davor. Also startet die App beim letzten Schlüsselbild und baut alle Bilder bis zum Ziel nach.",
+        "intervalLabel": "Abstand der Schlüsselbilder",
+        "every": "alle {n} s",
+        "jump": "Springe zu Sekunde {target}",
+        "reset": "Zurück zum Anfang",
+        "resultDirect": "Sekunde {target} ist selbst ein Schlüsselbild. Die App springt direkt dorthin.",
+        "resultPlan": "Die App startet bei Sekunde {keyframe}, dem letzten Schlüsselbild davor. Dann baut sie {frames} Bilder nach, bis zur Sekunde {target}."
+      },
+      "lossy": {
+        "heading": "5. Trick 2: Details weglassen",
+        "text": "Manche Details sieht das Auge kaum. Verlustbehaftete Kompression wirft sie weg. Das spart viel Platz. Wirfst du zu viel weg, sieht man kleine Klötzchen.",
+        "note": "Die Klötzchen heißen Blöcke. Die JPEG-Kompression rechnet mit Blöcken aus 8 × 8 Pixeln. Schalte die Blöcke ein, um sie zu sehen."
+      },
+      "jpeg": {
+        "size": "Dieser Ausschnitt im Bild: {value} kB",
+        "raw": "Ohne Kompression wäre das ganze Bild {value} MB groß",
+        "originalLabel": "Ausschnitt aus dem Originalbild, vergrößert",
+        "originalCaption": "Original",
+        "compressedLabel": "Ausschnitt nach der Kompression bei Qualität {quality} Prozent, vergrößert",
+        "compressedCaption": "Komprimiert bei Qualität {quality} %",
+        "qualityLabel": "Qualität",
+        "grid": "8 × 8 Pixel-Blöcke zeigen"
+      }
+    }
+  }
+}

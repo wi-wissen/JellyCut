@@ -7,7 +7,6 @@ import { useEditorStore, type GroupId, type TabId } from '../stores/editor'
 interface TabDef {
   id: TabId
   icon: string
-  soon?: boolean
 }
 
 interface GroupDef {
@@ -29,8 +28,10 @@ const GROUPS: GroupDef[] = [
     tabs: [
       { id: 'text', icon: 'text' },
       { id: 'sticker', icon: 'sticker' },
+      { id: 'shape', icon: 'shapes' },
       { id: 'draw', icon: 'draw' },
-      { id: 'captions', icon: 'captions', soon: true }
+      { id: 'region', icon: 'hide' },
+      { id: 'picture', icon: 'picture' }
     ]
   },
   {
@@ -66,13 +67,12 @@ export default defineComponent({
       if (tab !== 'transitions' && tab !== 'filter') this.select(null)
     },
     selectGroup(group: GroupDef) {
-      const first = group.tabs.find((t) => !t.soon)?.id ?? group.tabs[0]!.id
+      const first = group.tabs[0]!.id
       this.leaveSelection(first)
       this.setActiveGroup(group.key, first)
       this.$emit('tab-picked')
     },
     selectTab(tab: TabDef) {
-      if (tab.soon) return
       this.leaveSelection(tab.id)
       this.setActiveTab(tab.id)
       this.$emit('tab-picked')
@@ -107,17 +107,14 @@ export default defineComponent({
         {{ sheetOpen ? $t('responsive.hideTools') : $t('responsive.showTools') }}
       </button>
     </div>
-    <div class="jc-tabbar__tabs flex gap-1">
+    <!-- Up to three tabs share one row; a group with more (design) takes two rows of three. -->
+    <div class="jc-tabbar__tabs gap-1" :class="currentGroup.tabs.length > 3 ? 'grid grid-cols-3' : 'flex'">
       <button
         v-for="tab in currentGroup.tabs"
         :key="tab.id"
         type="button"
         class="flex h-[44px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[11px] font-semibold transition-colors"
-        :class="[
-          activeTab === tab.id ? 'bg-panel2 text-txt ring-1 ring-fill' : 'text-fg hover:bg-panel2',
-          tab.soon ? 'opacity-45' : ''
-        ]"
-        :disabled="tab.soon"
+        :class="activeTab === tab.id ? 'bg-panel2 text-txt ring-1 ring-fill' : 'text-fg hover:bg-panel2'"
         :aria-pressed="activeTab === tab.id"
         @click="selectTab(tab)"
       >

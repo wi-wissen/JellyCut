@@ -1,0 +1,68 @@
+{
+  "help": {
+    "container": {
+      "title": "Wie ist ein Video aufgebaut?",
+      "lead": "Ein Video ist wie eine Brotdose: Drinnen liegen mehrere Dinge, jedes an seinem Platz. Schauen wir nach, was drin ist.",
+      "box": {
+        "heading": "1. Die Box",
+        "text": "Eine Videodatei ist ein Behälter, auf Englisch Container. In ihm liegen mehrere Spuren: Bilder, Ton und oft Untertitel. Jede Spur läuft für sich, aber alle sind über die Zeit miteinander verbunden.",
+        "open": "Box öffnen",
+        "close": "Box schließen",
+        "regionLabel": "Inhalt der Box",
+        "tracks": {
+          "video": {
+            "name": "Bilder-Spur",
+            "text": "Viele Bilder hintereinander. Im Video stehen oft 25 bis 60 Bilder in einer Sekunde."
+          },
+          "audio": {
+            "name": "Ton-Spur",
+            "text": "Der Ton ist als lange Reihe von Zahlen gespeichert. Es können auch mehrere Tonspuren drin sein, zum Beispiel für verschiedene Sprachen."
+          },
+          "subtitles": {
+            "name": "Untertitel-Spur",
+            "text": "Text mit Start- und Endzeit. Nicht jedes Video hat eine."
+          },
+          "info": {
+            "name": "Angaben",
+            "text": "Länge, Größe, Bilder pro Sekunde und Aufnahmedatum. Sie gelten für das ganze Video."
+          }
+        }
+      },
+      "frames": {
+        "heading": "2. Die Bilder und der Ton",
+        "text": "Die Leiste zeigt einige Bilder aus dem Video. Ziehe den Strich mit der Maus oder dem Finger, oder nutze die Pfeiltasten. Darunter steht der Ton als Wellenform: Hohe Ausschläge sind laute Stellen.",
+        "sliderLabel": "Position im Video",
+        "time": "{time} s · Bild {frame}",
+        "hint": "Pfeiltasten: ein Bild. Bild auf und ab: eine Sekunde. Pos 1 und Ende: Anfang und Ende."
+      },
+      "endings": {
+        "heading": "3. Die Endung ist nur die Box",
+        "text": "Die Endung hinter dem Namen, zum Beispiel .mp4, sagt nur, welche Box es ist. Was in der Box steckt, ist eine eigene Frage.",
+        "mp4": {
+          "text": "Die häufigste Box. Handys, Schulcomputer und Internetseiten können sie fast alle öffnen."
+        },
+        "webm": {
+          "text": "Eine offene Box, die oft für Webseiten genutzt wird."
+        },
+        "mov": {
+          "text": "Die Box von Apple (QuickTime). Viele Handyvideos von iPhones sind so gespeichert."
+        },
+        "mkv": {
+          "text": "Eine große Box, die viele Spuren aufnehmen kann, zum Beispiel mehrere Tonspuren."
+        },
+        "memoLabel": "Merke:",
+        "memo": "Endung ist die Box. Der Codec ist das Packverfahren für die Bilder und den Ton. Beides muss zu deinem Abspielprogramm passen."
+      },
+      "app": {
+        "heading": "4. Wie Jelly Cut die Datei liest",
+        "text": "Wenn du ein Video in die Bibliothek ziehst, liest Jelly Cut die Box auf deinem Computer aus: Länge, Bilder pro Sekunde und Ton. Die Datei wird dabei nicht hochgeladen. Sie bleibt, wo sie ist.",
+        "text2": "Kann dein Browser eine Spur oder das Packverfahren nicht lesen, zeigt Jelly Cut eine Meldung. Dann hilft Chrome oder Edge.",
+        "open": "Zum Editor",
+        "tip": "Jelly Cut liest deine Datei nur. Deine Originaldatei bleibt unverändert."
+      },
+      "glossary": {
+        "heading": "Begriffe aus dieser Seite"
+      }
+    }
+  }
+}

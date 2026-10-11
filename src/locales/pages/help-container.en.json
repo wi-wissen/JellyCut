@@ -1,0 +1,68 @@
+{
+  "help": {
+    "container": {
+      "title": "How is a video built?",
+      "lead": "A video is like a lunchbox: several things sit inside, each in its own place. Let's look inside.",
+      "box": {
+        "heading": "1. The box",
+        "text": "A video file is a container, a box. Several tracks sit inside: pictures, sound and often subtitles. Each track runs on its own, but they are all linked over time.",
+        "open": "Open the box",
+        "close": "Close the box",
+        "regionLabel": "Contents of the box",
+        "tracks": {
+          "video": {
+            "name": "Picture track",
+            "text": "Many pictures in a row. Videos often have 25 to 60 pictures every second."
+          },
+          "audio": {
+            "name": "Sound track",
+            "text": "The sound is stored as a long row of numbers. There can also be several sound tracks, for example for different languages."
+          },
+          "subtitles": {
+            "name": "Subtitle track",
+            "text": "Text with a start and an end time. Not every video has one."
+          },
+          "info": {
+            "name": "Information",
+            "text": "Length, size, pictures per second and the creation date. They apply to the whole video."
+          }
+        }
+      },
+      "frames": {
+        "heading": "2. The pictures and the sound",
+        "text": "The strip shows some pictures from the video. Drag the line with the mouse or your finger, or use the arrow keys. Below it you see the sound as a waveform: high peaks are loud spots.",
+        "sliderLabel": "Position in the video",
+        "time": "{time} s · picture {frame}",
+        "hint": "Arrow keys: one picture. Page up and down: one second. Home and End: start and end."
+      },
+      "endings": {
+        "heading": "3. The ending is only the box",
+        "text": "The ending after the name, for example .mp4, only tells you which box it is. What is inside the box is a different question.",
+        "mp4": {
+          "text": "The most common box. Phones, school computers and websites can almost always open it."
+        },
+        "webm": {
+          "text": "An open box that is often used for websites."
+        },
+        "mov": {
+          "text": "Apple's box (QuickTime). Many phone videos from iPhones are stored this way."
+        },
+        "mkv": {
+          "text": "A big box that can hold many tracks, for example several sound tracks."
+        },
+        "memoLabel": "Remember:",
+        "memo": "The ending is the box. The codec is the packing method for the pictures and the sound. Both must fit your player."
+      },
+      "app": {
+        "heading": "4. How Jelly Cut reads the file",
+        "text": "When you drag a video into the library, Jelly Cut reads the box on your computer: length, pictures per second and sound. The file is not uploaded. It stays where it is.",
+        "text2": "If your browser cannot read a track or the packing method, Jelly Cut shows a message. Then Chrome or Edge will help.",
+        "open": "Go to the editor",
+        "tip": "Jelly Cut only reads your file. Your original file stays unchanged."
+      },
+      "glossary": {
+        "heading": "Terms from this page"
+      }
+    }
+  }
+}

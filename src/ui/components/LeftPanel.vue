@@ -11,17 +11,20 @@ import TransitionsPanel from './panels/TransitionsPanel.vue'
 import FilterPanel from './panels/FilterPanel.vue'
 import RecordPanel from './panels/RecordPanel.vue'
 import StickerPanel from './panels/StickerPanel.vue'
+import ShapePanel from './panels/ShapePanel.vue'
 import DrawPanel from './panels/DrawPanel.vue'
+import RegionPanel from './panels/RegionPanel.vue'
+import PicturePanel from './panels/PicturePanel.vue'
 import OverlayProperties from './panels/OverlayProperties.vue'
 import { useEditorStore } from '../stores/editor'
 import type { Clip, MusicItem, OverlayItem, TextItem } from '../../core/project/types'
 
 /** What the left column shows; a selected item wins over the tab, except on the transitions and filter tabs. */
-type View = 'clip' | 'text-item' | 'music-item' | 'overlay-item' | 'transitions' | 'filter' | 'library' | 'audio' | 'text' | 'record' | 'sticker' | 'draw'
+type View = 'clip' | 'text-item' | 'music-item' | 'overlay-item' | 'transitions' | 'filter' | 'library' | 'audio' | 'text' | 'record' | 'sticker' | 'shape' | 'draw' | 'region' | 'picture'
 
 export default defineComponent({
   name: 'LeftPanel',
-  components: { TabBar, LibraryPanel, ClipPanel, TextPanel, TextProperties, MusicProperties, TransitionsPanel, FilterPanel, RecordPanel, StickerPanel, DrawPanel, OverlayProperties },
+  components: { TabBar, LibraryPanel, ClipPanel, TextPanel, TextProperties, MusicProperties, TransitionsPanel, FilterPanel, RecordPanel, StickerPanel, ShapePanel, DrawPanel, RegionPanel, PicturePanel, OverlayProperties },
   data() {
     // On a narrow layout the sheet starts open in portrait (library first) and closed in landscape, where the player needs the height.
     const landscape = typeof window !== 'undefined' && window.matchMedia('(orientation: landscape)').matches
@@ -42,7 +45,10 @@ export default defineComponent({
       if (this.activeTab === 'text') return 'text'
       if (this.activeTab === 'record') return 'record'
       if (this.activeTab === 'sticker') return 'sticker'
+      if (this.activeTab === 'shape') return 'shape'
       if (this.activeTab === 'draw') return 'draw'
+      if (this.activeTab === 'region') return 'region'
+      if (this.activeTab === 'picture') return 'picture'
       return 'library'
     },
     selectedOverlayItem(): OverlayItem | null {
@@ -79,7 +85,10 @@ export default defineComponent({
       <OverlayProperties v-else-if="view === 'overlay-item' && selectedOverlayItem" :item="selectedOverlayItem" />
       <MusicProperties v-else-if="view === 'music-item' && selectedMusicItem" :item="selectedMusicItem" />
       <StickerPanel v-else-if="view === 'sticker'" />
+      <ShapePanel v-else-if="view === 'shape'" />
       <DrawPanel v-else-if="view === 'draw'" />
+      <RegionPanel v-else-if="view === 'region'" />
+      <PicturePanel v-else-if="view === 'picture'" />
       <TransitionsPanel v-else-if="view === 'transitions'" />
       <FilterPanel v-else-if="view === 'filter'" />
       <TextPanel v-else-if="view === 'text'" />

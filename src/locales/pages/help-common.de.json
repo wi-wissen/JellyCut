@@ -1,0 +1,17 @@
+{
+  "help": {
+    "common": {
+      "skip": "Zum Inhalt springen",
+      "navLabel": "Hilfeseiten",
+      "breadcrumb": "Du bist hier",
+      "pageNav": "Seitennavigation",
+      "previous": "Zurück",
+      "next": "Weiter",
+      "openApp": "App öffnen",
+      "newTab": "öffnet in neuem Tab",
+      "note": "Merke",
+      "tip": "Tipp",
+      "comingSoon": "Diese Seite folgt bald."
+    }
+  }
+}

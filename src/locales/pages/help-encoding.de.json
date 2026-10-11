@@ -1,0 +1,86 @@
+{
+  "help": {
+    "encoding": {
+      "title": "Kodieren und Dekodieren",
+      "lead": "Kodieren packt Bilder in eine kleine Datei. Dekodieren packt sie wieder aus. Erst dann kann man sie zeigen oder bearbeiten.",
+      "basics": {
+        "heading": "1. Hin und zurück",
+        "text": "Beim Kodieren wird aus vielen Bildern eine Datei. Beim Dekodieren wird aus der Datei wieder jedes Bild. Dafür brauchen beide Seiten ein gemeinsames Rezept: den Codec."
+      },
+      "diagram": {
+        "pictures": "Bilder",
+        "encode": "Kodieren",
+        "file": "Datei",
+        "decode": "Dekodieren"
+      },
+      "codecs": {
+        "heading": "Drei bekannte Rezepte",
+        "h264": {
+          "name": "H.264",
+          "text": "Der Klassiker. Fast jedes Gerät kann ihn abspielen, auch Handys und Schulcomputer."
+        },
+        "vp9": {
+          "name": "VP9",
+          "text": "Von Google, für Webseiten gemacht. Bei gleicher Qualität ist die Datei oft kleiner als bei H.264."
+        },
+        "av1": {
+          "name": "AV1",
+          "text": "Das neue, offene Rezept. Die Dateien sind sehr klein, aber das Kodieren dauert länger und ältere Geräte können es nicht immer abspielen."
+        },
+        "app": "In Jelly Cut wählst du den Codec beim Export: H.264, VP9 oder AV1. Manche Abspielprogramme können nicht alle Codecs öffnen."
+      },
+      "edit": {
+        "heading": "2. Schneiden ist nicht gleich Schneiden",
+        "text": "Ein Schlüsselbild (K) ist ein komplettes Bild. Schneidest du genau an einem Schlüsselbild, kann man die Teile einfach kopieren. Nichts wird neu berechnet und nichts geht verloren.",
+        "text2": "Schneidest du dazwischen, muss die App die Bilder erst dekodieren, den Schnitt machen und alles neu kodieren. Genau dabei geht Qualität verloren.",
+        "rowKey": "Schnitt am Schlüsselbild",
+        "rowMiddle": "Schnitt zwischen zwei Schlüsselbildern",
+        "captionKey": "Verlustfrei: Die Teile werden einfach kopiert.",
+        "captionMiddle": "Mit Verlust: Die Bilder werden neu kodiert.",
+        "tip": "Im Feinschnitt von Jelly Cut siehst du, welche Bilder Schlüsselbilder sind. Dort kannst du gezielt bis zu einem Schlüsselbild springen."
+      },
+      "loss": {
+        "heading": "3. Kopie einer Kopie",
+        "text": "Jede neue Kodierung lässt etwas weg. Wer ein Bild oft hintereinander kodiert, sieht den Schaden. Probier es aus.",
+        "note": "Hier nehmen wir JPEG als Beispiel. Echte Videocodecs verlieren anders, aber das Prinzip ist dasselbe.",
+        "qualityLabel": "Qualität beim Kodieren",
+        "passesLabel": "Durchgänge",
+        "originalLabel": "Originalbild",
+        "originalCaption": "Original",
+        "generationLabel": "Nach {n} Durchgängen",
+        "generationCaption": "Nach {n} Durchgängen",
+        "diffLabel": "Unterschied zum Original, {amplify}-fach verstärkt",
+        "diffCaption": "Unterschied, {amplify}-fach verstärkt",
+        "drift": "Veränderung im Schnitt: {percent} %",
+        "ready": "fertig",
+        "working": "Berechne …"
+      },
+      "app": {
+        "heading": "4. Was Jelly Cut beim Export macht",
+        "text": "Im Editor siehst du die Bilder als Bilder, nicht als Datei. Jelly Cut dekodiert sie, zeichnet Texte, Aufkleber und Filter darauf und kodiert alles beim Export einmal neu.",
+        "text2": "Deshalb ist die Einstellung beim Export wichtig. Sie bestimmt, wie klein die Datei wird und wie viel Qualität bleibt.",
+        "settingsHeading": "Die Export-Einstellungen",
+        "settings": {
+          "resolution": "Wie viele Pixel das Bild hat. Mehr ist schärfer, braucht aber mehr Platz.",
+          "fps": "Wie viele Bilder pro Sekunde. Für die Schule reichen meist 30.",
+          "quality": "Gut, Klein oder Sehr klein. Das bestimmt die Bitrate: je niedriger, desto kleiner und ungenauer.",
+          "format": "MP4 für Videos. GIF für kurze Schleifen ohne Ton.",
+          "codec": "H.264 läuft fast überall. VP9 und AV1 sind oft kleiner."
+        },
+        "open": "Zum Editor",
+        "tipLabel": "Tipp"
+      },
+      "tips": {
+        "heading": "5. Tipps",
+        "once": "Schneide einmal und exportiere einmal. Jede Runde Export macht das Bild schlechter.",
+        "originals": "Behalte deine Originaldateien. Mit ihnen kannst du jederzeit neu und besser exportieren.",
+        "final": "Für das fertige Video: Qualität Gut. Für eine schnelle Nachricht reicht Klein.",
+        "reexport": "Exportiere eine fertige Datei nicht noch einmal, um sie zu ändern. Nimm lieber das Projekt.",
+        "h264": "Willst du sicher sein, dass jeder Computer die Datei öffnet: MP4 mit H.264."
+      },
+      "glossary": {
+        "heading": "Begriffe aus dieser Seite"
+      }
+    }
+  }
+}

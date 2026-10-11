@@ -137,7 +137,7 @@ describe('creditStatus', () => {
   })
   it('is complete for a licence that needs credit with title, author and source or link', () => {
     expect(creditStatus(asset('a', 'video', CC_BY))).toBe('complete')
-    expect(creditStatus(asset('a', 'video', { title: 'x', author: 'y', source: 'Freesound', license: 'cc-by-4.0' }))).toBe('complete')
+    expect(creditStatus(asset('a', 'video', { title: 'x', author: 'y', source: 'Pixabay', license: 'cc-by-4.0' }))).toBe('complete')
     expect(creditStatus(asset('a', 'video', { title: 'x', author: 'y', url: 'https://x.org', license: 'other' }))).toBe('complete')
   })
   it('is missing when title, author or any source is absent or blank', () => {
@@ -172,7 +172,7 @@ describe('creditLine', () => {
   })
   it('prints only the link when there is no source name, and only the source when there is no link', () => {
     expect(creditLine(asset('a', 'video', { title: 'T', author: 'A', url: 'https://x.org/y', license: 'cc-by-4.0' }), 'en')).toContain('source: https://x.org/y,')
-    expect(creditLine(asset('a', 'video', { title: 'T', author: 'A', source: 'Freesound', license: 'cc-by-4.0' }), 'en')).toContain('source: Freesound,')
+    expect(creditLine(asset('a', 'video', { title: 'T', author: 'A', source: 'Pixabay', license: 'cc-by-4.0' }), 'en')).toContain('source: Pixabay,')
   })
   it('drops an invalid link instead of printing it', () => {
     const line = creditLine(asset('a', 'video', { title: 'T', author: 'A', url: 'javascript:alert(1)', license: 'cc-by-4.0' }), 'en')
@@ -201,7 +201,7 @@ describe('generateCreditsText', () => {
   })
   it('groups images and videos before music and ends with the Jelly Cut line', () => {
     const p = project([
-      asset('m', 'audio', { title: 'Song', author: 'Band', source: 'Incompetech', license: 'cc-by-4.0' }),
+      asset('m', 'audio', { title: 'Song', author: 'Band', source: 'Free Music Archive', license: 'cc-by-4.0' }),
       asset('v', 'video', CC_BY),
       asset('own', 'video', { license: 'own-work' })
     ])
@@ -212,7 +212,7 @@ describe('generateCreditsText', () => {
         'Beach by Jane Doe, source: Pixabay (https://pixabay.com/photos/beach-1/), licence: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)',
         '',
         'Music',
-        'Song by Band, source: Incompetech, licence: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)',
+        'Song by Band, source: Free Music Archive, licence: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)',
         '',
         'Edited with Jelly Cut'
       ].join('\n')

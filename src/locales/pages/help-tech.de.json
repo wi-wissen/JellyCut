@@ -1,0 +1,42 @@
+{
+  "help": {
+    "tech": {
+      "title": "Technik hinter Jelly Cut",
+      "lead": "Jelly Cut ist eine Webseite, die in deinem Browser läuft. Hier steht, welche Bausteine dahinterstecken. Der Quellcode ist öffentlich.",
+      "whereTitle": "Was läuft wo?",
+      "whereText": "Deine Videos werden in deinem Browser verarbeitet. Es wird nichts hochgeladen. GitHub Pages liefert nur die Dateien der Seite aus, also Programmcode, Bilder und Schriften. Deine Videos sieht dieser Dienst nicht.",
+      "whereNote": "Deine Videos werden in deinem Browser verarbeitet. Es wird nichts hochgeladen.",
+      "librariesTitle": "Bibliotheken",
+      "librariesText": "Diese Bausteine nutzt Jelly Cut direkt im Programm.",
+      "buildTitle": "Werkzeuge zum Bauen und Testen",
+      "buildText": "Diese Werkzeuge braucht man nur zum Entwickeln, nicht zum Benutzen der Seite.",
+      "browserTitle": "Browser-Funktionen",
+      "browserText": "Der Browser stellt diese Funktionen bereit. Jelly Cut nutzt sie direkt.",
+      "sourceTitle": "Quellcode",
+      "sourceText": "Der Quellcode steht öffentlich auf GitHub. Dort kannst du nachlesen, wie alles zusammenhängt.",
+      "items": {
+        "vue": "Ein JavaScript-Framework. Es baut die Oberfläche aus kleinen Teilen, die sich aktualisieren, wenn sich etwas ändert.",
+        "pinia": "Speichert den Zustand der App, zum Beispiel das Projekt und die Auswahl. So greifen viele Teile auf dieselben Daten zu.",
+        "i18n": "Übersetzungen für Deutsch und Englisch. Die Texte stehen in Dateien und nicht im Programmcode.",
+        "tailwind": "Gestaltung mit kleinen Klassen direkt im Markup. So bleibt das Aussehen überall gleich.",
+        "lucide": "Die Symbole der App als Vektorgrafiken.",
+        "mediabunny": "Liest und schreibt Videodateien im Browser: Bilder und Töne auslesen und daraus neue Dateien erzeugen.",
+        "fontsource": "Schriften als Pakete. Die Schriftdateien werden mit der Seite ausgeliefert und nicht von einem fremden Schriftendienst geladen.",
+        "ofl": "Die Schriften stehen unter einer freien Lizenz, der SIL Open Font License.",
+        "vite": "Baut die Seite für den Browser zusammen und startet beim Entwickeln einen schnellen Testserver.",
+        "typescript": "JavaScript mit Typen. Sie helfen, Fehler schon beim Schreiben zu finden.",
+        "vitest": "Testet Programmlogik automatisch, zum Beispiel die Berechnung von Zeiten.",
+        "playwright": "Öffnet die Seite in einem echten Browser und prüft, ob alles wie erwartet funktioniert.",
+        "pages": "Der Dienst, der die fertigen Dateien ins Netz stellt.",
+        "webcodecs": "Kodiert und dekodiert Video und Ton direkt im Browser, oft mit Hilfe der Hardware deines Geräts.",
+        "webgl": "Zeichnet die Vorschau und das fertige Bild über die Grafikkarte.",
+        "webaudio": "Verarbeitet und mischt den Ton im Browser.",
+        "workers": "Rechnet im Hintergrund, damit die Oberfläche flüssig bleibt. Der Export läuft so in einem eigenen Worker.",
+        "fsa": "Lässt dich Dateien nach deiner Auswahl öffnen und speichern.",
+        "indexeddb": "Eine kleine Datenbank im Browser, in der Projekte auf deinem Gerät gespeichert bleiben.",
+        "sw": "Speichert die Seite für die Nutzung ohne Netz. Man nennt das eine PWA (Progressive Web App)."
+      },
+      "sourceLink": "Quellcode auf GitHub"
+    }
+  }
+}

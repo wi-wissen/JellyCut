@@ -1,0 +1,89 @@
+{
+  "landing": {
+    "help": "Help",
+    "open": "Open editor",
+    "eyebrow": "Free · runs right in your browser",
+    "headline": "Cut videos people",
+    "headlineMark": "love to watch",
+    "tagline": "Jelly Cut is a simple video editor for school and fun. No account, no install. Your videos never leave your device.",
+    "ctaHint": "One click and you are in.",
+    "trust": {
+      "account": "No account",
+      "ads": "No ads",
+      "paywall": "No paywall"
+    },
+    "mock": {
+      "label": "Animated preview of the editor: clips slide onto the timeline, a sticker pops in and a wipe moves to the next scene.",
+      "project": "My first video",
+      "sticker": "Wow!",
+      "clipIntro": "Intro",
+      "clipTurtle": "Turtle",
+      "clipReef": "Reef",
+      "text": "Title"
+    },
+    "features": {
+      "title": "Everything you need. Nothing you don't.",
+      "intro": "A toolbox without the clutter that still looks really good.",
+      "cut": {
+        "title": "Cut & trim",
+        "text": "Split clips at exactly the right spot and drop the dead air."
+      },
+      "text": {
+        "title": "Text & stickers",
+        "text": "Titles and speech bubbles that pop in with some bounce."
+      },
+      "transitions": {
+        "title": "Transitions & filters",
+        "text": "Wipe, fade or change the colours for the right vibe."
+      },
+      "blur": {
+        "title": "Hide things",
+        "text": "Blur faces or names before you share anything."
+      },
+      "record": {
+        "title": "Record",
+        "text": "Capture your screen or your voice right inside the editor."
+      },
+      "export": {
+        "title": "Export",
+        "text": "Save as MP4 or GIF, ready for a presentation, a chat or the school portal."
+      }
+    },
+    "privacy": {
+      "title": "Private from the start",
+      "text": "Jelly Cut has no server for your videos. Everything happens in your browser, on your device.",
+      "account": "No account and no sign-in.",
+      "ads": "No ads and no paywall.",
+      "upload": "Your videos are never uploaded.",
+      "art": "A device with a padlock. The cloud next to it is crossed out, because nothing gets uploaded."
+    },
+    "school": {
+      "title": "Built for school",
+      "browser": {
+        "title": "No installation",
+        "text": "Runs in the browser, even on school computers without admin rights."
+      },
+      "offline": {
+        "title": "Works without a connection"
+      },
+      "guide": {
+        "title": "Sources & law",
+        "text": "Find free music and pictures and learn what is allowed.",
+        "link": "Go to help"
+      }
+    },
+    "strip": {
+      "cut": "Cut",
+      "text": "Text",
+      "transitions": "Transition",
+      "filter": "Filter",
+      "sticker": "Sticker",
+      "export": "Export"
+    },
+    "final": {
+      "title": "Ready for your first video?",
+      "text": "The editor is waiting. Open it and get going."
+    },
+    "brand": "Jelly Cut"
+  }
+}

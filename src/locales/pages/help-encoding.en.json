@@ -1,0 +1,86 @@
+{
+  "help": {
+    "encoding": {
+      "title": "Encoding and decoding",
+      "lead": "Encoding packs pictures into a small file. Decoding unpacks them again. Only then can you show or edit them.",
+      "basics": {
+        "heading": "1. There and back",
+        "text": "When encoding, many pictures become one file. When decoding, every picture is rebuilt from the file. Both sides need a shared recipe for that: the codec."
+      },
+      "diagram": {
+        "pictures": "Pictures",
+        "encode": "Encode",
+        "file": "File",
+        "decode": "Decode"
+      },
+      "codecs": {
+        "heading": "Three well-known recipes",
+        "h264": {
+          "name": "H.264",
+          "text": "The classic. Almost every device can play it, including phones and school computers."
+        },
+        "vp9": {
+          "name": "VP9",
+          "text": "From Google, made for websites. At the same quality the file is often smaller than with H.264."
+        },
+        "av1": {
+          "name": "AV1",
+          "text": "The new, open recipe. The files are very small, but encoding takes longer and older devices cannot always play it."
+        },
+        "app": "In Jelly Cut you choose the codec when you export: H.264, VP9 or AV1. Some players cannot open every codec."
+      },
+      "edit": {
+        "heading": "2. Cutting is not always the same",
+        "text": "A keyframe (K) is a complete picture. If you cut exactly at a keyframe, the parts can simply be copied. Nothing is recalculated and nothing is lost.",
+        "text2": "If you cut in between, the app first has to decode the pictures, make the cut and encode everything again. That is exactly where quality is lost.",
+        "rowKey": "Cut at a keyframe",
+        "rowMiddle": "Cut between two keyframes",
+        "captionKey": "Lossless: the parts are simply copied.",
+        "captionMiddle": "With loss: the pictures are encoded again.",
+        "tip": "In the fine cut of Jelly Cut you can see which pictures are keyframes. There you can jump exactly to a keyframe."
+      },
+      "loss": {
+        "heading": "3. A copy of a copy",
+        "text": "Every new encoding leaves something out. If you encode a picture again and again, you see the damage. Try it.",
+        "note": "Here we use JPEG as an example. Real video codecs lose detail in other ways, but the principle is the same.",
+        "qualityLabel": "Quality when encoding",
+        "passesLabel": "Passes",
+        "originalLabel": "Original picture",
+        "originalCaption": "Original",
+        "generationLabel": "After {n} passes",
+        "generationCaption": "After {n} passes",
+        "diffLabel": "Difference from the original, amplified {amplify} times",
+        "diffCaption": "Difference, amplified {amplify} times",
+        "drift": "Average change: {percent} %",
+        "ready": "done",
+        "working": "Calculating …"
+      },
+      "app": {
+        "heading": "4. What Jelly Cut does on export",
+        "text": "In the editor you see the pictures as pictures, not as a file. Jelly Cut decodes them, draws texts, stickers and filters on them and encodes everything once more on export.",
+        "text2": "That is why the export setting matters. It decides how small the file gets and how much quality stays.",
+        "settingsHeading": "The export settings",
+        "settings": {
+          "resolution": "How many pixels the picture has. More is sharper but needs more space.",
+          "fps": "How many pictures per second. For school 30 is usually enough.",
+          "quality": "Good, Small or Very small. This sets the bitrate: the lower, the smaller and less exact.",
+          "format": "MP4 for videos. GIF for short loops without sound.",
+          "codec": "H.264 plays almost everywhere. VP9 and AV1 are often smaller."
+        },
+        "open": "Go to the editor",
+        "tipLabel": "Tip"
+      },
+      "tips": {
+        "heading": "5. Tips",
+        "once": "Cut once and export once. Every round of export makes the picture worse.",
+        "originals": "Keep your original files. With them you can always export again, and better.",
+        "final": "For the finished video: quality Good. For a quick message, Small is enough.",
+        "reexport": "Do not export a finished file again to change it. Take the project instead.",
+        "h264": "If you want to be sure that every computer can open the file: MP4 with H.264."
+      },
+      "glossary": {
+        "heading": "Terms from this page"
+      }
+    }
+  }
+}

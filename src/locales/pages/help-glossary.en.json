@@ -1,0 +1,194 @@
+{
+  "help": {
+    "glossary": {
+      "title": "Glossary",
+      "lead": "These are the words that appear in Jelly Cut and on these pages. Type a word into the search.",
+      "search": {
+        "label": "Search a term",
+        "placeholder": "e.g. frame rate or sound",
+        "clear": "Clear search"
+      },
+      "count": "{count} terms found",
+      "empty": "No match. Try another word, for example sound or file.",
+      "seeAlso": "See also",
+      "lettersLabel": "Jump to a letter",
+      "terms": {
+        "abspielkopf": {
+          "term": "Playhead",
+          "text": "The vertical line on the timeline. It shows which picture you see right now. You can drag it with the mouse.",
+          "keys": "Abspielkopf position line"
+        },
+        "abtastrate": {
+          "term": "Sample rate",
+          "text": "How often per second the sound is measured. 48,000 times per second is common for videos. More measurements sound more exact, but the file gets bigger.",
+          "keys": "Abtastrate kHz Hz 48000"
+        },
+        "aufkleber": {
+          "term": "Sticker",
+          "text": "A small picture or sign that you put over the video, for example a star or a thumbs up. You can move, turn and enlarge it.",
+          "keys": "Aufkleber emoji star heart"
+        },
+        "aufloesung": {
+          "term": "Resolution",
+          "text": "How many dots (pixels) a picture has, for example 1920 × 1080. More pixels show more detail, but make the file bigger.",
+          "keys": "Auflösung pixel 1080p 720p 4K HD"
+        },
+        "autosave": {
+          "term": "Autosave",
+          "text": "Jelly Cut saves your work automatically in this browser. The display at the top shows whether everything is saved. You can also save the project as a file.",
+          "keys": "Speichern automatic save backup"
+        },
+        "bild": {
+          "term": "Picture (frame)",
+          "text": "A single still picture. A video is a fast row of many pictures. A picture is called a frame.",
+          "keys": "Bild frame picture still"
+        },
+        "bildrate": {
+          "term": "Frame rate (fps)",
+          "text": "How many pictures per second a video has, for example 30 fps (frames per second). More pictures look smoother, but make the file bigger.",
+          "keys": "Bildrate fps frames per second"
+        },
+        "bitrate": {
+          "term": "Bitrate",
+          "text": "How much data per second is stored in the file, for example 8 megabit per second. In Jelly Cut you choose the quality, and the bitrate follows from it. Higher means better quality and a bigger file.",
+          "keys": "data rate quality megabit"
+        },
+        "clip": {
+          "term": "Clip",
+          "text": "A piece of video, picture or sound that lies on the timeline. You can split, trim and move a clip.",
+          "keys": "piece section video"
+        },
+        "codec": {
+          "term": "Codec",
+          "text": "The recipe that packs pictures and unpacks them again, for example H.264, VP9 or AV1. Sender and receiver need the same recipe.",
+          "keys": "encoder decoder H.264 VP9 AV1"
+        },
+        "container": {
+          "term": "Container",
+          "text": "The box that holds pictures, sound and information. The ending such as .mp4 or .webm says which box it is.",
+          "keys": "box file ending mp4 webm mov mkv"
+        },
+        "credits": {
+          "term": "Credits",
+          "text": "The names of the creators and the sources of the pictures, music and videos you use. Jelly Cut builds a text from it that you can copy.",
+          "keys": "source author attribution"
+        },
+        "einpassen-fuellen": {
+          "term": "Fit and fill",
+          "text": "Fit shows the whole picture, with bars at the sides. Fill crops the picture so the screen is completely filled.",
+          "keys": "einpassen füllen bars crop"
+        },
+        "export": {
+          "term": "Export",
+          "text": "Saving the finished video as a file. All clips, texts and filters are calculated and encoded together.",
+          "keys": "save file finished video"
+        },
+        "feinschnitt": {
+          "term": "Fine cut",
+          "text": "A tool that lets you go picture by picture and cut at exactly one spot. You can also see the keyframes.",
+          "keys": "frame exact cut keyframe"
+        },
+        "filter": {
+          "term": "Filter",
+          "text": "A colour look, for example black and white, sepia or vintage. With brightness, contrast and saturation you adjust the colours yourself.",
+          "keys": "colours look black white sepia brightness contrast saturation"
+        },
+        "format": {
+          "term": "Format (file type)",
+          "text": "The kind of finished file. MP4 is a video that runs almost everywhere. GIF is a short, silent loop that repeats forever.",
+          "keys": "MP4 GIF file type loop"
+        },
+        "keyframe": {
+          "term": "Keyframe",
+          "text": "A complete picture in the video. The pictures after it often save only what changes. That is why a video is easiest to cut and play at keyframes.",
+          "keys": "I-frame full picture K"
+        },
+        "kodieren": {
+          "term": "Encoding and decoding",
+          "text": "Encoding packs pictures into a smaller file. Decoding rebuilds the pictures so you can watch or edit them.",
+          "keys": "encode decode pack unpack codec"
+        },
+        "lautstaerke": {
+          "term": "Volume",
+          "text": "How loud a clip or sound is. In Jelly Cut you set it in percent: 100 % means unchanged.",
+          "keys": "loudness sound percent"
+        },
+        "lizenz": {
+          "term": "License",
+          "text": "The rule that says what you may do with a picture, video or sound. It is on the page where you found the material.",
+          "keys": "license CC0 CC BY permission"
+        },
+        "mono-stereo": {
+          "term": "Mono and stereo",
+          "text": "Mono has one sound channel, stereo has two: one for the left and one for the right. Stereo sounds more spacious.",
+          "keys": "channel left right"
+        },
+        "seitenverhaeltnis": {
+          "term": "Aspect ratio (picture format)",
+          "text": "The ratio of width to height of a picture. Landscape is wide, like a TV. Portrait is tall, like a phone. Square is equally wide and tall.",
+          "keys": "landscape portrait square format width height"
+        },
+        "spur": {
+          "term": "Track",
+          "text": "A row on the timeline, or one part of a file. Video, sound, music, text and overlays each have their own tracks.",
+          "keys": "lane row"
+        },
+        "standbild": {
+          "term": "Freeze frame",
+          "text": "A picture that is held and stays still for a while. There is no sound during it.",
+          "keys": "freeze still pause"
+        },
+        "tempo": {
+          "term": "Speed",
+          "text": "How fast a clip runs. At double speed the clip runs twice as fast and is half as long.",
+          "keys": "tempo speed faster slower"
+        },
+        "transparenz": {
+          "term": "Transparency (opacity)",
+          "text": "How see-through a picture, a text or a sticker is. 100 % is solid, 0 % is invisible. The see-through part of a picture is stored in the alpha channel.",
+          "keys": "alpha opacity see-through"
+        },
+        "uebergang": {
+          "term": "Transition",
+          "text": "How one clip changes into the next. For example with a fade, a wipe or a zoom.",
+          "keys": "transition wipe zoom cut"
+        },
+        "ueberblenden": {
+          "term": "Fade",
+          "text": "A transition: the one picture slowly becomes see-through while the next one appears. A classic.",
+          "keys": "crossfade transition soft"
+        },
+        "ueberlagerung": {
+          "term": "Overlay",
+          "text": "Something that lies on top of the video: text, stickers, shapes, drawings or a second picture. It has its own track on the timeline.",
+          "keys": "overlay text sticker shape drawing track"
+        },
+        "untertitel": {
+          "term": "Subtitles",
+          "text": "Text at the bottom of the picture that matches the spoken words. Each subtitle has a start and an end time.",
+          "keys": "captions text speech"
+        },
+        "verpixeln": {
+          "term": "Pixelate",
+          "text": "An area is split into big squares so that details can no longer be seen. For example for faces or car number plates.",
+          "keys": "pixelate mosaic face"
+        },
+        "weichzeichnen": {
+          "term": "Blur",
+          "text": "An area is made blurry. That is good for making people or writing unrecognisable.",
+          "keys": "blur unsharp"
+        },
+        "wellenform": {
+          "term": "Waveform",
+          "text": "A line that shows how loud the sound is at each moment. High peaks are loud spots.",
+          "keys": "sound volume peak"
+        },
+        "zeitleiste": {
+          "term": "Timeline",
+          "text": "The bar at the bottom where all clips, texts and sounds lie in order. Time runs from left to right.",
+          "keys": "timeline bar tracks clips"
+        }
+      }
+    }
+  }
+}

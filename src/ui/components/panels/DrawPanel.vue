@@ -3,20 +3,26 @@ import { defineComponent } from 'vue'
 import { mapActions, mapState } from 'pinia'
 import Icon from '../Icon.vue'
 import ColorPicker from './ColorPicker.vue'
-import ToggleSwitch from './ToggleSwitch.vue'
+import RangeField from './RangeField.vue'
 import { useEditorStore } from '../../stores/editor'
 import { LINE_WIDTHS, type LineWidthId } from '../../../core/timeline/overlayCatalog'
 
-/** Pen settings and the drawing switch. The pointer work happens in PlayerOverlay while drawing is on. */
+/**
+ * Pen settings. Drawing stays on after each stroke, until "Done" or until another tab is opened.
+ * The pointer work happens in PlayerOverlay while drawing is on.
+ */
 export default defineComponent({
   name: 'DrawPanel',
-  components: { Icon, ColorPicker, ToggleSwitch },
+  components: { Icon, ColorPicker, RangeField },
   data() {
     // Bar heights in the pen buttons: a hint of the width, not the real size.
     return { widths: Object.keys(LINE_WIDTHS) as LineWidthId[], bars: { thin: 2, medium: 4, thick: 7 } as Record<LineWidthId, number> }
   },
   computed: {
-    ...mapState(useEditorStore, ['overlayColor', 'penWidth', 'penOpacity', 'penCap', 'drawing', 'strokeCount'])
+    ...mapState(useEditorStore, ['overlayColor', 'penWidth', 'penOpacity', 'penCap', 'drawing', 'strokeCount']),
+    opacityPercent(): number {
+      return Math.round(this.penOpacity * 100)
+    }
   },
   methods: {
     ...mapActions(useEditorStore, ['setDrawing', 'setOverlayColor', 'setPenWidth', 'setPenOpacity', 'applyMarkerPreset', 'undoLastStroke']),
@@ -29,81 +35,73 @@ export default defineComponent({
 
 <template>
   <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
-    <h2 class="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">{{ $t('overlays.drawPanel') }}</h2>
-    <ToggleSwitch
-      :label="$t('overlays.drawToggle')"
-      :state-text="drawing ? $t('overlays.drawOn') : $t('overlays.drawOff')"
-      :checked="drawing"
-      @toggle="setDrawing(!drawing)"
-    />
-    <p class="text-[11px] text-muted">{{ $t('overlays.drawHint') }}</p>
+    <h2 class="text-sm font-bold">{{ $t('tabs.draw') }}</h2>
 
-    <section class="flex flex-col gap-2 border-t border-line pt-3">
-      <ColorPicker
-        :model-value="overlayColor"
-        :group-label="$t('overlays.color')"
-        @update="setOverlayColor"
-      />
-    </section>
+    <button
+      type="button"
+      class="flex min-h-11 items-center justify-center gap-2 rounded-lg text-sm font-bold"
+      :class="drawing ? 'bg-signal text-signal-fg' : 'bg-fill text-fill-fg hover:opacity-90'"
+      :aria-pressed="drawing"
+      @click="setDrawing(!drawing)"
+    >
+      <Icon :name="drawing ? 'check' : 'draw'" class="size-4" />
+      {{ drawing ? $t('overlays.done') : $t('overlays.startDrawing') }}
+    </button>
+    <p class="text-xs leading-relaxed text-muted">{{ drawing ? $t('overlays.drawHintOn') : $t('overlays.drawHint') }}</p>
 
-    <section class="flex flex-col gap-2 border-t border-line pt-3">
-      <span class="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">{{ $t('overlays.penWidth') }}</span>
-      <div class="grid grid-cols-3 gap-1 rounded-lg bg-panel2 p-[3px]" role="group" :aria-label="$t('overlays.penWidth')">
+    <div class="flex flex-col gap-3 border-t border-line pt-3">
+      <ColorPicker :model-value="overlayColor" :group-label="$t('design.colour')" @update="setOverlayColor" />
+
+      <div class="flex flex-col gap-2">
+        <span class="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">{{ $t('overlays.penWidth') }}</span>
+        <div class="grid grid-cols-3 gap-1 rounded-lg bg-panel2 p-[3px]" role="group" :aria-label="$t('overlays.penWidth')">
+          <button
+            v-for="width in widths"
+            :key="width"
+            type="button"
+            class="flex min-h-11 items-center justify-center gap-1.5 rounded-md text-xs font-semibold"
+            :class="penWidth === width ? 'bg-fill text-fill-fg' : 'text-fg hover:bg-panel'"
+            :aria-pressed="penWidth === width"
+            @click="setPenWidth(width)"
+          >
+            <span class="inline-block w-6 rounded-full" :style="{ height: `${bars[width]}px`, background: 'currentColor' }" aria-hidden="true" />
+            {{ widthName(width) }}
+          </button>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <RangeField
+          :label="$t('overlays3.penOpacity')"
+          :model-value="opacityPercent"
+          :min="0"
+          :max="100"
+          :display="`${opacityPercent}%`"
+          @update="(percent: number) => setPenOpacity(percent / 100)"
+        />
         <button
-          v-for="width in widths"
-          :key="width"
           type="button"
-          class="flex min-h-11 items-center justify-center gap-1.5 rounded-md text-xs font-semibold"
-          :class="penWidth === width ? 'bg-fill text-fill-fg' : 'text-fg hover:bg-panel'"
-          :aria-pressed="penWidth === width"
-          @click="setPenWidth(width)"
+          class="flex min-h-11 items-center justify-center gap-2 rounded-lg text-sm font-semibold"
+          :class="penCap === 'flat' ? 'bg-fill text-fill-fg' : 'bg-panel2 text-fg hover:bg-panel'"
+          :aria-pressed="penCap === 'flat'"
+          @click="applyMarkerPreset"
         >
-          <span
-            class="inline-block w-6 rounded-full"
-            :style="{ height: `${bars[width]}px`, background: 'currentColor' }"
-            aria-hidden="true"
-          />
-          {{ widthName(width) }}
+          {{ $t('overlays3.markerPreset') }}
         </button>
       </div>
-    </section>
 
-    <section class="flex flex-col gap-2 border-t border-line pt-3">
-      <label class="flex flex-col gap-1 text-xs font-semibold text-muted">
-        {{ $t('overlays3.penOpacity') }}: {{ Math.round(penOpacity * 100) }} %
-        <input
-          type="range"
-          min="0"
-          max="100"
-          step="1"
-          class="w-full"
-          :value="Math.round(penOpacity * 100)"
-          :aria-label="$t('overlays3.penOpacity')"
-          @input="setPenOpacity(Number(($event.target as HTMLInputElement).value) / 100)"
-        />
-      </label>
-      <button
-        type="button"
-        class="flex min-h-11 items-center justify-center gap-2 rounded-lg text-sm font-semibold text-fg"
-        :class="penCap === 'flat' ? 'bg-fill text-fill-fg' : 'bg-panel2 hover:bg-panel'"
-        :aria-pressed="penCap === 'flat'"
-        @click="applyMarkerPreset"
-      >
-        {{ $t('overlays3.markerPreset') }}
-      </button>
-    </section>
-
-    <section class="flex flex-col gap-2 border-t border-line pt-3">
-      <button
-        type="button"
-        class="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-panel2 text-sm font-semibold text-fg hover:bg-panel disabled:opacity-45"
-        :disabled="strokeCount === 0"
-        @click="undoLastStroke"
-      >
-        <Icon name="undo" class="size-4" />
-        {{ $t('overlays.undoStroke') }}
-      </button>
-      <p v-if="strokeCount === 0" class="text-[11px] text-muted">{{ $t('overlays.noStrokes') }}</p>
-    </section>
+      <div class="flex flex-col gap-2">
+        <button
+          type="button"
+          class="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-panel2 text-sm font-semibold text-fg hover:bg-panel disabled:opacity-45"
+          :disabled="strokeCount === 0"
+          @click="undoLastStroke"
+        >
+          <Icon name="undo" class="size-4" />
+          {{ $t('overlays.undoStroke') }}
+        </button>
+        <p v-if="strokeCount === 0" class="text-[11px] text-muted">{{ $t('overlays.noStrokes') }}</p>
+      </div>
+    </div>
   </div>
 </template>

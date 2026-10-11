@@ -1,0 +1,65 @@
+{
+  "help": {
+    "sources": {
+      "title": "Freie Bilder, Musik und Videos",
+      "intro": "Hier findest du Quellen für Material, das du in deinen Videos verwenden darfst, und erfährst, wie du die Urheber nennst. Lies vor jeder Verwendung die Lizenz auf der Seite, auf der du das Material gefunden hast.",
+      "contents": "Inhalt",
+      "own": {
+        "title": "1. Am besten: selbst aufnehmen oder erstellen",
+        "text": "Eigene Fotos, Videos, Tonaufnahmen und Zeichnungen sind die sicherste Wahl. Eine Quelle musst du dafür nicht nennen. Wähle in Jelly Cut die Lizenz „Eigenes Werk“; dann bleibt der Credits-Text dafür leer.",
+        "more": "Prüfe auch deine eigenen Aufnahmen: Frag Personen, bevor du sie filmst, und achte darauf, dass im Hintergrund keine Musik zu hören ist, die du nicht verwenden darfst."
+      },
+      "images": {
+        "title": "2. Freie Bilder",
+        "text": "Diese Seiten bieten Bilder an, die in der Regel frei nutzbar sind. Ihre Bedingungen können sich ändern und von Seite zu Seite unterscheiden. Prüfe sie auf der Seite selbst.",
+        "pixabay": "Fotos und Illustrationen. Lizenz: Pixabay Content License.",
+        "pexels": "Fotos. Lizenz: Pexels License.",
+        "unsplash": "Fotos. Lizenz: Unsplash License.",
+        "commons": "Dateien vieler Art, jede mit eigener Lizenz. Lies die Lizenz jeder Datei.",
+        "openverse": "Suchmaschine für offen lizenzierte Werke, auch Bilder. Lies die Lizenz jedes Treffers."
+      },
+      "videos": {
+        "title": "3. Freie Videos",
+        "text": "Videoclips gibt es oft an denselben Orten.",
+        "pexels": "Videos von Pexels. Lizenz: Pexels License.",
+        "pixabay": "Videos von Pixabay. Lizenz: Pixabay Content License.",
+        "commons": "Wikimedia Commons, siehe oben. Lies die Lizenz jeder Datei."
+      },
+      "music": {
+        "title": "4. Freie Musik und Geräusche",
+        "text": "Musik und Geräusche haben eigene Lizenzen. Manche sind frei nutzbar, andere verlangen eine Nennung, und die Lizenz kann von Stück zu Stück verschieden sein.",
+        "pixabay": "Musik. Lizenz: Pixabay Content License.",
+        "fma": "Free Music Archive. Die Lizenzen unterscheiden sich von Stück zu Stück, prüfe jedes einzeln."
+      },
+      "licences": {
+        "title": "5. Was die Lizenzen bedeuten",
+        "text": "Die Lizenz steht auf der Seite, auf der du das Material findest. Diese Fälle kommen häufig vor:",
+        "head": {
+          "licence": "Lizenz",
+          "meaning": "Was es für dich bedeutet"
+        },
+        "cc0": "CC0 und Public Domain",
+        "cc0Meaning": "Du darfst es frei verwenden. Den Urheber musst du nicht nennen.",
+        "by": "CC BY",
+        "byMeaning": "Du darfst es verwenden und auch verändern. Du musst Urheber, Titel, Quelle und Lizenz nennen.",
+        "bySa": "CC BY-SA",
+        "bySaMeaning": "Wie CC BY. Veränderst du das Material, musst du deine Version unter derselben Lizenz weitergeben (Share-alike).",
+        "reserved": "Alle Rechte vorbehalten",
+        "reservedMeaning": "Nicht verwenden, außer der Inhaber hat dir schriftlich die Erlaubnis gegeben."
+      },
+      "credit": {
+        "title": "6. So nennst du die Urheber",
+        "text": "Jelly Cut merkt sich Quelle und Lizenz jedes Mediums. Öffne im Projektmenü „Credits“ oder klicke in der Bibliothek bei einer Kachel auf „Credit“. Trage Titel, Urheber, Quelle, Link und Lizenz ein und kopiere den erzeugten Text in die Videobeschreibung oder auf die Schlussfolie.",
+        "exampleLabel": "Beispiel",
+        "example": "Meeresrauschen von Lena Beispiel, Quelle: Free Music Archive (https://freemusicarchive.org/home), Lizenz: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)",
+        "tip": "Wenn du den Link zur Seite der einzelnen Datei hast, nimm diesen statt der Startseite. Die Zeile „Bearbeitet mit Jelly Cut“ fügt Jelly Cut selbst an."
+      },
+      "check": {
+        "title": "7. Immer die Lizenz prüfen",
+        "text": "Lies die Lizenz auf der Seite des Materials, bevor du es verwendest. Regeln können sich ändern. Diese Seite ist eine Orientierung und keine Rechtsberatung.",
+        "school": "Für die Schule gilt: Wenn du ein Video außerhalb der Schule veröffentlichst, zum Beispiel auf einer Videoplattform oder der Schulhomepage, gelten dieselben Regeln."
+      },
+      "rightsPointer": "Was du nicht verwenden solltest und worauf du bei Personen achten musst, steht auf der Seite:"
+    }
+  }
+}

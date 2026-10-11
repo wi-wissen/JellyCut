@@ -1,0 +1,176 @@
+{
+  "tabs": {
+    "text": "Text",
+    "sticker": "Aufkleber",
+    "shape": "Formen",
+    "draw": "Zeichnen",
+    "region": "Verbergen",
+    "picture": "Bild im Bild"
+  },
+  "design": {
+    "content": "Inhalt",
+    "look": "Aussehen",
+    "time": "Zeit",
+    "animation": "Animation",
+    "order": "Reihenfolge",
+    "actions": "Aktionen",
+    "start": "Start (s)",
+    "duration": "Dauer (s)",
+    "colour": "Farbe",
+    "opacity": "Deckkraft",
+    "animIn": "Einblenden",
+    "animOut": "Ausblenden",
+    "animNone": "Keine",
+    "loop": "Dauerschleife",
+    "loops": {
+      "wiggle": "Wackeln"
+    },
+    "toFront": "Ganz nach vorne",
+    "forward": "Eine Ebene vor",
+    "backward": "Eine Ebene zurück",
+    "toBack": "Ganz nach hinten",
+    "orderHint": "Texte liegen immer über Aufklebern, Formen und Bildern.",
+    "duplicate": "Duplizieren",
+    "delete": "Löschen",
+    "areaShape": "Form des Bereichs",
+    "back": "Zurück"
+  },
+  "overlays": {
+    "stickerHint": "Tippe auf einen Aufkleber. Er erscheint am Abspielkopf. Danach ziehst du ihn in der Vorschau und änderst Größe und Drehung an den Griffen.",
+    "shapeHint": "Tippe auf eine Form. Sie erscheint am Abspielkopf. Ziehe an den Griffen, um sie zu verschieben, zu vergrößern oder zu drehen.",
+    "shape": {
+      "rect": "Rahmen",
+      "ellipse": "Ellipse",
+      "arrow": "Pfeil"
+    },
+    "shapes": "Formen",
+    "header": {
+      "sticker": "Aufkleber · {name}",
+      "shape": "Form · {name}",
+      "stroke": "Strich"
+    },
+    "lineWidth": "Linienstärke",
+    "penWidth": "Strichstärke",
+    "penWidths": {
+      "thin": "Dünn",
+      "medium": "Mittel",
+      "thick": "Dick"
+    },
+    "startDrawing": "Zeichnen starten",
+    "done": "Fertig",
+    "drawHint": "Tippe nach dem Start mit dem Finger oder der Maus über die Vorschau. Jeder Strich erscheint am Abspielkopf.",
+    "drawHintOn": "Zeichnen ist an. Male mit der Maus oder dem Finger über die Vorschau. Mit Fertig hörst du auf.",
+    "undoStroke": "Letzten Strich zurücknehmen",
+    "noStrokes": "Noch keine Striche in diesem Projekt.",
+    "timelineLabel": "Überlagerung: {name}",
+    "player": {
+      "box": "Überlagerung {name}",
+      "move": "Verschieben",
+      "scale": "Größe ändern",
+      "rotate": "Drehen",
+      "surface": "Zeichenfläche: Mit Maus oder Finger malen",
+      "drawing": "Zeichnen läuft"
+    }
+  },
+  "overlays2": {
+    "regionHeader": "Bereich · {name}",
+    "regionHint": "Der Bereich verwischt oder verpixelt, was darunter liegt, zum Beispiel ein Gesicht oder ein Autokennzeichen. Er erscheint am Abspielkopf.",
+    "blurAction": "Bereich weichzeichnen",
+    "pixelateAction": "Bereich verpixeln",
+    "effect": "Wirkung",
+    "effects": {
+      "blur": "Weichzeichnen",
+      "pixelate": "Verpixeln"
+    },
+    "strength": "Stärke",
+    "pictureHeader": "Bild · {name}",
+    "pictureHint": "Tippe ein Bild oder Video an. Es erscheint am Abspielkopf über dem Video.",
+    "noPictures": "Keine Bilder oder Videos in der Bibliothek.",
+    "addPicture": "{name} am Abspielkopf einfügen",
+    "pictureShape": "Form des Bildes",
+    "pictureShapes": {
+      "rect": "Eckig",
+      "rounded": "Abgerundet",
+      "round": "Rund"
+    },
+    "pictureStart": "Startpunkt im Video (s)",
+    "speed": "Tempo",
+    "border": "Rahmenbreite",
+    "borderColor": "Rahmenfarbe",
+    "pictureSound": "Der Ton eines Videos wird nicht abgespielt."
+  },
+  "overlays3": {
+    "penOpacity": "Deckkraft",
+    "markerPreset": "Textmarker",
+    "anim": {
+      "fade": "Weich",
+      "pop": "Aufpoppen",
+      "slideFromTop": "Von oben hereinfahren",
+      "slideFromBottom": "Von unten hereinfahren",
+      "slideFromLeft": "Von links hereinfahren",
+      "slideFromRight": "Von rechts hereinfahren",
+      "slideToTop": "Nach oben hinausfahren",
+      "slideToBottom": "Nach unten hinausfahren",
+      "slideToLeft": "Nach links hinausfahren",
+      "slideToRight": "Nach rechts hinausfahren"
+    },
+    "sticker": {
+      "star": "Stern",
+      "heart": "Herz",
+      "check": "Haken",
+      "cross": "Kreuz",
+      "arrowRight": "Pfeil rechts",
+      "arrowUp": "Pfeil hoch",
+      "speech": "Sprechblase",
+      "thought": "Gedankenblase",
+      "exclamation": "Ausrufezeichen",
+      "question": "Fragezeichen",
+      "lightbulb": "Idee",
+      "thumbsUp": "Daumen hoch",
+      "smile": "Lächeln",
+      "sun": "Sonne",
+      "cloud": "Wolke",
+      "lightning": "Blitz",
+      "flag": "Flagge",
+      "music": "Notenzeichen",
+      "camera": "Kamera",
+      "play": "Play-Knopf",
+      "crown": "Krone",
+      "sparkles": "Funkeln",
+      "badge1": "Kreis 1",
+      "badge2": "Kreis 2",
+      "badge3": "Kreis 3"
+    },
+    "regionShape": {
+      "rect": "Rechteck",
+      "ellipse": "Oval",
+      "roundRect": "Abgerundet"
+    }
+  },
+  "text": {
+    "whySeparate": "Text hat einen eigenen Reiter, weil du ihn tippst. Alles andere wählst du aus einer Galerie.",
+    "add": "Text hinzufügen",
+    "presets": "Vorlagen",
+    "defaultText": "Text",
+    "sample": "Aa",
+    "fontSample": "Aa Hallo",
+    "presetNames": {
+      "title": "Titel",
+      "subtitle": "Untertitel",
+      "neon": "Neon",
+      "poster": "Plakat",
+      "script": "Schreibschrift",
+      "note": "Notiz"
+    },
+    "presetAria": "Vorlage {name}",
+    "header": "Text · \"{text}\"",
+    "content": "Textinhalt",
+    "font": "Schrift",
+    "size": "Größe",
+    "outline": "Kontur",
+    "outlineColor": "Konturfarbe"
+  },
+  "library": {
+    "asPicture": "Als Bild im Bild"
+  }
+}

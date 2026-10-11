@@ -7,6 +7,10 @@ import { useEditorStore } from '../../stores/editor'
 export default defineComponent({
   name: 'BackLink',
   components: { Icon },
+  props: {
+    /** Empty means the library; a selected item says "Back" instead. */
+    label: { type: String, default: '' }
+  },
   methods: {
     ...mapActions(useEditorStore, ['select'])
   }
@@ -20,6 +24,6 @@ export default defineComponent({
     @click="select(null)"
   >
     <Icon name="back" class="size-4" />
-    {{ $t('leftPanel.backToLibrary') }}
+    {{ label || $t('leftPanel.backToLibrary') }}
   </button>
 </template>

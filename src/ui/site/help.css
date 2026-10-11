@@ -1,0 +1,44 @@
+/* Typography for help pages. Views put their text inside .help-prose and use plain elements.
+   In the components layer, so utility classes on an element still win. */
+@layer components {
+  .help-prose > * + * {
+    margin-top: 1rem;
+  }
+  .help-prose h2 {
+    margin-top: 3rem;
+    font-size: 1.375rem;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    scroll-margin-top: 1.5rem;
+  }
+  .help-prose h3 {
+    margin-top: 2rem;
+    font-size: 1.125rem;
+    font-weight: 700;
+    line-height: 1.35;
+  }
+  .help-prose ul,
+  .help-prose ol {
+    display: grid;
+    gap: 0.5rem;
+    padding-left: 1.25rem;
+  }
+  .help-prose ul {
+    list-style: disc;
+  }
+  .help-prose ol {
+    list-style: decimal;
+  }
+  .help-prose a {
+    color: var(--jc-txt);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .help-prose a:hover {
+    text-decoration: none;
+  }
+  .help-prose strong {
+    font-weight: 700;
+  }
+}

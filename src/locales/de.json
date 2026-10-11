@@ -45,10 +45,6 @@
     "media": "Medien",
     "audio": "Audio",
     "record": "Aufnahme",
-    "text": "Text",
-    "sticker": "Sticker",
-    "draw": "Zeichnen",
-    "captions": "Untertitel",
     "filter": "Filter",
     "transitions": "Übergänge"
   },
@@ -143,12 +139,6 @@
       "keys": "Pfeiltasten verschieben, Umschalt für größere Schritte, Entf löscht. Doppelklick auf den Text bearbeitet ihn."
     }
   },
-  "landing": {
-    "title": "Jelly Cut",
-    "tagline": "Einfacher Videoschnitt für die Schule. Direkt im Browser, ohne Konto, ohne Werbung.",
-    "open": "Editor öffnen",
-    "soon": "Diese Seite wird später gestaltet."
-  },
   "guide": {
     "back": "Zurück",
     "sourcesTitle": "Freie Bilder, Musik und Videos",
@@ -213,56 +203,6 @@
       "zoomOut": "Herauszoomen",
       "blur": "Unschärfe"
     }
-  },
-  "text": {
-    "add": "Text hinzufügen",
-    "presets": "Vorlagen",
-    "defaultText": "Text",
-    "presetNames": {
-      "title": "Titel",
-      "subtitle": "Untertitel",
-      "neon": "Neon",
-      "poster": "Plakat",
-      "script": "Schreibschrift",
-      "note": "Notiz"
-    },
-    "header": "Text · \"{text}\"",
-    "content": "Inhalt",
-    "font": "Schrift",
-    "size": "Größe",
-    "color": "Farbe",
-    "customColor": "Eigene Farbe",
-    "swatch": "Farbe {hex}",
-    "outline": "Kontur",
-    "outlineColor": "Konturfarbe",
-    "position": "Position",
-    "top": "Oben",
-    "middle": "Mitte",
-    "bottom": "Unten",
-    "posX": "Horizontal",
-    "posY": "Vertikal",
-    "animation": "Animation",
-    "animIn": "Einblenden",
-    "animOut": "Ausblenden",
-    "anim": {
-      "none": "Keine",
-      "fade": "Weich",
-      "pop": "Pop",
-      "slideUp": "Nach oben"
-    },
-    "start": "Start (s)",
-    "duration": "Dauer (s)",
-    "sample": "Aa",
-    "swatchText": "Textfarbe {hex}",
-    "swatchOutline": "Konturfarbe {hex}",
-    "customTextColor": "Eigene Textfarbe",
-    "customOutlineColor": "Eigene Konturfarbe",
-    "presetAria": "Vorlage {name}",
-    "dragHint": "Ziehe den Text im Bild, um ihn zu platzieren",
-    "posLeft": "Links",
-    "posCenter": "Mitte",
-    "posRight": "Rechts",
-    "fontSample": "Aa Hallo"
   },
   "music": {
     "header": "Eigener Ton · {name}",
@@ -608,81 +548,8 @@
     "copyFailed": "Das Kopieren hat nicht geklappt. Markiere den Text und kopiere ihn von Hand.",
     "close": "Schließen"
   },
-  "sources": {
-    "title": "Freie Bilder, Musik und Videos",
-    "intro": "Hier findest du Quellen für Material, das du in deinen Videos verwenden darfst, und erfährst, wie du die Urheber nennst. Lies vor jeder Verwendung die Lizenz auf der Seite, auf der du das Material gefunden hast.",
-    "contents": "Inhalt",
-    "backToEditor": "Zurück zum Editor",
-    "toStart": "Startseite von Jelly Cut",
-    "newTab": "öffnet in neuem Tab",
-    "own": {
-      "title": "1. Am besten: selbst aufnehmen oder erstellen",
-      "text": "Eigene Fotos, Videos, Tonaufnahmen und Zeichnungen sind die sicherste Wahl. Eine Quelle musst du dafür nicht nennen. Wähle in Jelly Cut die Lizenz „Eigenes Werk“; dann bleibt der Credits-Text dafür leer.",
-      "more": "Prüfe auch deine eigenen Aufnahmen: Frag Personen, bevor du sie filmst, und achte darauf, dass im Hintergrund keine Musik zu hören ist, die du nicht verwenden darfst."
-    },
-    "images": {
-      "title": "2. Freie Bilder",
-      "text": "Diese Seiten bieten Bilder an, die in der Regel frei nutzbar sind. Ihre Bedingungen können sich ändern und von Seite zu Seite unterscheiden. Prüfe sie auf der Seite selbst.",
-      "pixabay": "Fotos und Illustrationen. Lizenz: Pixabay Content License.",
-      "pexels": "Fotos. Lizenz: Pexels License.",
-      "unsplash": "Fotos. Lizenz: Unsplash License.",
-      "commons": "Dateien vieler Art, jede mit eigener Lizenz. Lies die Lizenz jeder Datei.",
-      "openverse": "Suchmaschine für offen lizenzierte Werke, auch Bilder. Lies die Lizenz jedes Treffers."
-    },
-    "videos": {
-      "title": "3. Freie Videos",
-      "text": "Videoclips gibt es oft an denselben Orten.",
-      "pexels": "Videos von Pexels. Lizenz: Pexels License.",
-      "pixabay": "Videos von Pixabay. Lizenz: Pixabay Content License.",
-      "commons": "Wikimedia Commons, siehe oben. Lies die Lizenz jeder Datei."
-    },
-    "music": {
-      "title": "4. Freie Musik und Geräusche",
-      "text": "Musik und Geräusche haben eigene Lizenzen. Manche sind frei nutzbar, andere verlangen eine Nennung, und die Lizenz kann von Stück zu Stück verschieden sein.",
-      "freesound": "Geräusche und Aufnahmen. Prüfe die Lizenz jedes einzelnen Geräuschs und verwende nur CC0 oder CC BY.",
-      "pixabay": "Musik. Lizenz: Pixabay Content License.",
-      "fma": "Free Music Archive. Die Lizenzen unterscheiden sich von Stück zu Stück, prüfe jedes einzeln.",
-      "incompetech": "Musik unter CC BY. Der Komponist muss genannt werden. Prüfe die Lizenz jedes Stücks."
-    },
-    "licences": {
-      "title": "5. Was die Lizenzen bedeuten",
-      "text": "Die Lizenz steht auf der Seite, auf der du das Material findest. Diese Fälle kommen häufig vor:",
-      "head": {
-        "licence": "Lizenz",
-        "meaning": "Was es für dich bedeutet"
-      },
-      "cc0": "CC0 und Public Domain",
-      "cc0Meaning": "Du darfst es frei verwenden. Den Urheber musst du nicht nennen.",
-      "by": "CC BY",
-      "byMeaning": "Du darfst es verwenden und auch verändern. Du musst Urheber, Titel, Quelle und Lizenz nennen.",
-      "bySa": "CC BY-SA",
-      "bySaMeaning": "Wie CC BY. Veränderst du das Material, musst du deine Version unter derselben Lizenz weitergeben (Share-alike).",
-      "reserved": "Alle Rechte vorbehalten",
-      "reservedMeaning": "Nicht verwenden, außer der Inhaber hat dir schriftlich die Erlaubnis gegeben."
-    },
-    "avoid": {
-      "title": "Nicht verwenden",
-      "streaming": "Musik aus Streamingdiensten. Dass man ein Lied hören kann, heißt nicht, dass man es in einem Video verwenden darf.",
-      "video": "Videos von YouTube oder ähnlichen Plattformen, außer die Lizenz auf der Videoseite erlaubt die Weiterverwendung ausdrücklich.",
-      "search": "Bilder aus einer normalen Websuche. Sie sind meist urheberrechtlich geschützt.",
-      "film": "Filmausschnitte aus Filmen oder Serien."
-    },
-    "credit": {
-      "title": "6. So nennst du die Urheber",
-      "text": "Jelly Cut merkt sich Quelle und Lizenz jedes Mediums. Öffne im Projektmenü „Credits“ oder klicke in der Bibliothek bei einer Kachel auf „Credit“. Trage Titel, Urheber, Quelle, Link und Lizenz ein und kopiere den erzeugten Text in die Videobeschreibung oder auf die Schlussfolie.",
-      "exampleLabel": "Beispiel",
-      "example": "Wellen am Strand von Lena Beispiel, Quelle: Freesound (https://freesound.org), Lizenz: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)",
-      "tip": "Wenn du den Link zur Seite der einzelnen Datei hast, nimm diesen statt der Startseite. Die Zeile „Bearbeitet mit Jelly Cut“ fügt Jelly Cut selbst an."
-    },
-    "check": {
-      "title": "7. Immer die Lizenz prüfen",
-      "text": "Lies die Lizenz auf der Seite des Materials, bevor du es verwendest. Regeln können sich ändern. Diese Seite ist eine Orientierung und keine Rechtsberatung.",
-      "school": "Für die Schule gilt: Wenn du ein Video außerhalb der Schule veröffentlichst, zum Beispiel auf einer Videoplattform oder der Schulhomepage, gelten dieselben Regeln."
-    }
-  },
   "a11y": {
-    "fileInput": "Mediendateien auswählen",
-    "guideNav": "Navigation der Anleitung"
+    "fileInput": "Mediendateien auswählen"
   },
   "responsive": {
     "more": "Mehr",
@@ -690,114 +557,12 @@
     "showTools": "Werkzeuge zeigen",
     "hideTools": "Werkzeuge ausblenden"
   },
-  "overlays": {
-    "panel": "Aufkleber",
-    "stickerHint": "Klicke einen Sticker. Er erscheint am Abspielkopf und lässt sich in der Vorschau verschieben, skalieren und drehen.",
-    "stickerNames": {
-      "star": "Stern",
-      "heart": "Herz",
-      "smile": "Lächeln",
-      "thumbsUp": "Daumen hoch",
-      "party": "Party",
-      "fire": "Feuer",
-      "sparkles": "Glitzer",
-      "check": "Haken",
-      "cross": "Kreuz",
-      "hundred": "Hundert",
-      "rocket": "Rakete",
-      "laugh": "Lachen"
-    },
-    "shapes": "Formen",
-    "shape": {
-      "rect": "Rahmen",
-      "ellipse": "Ellipse",
-      "arrow": "Pfeil"
-    },
-    "shapeHint": "Die Form erscheint am Abspielkopf. Ziehe an den Anfassern, um sie zu verschieben, zu skalieren oder zu drehen.",
-    "drawPanel": "Zeichnen",
-    "drawToggle": "Zeichnen auf der Vorschau",
-    "drawOn": "An",
-    "drawOff": "Aus",
-    "drawHint": "Schalte das Zeichnen ein, dann mit Maus oder Finger über die Vorschau malen. Jeder Strich erscheint am Abspielkopf.",
-    "penWidth": "Strichstärke",
-    "penWidths": {
-      "thin": "Dünn",
-      "medium": "Mittel",
-      "thick": "Dick"
-    },
-    "undoStroke": "Letzten Strich zurücknehmen",
-    "noStrokes": "Noch keine Striche in diesem Projekt.",
-    "color": "Farbe",
-    "size": "Größe",
-    "rotation": "Drehung",
-    "lineWidth": "Linienstärke",
-    "width": "Breite",
-    "height": "Höhe",
-    "start": "Start",
-    "duration": "Dauer",
-    "header": {
-      "sticker": "Sticker · {name}",
-      "shape": "Form · {name}",
-      "stroke": "Strich"
-    },
-    "timelineLabel": "Überlagerung: {name}",
-    "player": {
-      "box": "Überlagerung {name}",
-      "move": "Verschieben",
-      "scale": "Größe ändern",
-      "rotate": "Drehen",
-      "surface": "Zeichenfläche: Mit Maus oder Finger malen",
-      "drawing": "Zeichnen läuft"
-    }
-  },
   "pwa": {
     "updateAvailable": "Update verfügbar",
     "reload": "Neu laden",
     "offline": "Offline nutzbar: Nach dem ersten Besuch läuft Jelly Cut auch ohne Internet. Im Browsermenü lässt es sich wie eine App installieren."
   },
   "overlays2": {
-    "opacity": "Deckkraft",
-    "animation": "Animation",
-    "animIn": "Einblenden",
-    "animOut": "Ausblenden",
-    "loop": "Dauerschleife",
-    "none": "Keine",
-    "anim": {
-      "fade": "Weich einblenden",
-      "pop": "Aufpoppen",
-      "slideUp": "Von unten hochgleiten"
-    },
-    "loops": {
-      "wiggle": "Wackeln"
-    },
-    "effect": "Wirkung",
-    "effects": {
-      "blur": "Weichzeichnen",
-      "pixelate": "Verpixeln"
-    },
-    "strength": "Stärke",
-    "regionShape": {
-      "rect": "Rechteck",
-      "ellipse": "Ellipse"
-    },
-    "regionHeader": "Bereich · {name}",
-    "regionHint": "Der Bereich verwischt oder verpixelt, was darunter liegt, zum Beispiel ein Gesicht oder ein Autokennzeichen. Er erscheint am Abspielkopf.",
-    "regionsTitle": "Bereiche",
-    "blurAction": "Bereich weichzeichnen",
-    "pixelateAction": "Bereich verpixeln",
-    "picturesTitle": "Bild oder Video",
-    "pictureHint": "Ein Bild oder Video aus der Bibliothek erscheint über dem Video am Abspielkopf.",
-    "noPictures": "Keine Bilder oder Videos in der Bibliothek.",
-    "addPicture": "{name} am Abspielkopf einfügen",
-    "pictureKind": {
-      "image": "Bild",
-      "video": "Video"
-    },
-    "pictureHeader": "Bild · {name}",
-    "pictureSound": "Der Ton eines Videos wird nicht abgespielt.",
-    "radius": "Ecken",
-    "border": "Rahmen",
-    "borderColor": "Rahmenfarbe",
     "confirmPictures": "{count} Bild über dem Video nutzt die Datei ebenfalls. Es wird entfernt. | {count} Bilder über dem Video nutzen die Datei ebenfalls. Sie werden entfernt."
   },
   "polish": {
@@ -832,54 +597,6 @@
     "timeline": {
       "moreLanes": "{count} weitere Spur | {count} weitere Spuren unten",
       "resize": "Höhe der Zeitleiste ändern"
-    }
-  },
-  "overlays3": {
-    "penOpacity": "Deckkraft",
-    "markerPreset": "Textmarker",
-    "anim": {
-      "fade": "Überblenden",
-      "pop": "Aufpoppen",
-      "slideFromTop": "Von oben hereinfahren",
-      "slideFromBottom": "Von unten hereinfahren",
-      "slideFromLeft": "Von links hereinfahren",
-      "slideFromRight": "Von rechts hereinfahren",
-      "slideToTop": "Nach oben hinausfahren",
-      "slideToBottom": "Nach unten hinausfahren",
-      "slideToLeft": "Nach links hinausfahren",
-      "slideToRight": "Nach rechts hinausfahren"
-    },
-    "sticker": {
-      "star": "Stern",
-      "heart": "Herz",
-      "check": "Haken",
-      "cross": "Kreuz",
-      "arrowRight": "Pfeil rechts",
-      "arrowUp": "Pfeil hoch",
-      "speech": "Sprechblase",
-      "thought": "Gedankenblase",
-      "exclamation": "Ausrufezeichen",
-      "question": "Fragezeichen",
-      "lightbulb": "Idee",
-      "thumbsUp": "Daumen hoch",
-      "smile": "Lächeln",
-      "sun": "Sonne",
-      "cloud": "Wolke",
-      "lightning": "Blitz",
-      "flag": "Flagge",
-      "music": "Notenzeichen",
-      "camera": "Kamera",
-      "play": "Play-Knopf",
-      "crown": "Krone",
-      "sparkles": "Funkeln",
-      "badge1": "Kreis 1",
-      "badge2": "Kreis 2",
-      "badge3": "Kreis 3"
-    },
-    "regionShape": {
-      "rect": "Rechteck",
-      "ellipse": "Ellipse",
-      "roundRect": "Abgerundetes Rechteck"
     }
   },
   "export2": {

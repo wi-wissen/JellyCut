@@ -1,0 +1,42 @@
+{
+  "help": {
+    "tech": {
+      "title": "The technology behind Jelly Cut",
+      "lead": "Jelly Cut is a web page that runs in your browser. Here you see which building blocks are behind it. The source code is public.",
+      "whereTitle": "What runs where?",
+      "whereText": "Your videos are processed in your browser. Nothing is uploaded. GitHub Pages only delivers the files of the page, that is program code, pictures and fonts. This service never sees your videos.",
+      "whereNote": "Your videos are processed in your browser. Nothing is uploaded.",
+      "librariesTitle": "Libraries",
+      "librariesText": "Jelly Cut uses these building blocks directly in the program.",
+      "buildTitle": "Tools for building and testing",
+      "buildText": "You only need these tools to develop the page, not to use it.",
+      "browserTitle": "Browser features",
+      "browserText": "The browser provides these features. Jelly Cut uses them directly.",
+      "sourceTitle": "Source code",
+      "sourceText": "The source code is public on GitHub. There you can read how everything fits together.",
+      "items": {
+        "vue": "A JavaScript framework. It builds the interface from small parts that update when something changes.",
+        "pinia": "Keeps the state of the app, for example the project and the selection. Many parts can use the same data this way.",
+        "i18n": "Translations for German and English. The texts live in files, not in the program code.",
+        "tailwind": "Styling with small classes directly in the markup. This keeps the look consistent everywhere.",
+        "lucide": "The icons of the app as vector graphics.",
+        "mediabunny": "Reads and writes video files in the browser: it reads pictures and sound and creates new files from them.",
+        "fontsource": "Fonts as packages. The font files are delivered with the page and not loaded from an outside font service.",
+        "ofl": "The fonts are under a free licence, the SIL Open Font License.",
+        "vite": "Builds the page for the browser and starts a fast test server while developing.",
+        "typescript": "JavaScript with types. They help to find mistakes while writing.",
+        "vitest": "Tests program logic automatically, for example the calculation of times.",
+        "playwright": "Opens the page in a real browser and checks that everything works as expected.",
+        "pages": "The service that puts the finished files on the web.",
+        "webcodecs": "Encodes and decodes video and sound directly in the browser, often with help from the hardware of your device.",
+        "webgl": "Draws the preview and the finished picture with the graphics card.",
+        "webaudio": "Processes and mixes the sound in the browser.",
+        "workers": "Computes in the background so that the interface stays smooth. The export runs this way in its own worker.",
+        "fsa": "Lets you open and save files that you choose.",
+        "indexeddb": "A small database in the browser where projects stay saved on your device.",
+        "sw": "Keeps the page for use without a network connection. This is called a PWA (Progressive Web App)."
+      },
+      "sourceLink": "Source code on GitHub"
+    }
+  }
+}

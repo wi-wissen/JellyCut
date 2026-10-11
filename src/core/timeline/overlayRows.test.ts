@@ -28,3 +28,18 @@ describe('packRows', () => {
     expect(packRows([])).toEqual({ rows: [], count: 1 })
   })
 })
+
+describe('packRows with a row limit', () => {
+  it('puts overlaps past the limit into the last row, which is drawn on top of itself', () => {
+    const spans = [0, 0, 0, 0, 0].map((start) => ({ start, end: 100 }))
+    const result = packRows(spans, 3)
+    expect(result.rows).toEqual([0, 1, 2, 2, 2])
+    expect(result.count).toBe(3)
+  })
+
+  it('still reuses a row for a bar that fits after the limit was reached', () => {
+    const result = packRows([{ start: 0, end: 10 }, { start: 0, end: 10 }, { start: 0, end: 10 }, { start: 20, end: 30 }], 2)
+    expect(result.rows).toEqual([0, 1, 1, 0])
+    expect(result.count).toBe(2)
+  })
+})

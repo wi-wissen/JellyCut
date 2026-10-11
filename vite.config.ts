@@ -52,8 +52,24 @@ function serviceWorkerPlugin(): Plugin {
   }
 }
 
-// Real pages, not a single-page app: /, /app/ (the editor) and /help/sources/ are files on the server, so
-// static hosting (GitHub Pages) serves them directly and the start page never loads the editor code.
+// Every page is a real html file, so static hosting (GitHub Pages) serves them directly and the start page
+// never loads the editor code. Help pages are picked up by folder: help/<name>/index.html needs no config.
+function htmlInputs(): Record<string, string> {
+  const inputs: Record<string, string> = {
+    landing: resolve(here, 'index.html'),
+    app: resolve(here, 'app/index.html')
+  }
+  const walkHelp = (dir: string, rel: string): void => {
+    for (const name of readdirSync(dir)) {
+      const path = join(dir, name)
+      if (statSync(path).isDirectory()) walkHelp(path, `${rel}${name}/`)
+      else if (name === 'index.html') inputs[`help/${rel}index.html`] = path
+    }
+  }
+  walkHelp(resolve(here, 'help'), '')
+  return inputs
+}
+
 export default defineConfig({
   base: './',
   appType: 'mpa',
@@ -61,11 +77,7 @@ export default defineConfig({
   optimizeDeps: { include: ['mediabunny'] },
   build: {
     rollupOptions: {
-      input: {
-        landing: resolve(here, 'index.html'),
-        app: resolve(here, 'app/index.html'),
-        sources: resolve(here, 'help/sources/index.html')
-      }
+      input: htmlInputs()
     }
   },
   // tokens.css is read as text by the contrast test; Vitest empties CSS modules unless they are included.

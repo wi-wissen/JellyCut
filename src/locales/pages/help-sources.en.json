@@ -1,0 +1,65 @@
+{
+  "help": {
+    "sources": {
+      "title": "Free images, music and videos",
+      "intro": "Here you find places for material that you may use in your videos, and learn how to name the people who made it. Before you use anything, read the licence on the page where you found it.",
+      "contents": "Contents",
+      "own": {
+        "title": "1. Best: record or create it yourself",
+        "text": "Your own photos, videos, sound recordings and drawings are the safest choice. You do not have to credit a source for them. In Jelly Cut, choose the licence “Own work”; the credits text then stays empty for them.",
+        "more": "Check your own recordings too: ask people before you film them, and make sure no music can be heard in the background that you are not allowed to use."
+      },
+      "images": {
+        "title": "2. Free images",
+        "text": "These sites offer images that are usually free to use. Their terms can change and differ from site to site, so check them on the site itself.",
+        "pixabay": "Photos and illustrations. Licence: Pixabay Content License.",
+        "pexels": "Photos. Licence: Pexels License.",
+        "unsplash": "Photos. Licence: Unsplash License.",
+        "commons": "Files of many kinds, each with its own licence. Read the licence of every file.",
+        "openverse": "Search engine for openly licensed works, including images. Read the licence of every result."
+      },
+      "videos": {
+        "title": "3. Free videos",
+        "text": "Video clips are often offered in the same places.",
+        "pexels": "Videos from Pexels. Licence: Pexels License.",
+        "pixabay": "Videos from Pixabay. Licence: Pixabay Content License.",
+        "commons": "Wikimedia Commons, see above. Read the licence of every file."
+      },
+      "music": {
+        "title": "4. Free music and sounds",
+        "text": "Music and sounds have their own licences. Some are free to use, others need a credit, and the licence can differ from track to track.",
+        "pixabay": "Music. Licence: Pixabay Content License.",
+        "fma": "Free Music Archive. Licences differ from track to track, so check each one."
+      },
+      "licences": {
+        "title": "5. What the licences mean",
+        "text": "The licence is shown on the page where you found the material. These are the common cases:",
+        "head": {
+          "licence": "Licence",
+          "meaning": "What it means for you"
+        },
+        "cc0": "CC0 and public domain",
+        "cc0Meaning": "You may use it freely. You do not have to name the creator.",
+        "by": "CC BY",
+        "byMeaning": "You may use it and change it. You must name the author, the title, the source and the licence.",
+        "bySa": "CC BY-SA",
+        "bySaMeaning": "Like CC BY. If you change the material, you must release your version under the same licence (share-alike).",
+        "reserved": "All rights reserved",
+        "reservedMeaning": "Do not use it unless the owner has given you written permission."
+      },
+      "credit": {
+        "title": "6. How to name the creators",
+        "text": "Jelly Cut keeps the source and licence of each medium. Open “Credits” in the project menu, or click “Credit” on a tile in the library. Fill in title, author, source, link and licence, then copy the generated text into the video description or onto the closing slide.",
+        "exampleLabel": "Example",
+        "example": "Sea waves by Lena Example, source: Free Music Archive (https://freemusicarchive.org/home), licence: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)",
+        "tip": "If you have the link to the page of the single file, use that instead of the start page. Jelly Cut adds the closing line “Edited with Jelly Cut” by itself."
+      },
+      "check": {
+        "title": "7. Always read the licence on the page itself",
+        "text": "Read the licence on the page where you found the material before you use it. Rules can change, so this guide is a starting point and not legal advice.",
+        "school": "For school use: if you publish a video outside school, for example on a video platform or on a school website, the same rules apply."
+      },
+      "rightsPointer": "What you should not use and what to watch for with people is on the page:"
+    }
+  }
+}

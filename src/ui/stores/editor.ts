@@ -85,7 +85,7 @@ import { detectLocale } from '../i18n'
 import de from '../../locales/de.json'
 import en from '../../locales/en.json'
 
-export type TabId = 'media' | 'audio' | 'record' | 'text' | 'sticker' | 'draw' | 'captions' | 'filter' | 'transitions'
+export type TabId = 'media' | 'audio' | 'record' | 'text' | 'sticker' | 'shape' | 'draw' | 'region' | 'picture' | 'filter' | 'transitions'
 export type GroupId = 'material' | 'design' | 'look'
 export type ThemeMode = 'light' | 'dark' | 'system'
 
@@ -142,6 +142,8 @@ export interface EditorState {
   penCap: 'round' | 'flat'
   /** Drawing mode: pointer input on the player makes strokes instead of selecting. */
   drawing: boolean
+  /** Shape of new blur or pixelate areas (the Hide tab). Not part of the project. */
+  regionShape: RegionOverlay['shape']
 }
 
 const RULER_STEP = secondsToMicros(5)
@@ -360,7 +362,8 @@ export const useEditorStore = defineStore('editor', {
       penWidth: 'medium',
       penOpacity: 1,
       penCap: 'round',
-      drawing: false
+      drawing: false,
+      regionShape: 'rect'
     }
   },
   getters: {
@@ -859,11 +862,14 @@ export const useEditorStore = defineStore('editor', {
       const op = { forward: bringForward, backward: sendBackward, front: bringToFront, back: sendToBack }[direction]
       this.commitProject(op(this.project, ref.id))
     },
-    /** Adds a blur or pixelate area at the playhead and selects it. */
+    setRegionShape(shape: RegionOverlay['shape']) {
+      this.regionShape = shape
+    },
+    /** Adds a blur or pixelate area at the playhead, in the chosen shape, and selects it. */
     addRegionAtPlayhead(effect: RegionOverlay['effect']) {
       const project = this.project
       const id = freshId(project, ID_PREFIX.overlay)
-      const next = addRegion(project, id, this.playheadMicros, effect)
+      const next = addRegion(project, id, this.playheadMicros, effect, undefined, this.regionShape)
       if (next === project) return
       this.commitProject(next)
       this.selection = { kind: 'overlay', id }

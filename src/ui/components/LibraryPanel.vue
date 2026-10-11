@@ -85,6 +85,7 @@ export default defineComponent({
   },
   methods: {
     ...mapActions(useExampleVideoStore, { createExample: 'create', abortExample: 'abort' }),
+    ...mapActions(useEditorStore, ['addMediaAtPlayhead']),
     ...mapActions(useMediaStore, [
       'importFiles',
       'importFromWorkFolder',
@@ -340,6 +341,16 @@ export default defineComponent({
             @click="openCredits(asset)"
           >
             {{ $t('credits.tile') }}
+          </button>
+
+          <button
+            v-if="asset.kind !== 'audio' && isReady(asset)"
+            type="button"
+            class="relative mt-1 flex min-h-7 items-center rounded-md px-1.5 text-[11px] font-semibold text-txt hover:bg-panel2 before:absolute before:-inset-y-2 before:inset-x-0 before:content-['']"
+            :aria-label="$t('overlays2.addPicture', { name: asset.name })"
+            @click="addMediaAtPlayhead(asset.id)"
+          >
+            {{ $t('library.asPicture') }}
           </button>
 
           <button

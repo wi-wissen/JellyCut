@@ -1,7 +1,7 @@
 // Smoke test of the PRODUCTION build served like static hosting: real pages, relative paths, a worker export.
 import { chromium } from 'playwright-core'
 import { preview } from 'vite'
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync, readdirSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -34,9 +34,9 @@ const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'} 
 await page.goto(`${origin}/`)
 await page.waitForSelector('h1')
 const landingJs = [...requested].filter((p) => p.endsWith('.js'))
-check('landing page renders', (await page.locator('h1').innerText()).includes('Jelly Cut'))
+check('landing page renders', (await page.locator('header').innerText()).includes('Jelly Cut') && (await page.locator('h1').count()) === 1)
 check('landing page does not load the editor, mediabunny or the export worker', !landingJs.some((p) => /EditorView|mediabunny|worker|exporter/i.test(p)) && landingJs.length <= 3, landingJs.join(', '))
-await page.getByRole('link', { name: /Open editor|Editor öffnen/ }).click()
+await page.getByRole('link', { name: /Open editor|Editor öffnen/ }).first().click()
 await page.waitForURL(/\/app\/$/)
 await page.waitForSelector('header')
 check('the landing link opens the editor at /app/', true)
@@ -44,9 +44,23 @@ check('the landing link opens the editor at /app/', true)
 // 2) Direct visit of the editor and the guide page (real files, no fallback needed).
 const direct = await page.goto(`${origin}/app/`)
 check('/app/ is a real page (HTTP 200)', direct?.status() === 200)
-const guide = await page.goto(`${origin}/help/sources/`)
-await page.waitForSelector('h1')
-check('/help/sources/ is a real page (HTTP 200) with a heading', guide?.status() === 200 && (await page.locator('h1').count()) === 1)
+// Every help page in dist/help/**/index.html must be a real page with one heading and the shared frame.
+const helpPages = []
+const walkHelp = (dir, rel) => {
+  for (const name of readdirSync(dir)) {
+    const path = join(dir, name)
+    if (statSync(path).isDirectory()) walkHelp(path, `${rel}${name}/`)
+    else if (name === 'index.html') helpPages.push(`/help/${rel}`)
+  }
+}
+walkHelp(join(root, 'dist/help'), '')
+check(`help: ${helpPages.length} help pages are built`, helpPages.length >= 8, helpPages.join(' '))
+for (const path of helpPages) {
+  const response = await page.goto(`${origin}${path}`)
+  await page.waitForSelector('h1')
+  const frame = (await page.locator('header a[href]').count()) > 0 && (await page.locator('footer').count()) === 1
+  check(`help page ${path} is a real page (HTTP 200) with one heading and the shared frame`, response?.status() === 200 && (await page.locator('h1').count()) === 1 && frame, String(response?.status()))
+}
 await page.goto(`${origin}/app/`)
 await page.waitForSelector('canvas')
 

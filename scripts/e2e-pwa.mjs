@@ -19,6 +19,8 @@ if (!existsSync(join(dist, 'app/index.html'))) { console.error('Run npm run buil
 
 const PORT = 5260
 const origin = `http://localhost:${PORT}`
+// Every help page from HELP_PAGES in src/ui/site/helpPages.ts.
+const HELP_PATHS = [...readFileSync(join(root, 'src/ui/site/helpPages.ts'), 'utf8').matchAll(/dir: '([a-z/]*)'/g)].map(([, dir]) => `/help/${dir}`)
 let swBumped = false
 
 const pagesLike = {
@@ -65,7 +67,7 @@ const pngs = manifest.icons.filter((i) => i.type === 'image/png')
 const iconStatus = await Promise.all(manifest.icons.map(async (i) => (await fetch(new URL(i.src, `${origin}/manifest.webmanifest`))).status))
 check('manifest lists 192 and 512 PNG icons, incl. maskable', ['192x192', '512x512'].every((s) => pngs.some((i) => i.sizes === s && i.purpose === 'any')) && pngs.some((i) => i.purpose === 'maskable' && i.sizes === '512x512'))
 check('every manifest icon is served (HTTP 200)', iconStatus.every((s) => s === 200), iconStatus.join(','))
-for (const path of ['/', '/app/', '/help/sources/']) {
+for (const path of ['/', '/app/', ...HELP_PATHS]) {
   await page.goto(`${origin}${path}`)
   const href = await page.evaluate(() => document.querySelector('link[rel="manifest"]')?.href ?? '')
   check(`manifest link on ${path}`, (await fetch(href)).status === 200, href)
@@ -84,7 +86,7 @@ const precached = await page.evaluate(async () => {
   return { names, keys: await keys }
 })
 check('exactly one versioned cache holds the precache', precached.names.length === 1, JSON.stringify(precached.names))
-check('precache holds pages, the editor worker and icons', ['/', '/app/', '/help/sources/', '/404.html', '/manifest.webmanifest'].every((p) => precached.keys.includes(p)) && precached.keys.some((p) => /export\.worker-.*\.js$/.test(p)) && precached.keys.some((p) => p.endsWith('icon-maskable-512.png')), String(precached.keys.length))
+check('precache holds pages, the editor worker and icons', ['/', '/app/', ...HELP_PATHS, '/404.html', '/manifest.webmanifest'].every((p) => precached.keys.includes(p)) && precached.keys.some((p) => /export\.worker-.*\.js$/.test(p)) && precached.keys.some((p) => p.endsWith('icon-maskable-512.png')), String(precached.keys.length))
 check('no media files are precached', !precached.keys.some((p) => /\.(webm|mp4|mp3|wav|m4a)$/i.test(p)))
 
 // 3) Online: the editor page works, unknown paths show the 404 page with status 404.
@@ -119,8 +121,10 @@ check('/app/ opens offline and the editor script runs', await page.getByRole('me
 await page.keyboard.press('Escape')
 await page.goto(`${origin}/`)
 check('landing page opens offline', (await page.locator('h1').innerText()).includes('Jelly Cut'))
-await page.goto(`${origin}/help/sources/`)
-check('guide opens offline', (await page.locator('h1').count()) === 1)
+for (const path of HELP_PATHS) {
+  await page.goto(`${origin}${path}`)
+  check(`help page ${path} opens offline`, (await page.locator('h1').count()) === 1)
+}
 const offlineMissing = await page.goto(`${origin}/does-not-exist/`)
 check('unknown path offline: 404 page from the worker, status 404', offlineMissing?.status() === 404 && (await page.content()).includes('Seite nicht gefunden'), String(offlineMissing?.status()))
 check('no uncaught page errors or console errors', errors.length === 0, errors.join('; '))

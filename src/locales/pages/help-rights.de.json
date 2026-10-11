@@ -1,0 +1,47 @@
+{
+  "help": {
+    "rights": {
+      "title": "Darauf musst du achten",
+      "lead": "Ein Video ist schnell veröffentlicht, aber nicht alles darf man einfach zeigen. Hier sind die wichtigsten Punkte.",
+      "generalNote": "Das ist allgemeine Information und keine Rechtsberatung. Die Hinweise beziehen sich vor allem auf Deutschland. Gesetze und Regeln der Plattformen können sich ändern. Bei konkreten Fragen wende dich an deine Lehrkraft oder an deine Schule.",
+      "avoidTitle": "1. Was du nicht verwenden solltest",
+      "avoidIntro": "Wenn du etwas nicht selbst gemacht hast und keine Erlaubnis dafür hast, lass es weg oder frag nach.",
+      "avoid": {
+        "streaming": "Musik aus Streamingdiensten. Dass man ein Lied hören kann, heißt nicht, dass man es in einem Video verwenden darf.",
+        "video": "Videos von YouTube oder ähnlichen Plattformen, außer die Lizenz auf der Videoseite erlaubt die Weiterverwendung ausdrücklich.",
+        "search": "Bilder aus einer normalen Websuche. Sie sind meist urheberrechtlich geschützt.",
+        "film": "Filmausschnitte aus Filmen oder Serien.",
+        "memes": "Memes, Screenshots von Chats oder Posts und Fotos von Websites anderer Leute.",
+        "logos": "Logos und Markenzeichen von Firmen, wenn der Eindruck entsteht, die Firma stehe hinter deinem Video."
+      },
+      "avoidSources": "Erlaubtes Material findest du auf der Seite:",
+      "imageTitle": "2. Das Recht am eigenen Bild",
+      "imageText": "Jede Person entscheidet selbst, ob und in welchen Videos sie öffentlich zu sehen ist. Das gilt oft auch dann, wenn du das Video nur in einem kleinen Kreis zeigen willst.",
+      "image": {
+        "ask": "Frag, bevor du filmst. Am besten fragst du ausdrücklich, ob die Person in einem Video zu sehen sein darf.",
+        "askAgain": "Frag noch einmal, bevor du veröffentlichst. Eine Zusage zum Filmen ist nicht automatisch eine Zusage zur Veröffentlichung.",
+        "background": "Achte auf Menschen im Hintergrund. Auch sie können erkennbar sein und müssen nicht gegen ihren Willen gezeigt werden.",
+        "cut": "Im Zweifel lass die Szene weg. Das ist besser, als eine Person gegen ihren Willen zu zeigen."
+      },
+      "blurNote": "Mit dem Weichzeichner in Jelly Cut kannst du Gesichter oder Nummernschilder unkenntlich machen. Das ist ein Hilfsmittel, aber kein Ersatz dafür, zu fragen.",
+      "schoolNote": "Für Lehrkräfte und Schulen gelten oft eigene Regeln, zum Beispiel für Aufnahmen im Unterricht. Frag deine Schule, welche Regeln es gibt.",
+      "ageTitle": "3. Mindestalter für Plattformen",
+      "ageText": "Viele Plattformen verlangen ein Mindestalter für ein eigenes Konto, zum Beispiel YouTube, TikTok, Instagram oder Snapchat. Häufig liegt es bei 13 Jahren. In der EU liegt es je nach Land und Dienst oft zwischen 13 und 16 Jahren. Die aktuellen Regeln stehen auf der Seite des Dienstes und können sich ändern.",
+      "ageYoutube": "YouTube verlangt für ein eigenes Konto mindestens 13 Jahre. Für jüngere Kinder gibt es Angebote, die Eltern verwalten. Auch dafür gelten eigene Regeln.",
+      "ageNoAccount": "Wenn du unter dem Mindestalter bist, hast du dort meist kein eigenes Konto und darfst dort nicht selbst veröffentlichen.",
+      "ageAsk": "Frag dann eine Mutter, einen Vater oder eine Lehrkraft, bevor du etwas hochlädst.",
+      "ageAlternative": "Eine Alternative ist die Veröffentlichung innerhalb der Schule, zum Beispiel auf der Lernplattform der Schule oder über einen nicht öffentlichen Link. Auch dort bleiben die Rechte der gezeigten Personen wichtig.",
+      "doubtTitle": "4. Im Zweifel: Checkliste",
+      "doubtIntro": "Geh diese Fragen durch, bevor du ein Video veröffentlichst.",
+      "checklist": {
+        "material": "Habe ich alles selbst gemacht, oder habe ich für jedes Stück eine klare Erlaubnis?",
+        "consent": "Haben alle, die man erkennt, für genau dieses Video zugestimmt?",
+        "background": "Ist im Hintergrund jemand zu erkennen, der nicht gefragt wurde?",
+        "music": "Darf ich die Musik nicht nur hören, sondern auch in diesem Video verwenden?",
+        "age": "Passt das Mindestalter des Dienstes, auf dem ich veröffentliche?",
+        "school": "Habe ich bei Aufnahmen aus der Schule die Lehrkraft oder die Schule gefragt?",
+        "lastly": "Wenn ich nicht sicher bin: weglassen, nachfragen oder nur innerhalb der Schule zeigen."
+      }
+    }
+  }
+}

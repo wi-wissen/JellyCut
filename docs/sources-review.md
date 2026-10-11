@@ -15,10 +15,8 @@ Open each link in a current browser and confirm it is reachable and still the ex
 - [ ] https://openverse.org
 - [ ] https://www.pexels.com/videos/
 - [ ] https://pixabay.com/videos/
-- [ ] https://freesound.org
 - [ ] https://pixabay.com/music/
-- [ ] https://freemusicarchive.org
-- [ ] https://incompetech.com
+- [ ] https://freemusicarchive.org/home
 - [ ] Licence links in `LICENSES`: creativecommons.org (CC0 1.0, CC BY 4.0, CC BY-SA 4.0), pixabay.com/service/license-summary/, www.pexels.com/license/, unsplash.com/license
 
 ## 2. Licence statements
@@ -30,8 +28,6 @@ For every site, read the licence or terms page itself and confirm the statements
 - [ ] Unsplash: the Unsplash License applies. Still true?
 - [ ] Wikimedia Commons: each file has its own licence; the guide says so. Still true?
 - [ ] Openverse: a search engine over openly licensed works; each result shows its licence. Still true?
-- [ ] Freesound: the guide asks users to check each sound and use only CC0 or CC BY. Do the site's search filters and licence labels still allow this?
-- [ ] Incompetech: music under CC BY with attribution required. Still true for the catalogue as a whole?
 - [ ] Free Music Archive: licences differ per track. Still true?
 
 ## 3. Jelly Cut defaults
@@ -45,8 +41,11 @@ For every site, read the licence or terms page itself and confirm the statements
 - [ ] No claim about a site goes beyond what the guide states. Keep wording cautious ("usually", "check the licence").
 - [ ] German and English texts say the same thing.
 - [ ] The school note (rules also apply when publishing outside school) still reflects the school's policy.
+- [ ] The "what not to use" list and the rights notes live on `/help/rights/`. Check them against the same sources (no legal advice claims).
+- [ ] `/help/tech/`: each library or browser link still points to the project's official site, package homepage or MDN, and the version statements still match `package.json`.
 
 ## 5. Technical
 
 - [ ] `node scripts/e2e-credits.mjs` passes (checks that every listed link is present with `target="_blank"` and `rel="noopener noreferrer"`).
+- [ ] `node scripts/e2e-help.mjs` passes (help pages, navigation, links, overflow, screenshots).
 - [ ] Guide readable at 390 px and in dark mode.

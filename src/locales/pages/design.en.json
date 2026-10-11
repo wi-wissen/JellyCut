@@ -1,0 +1,176 @@
+{
+  "tabs": {
+    "text": "Text",
+    "sticker": "Stickers",
+    "shape": "Shapes",
+    "draw": "Draw",
+    "region": "Hide",
+    "picture": "Picture in picture"
+  },
+  "design": {
+    "content": "Content",
+    "look": "Look",
+    "time": "Timing",
+    "animation": "Animation",
+    "order": "Order",
+    "actions": "Actions",
+    "start": "Start (s)",
+    "duration": "Duration (s)",
+    "colour": "Colour",
+    "opacity": "Opacity",
+    "animIn": "Enter",
+    "animOut": "Exit",
+    "animNone": "None",
+    "loop": "Loop",
+    "loops": {
+      "wiggle": "Wiggle"
+    },
+    "toFront": "To front",
+    "forward": "Forward one",
+    "backward": "Back one",
+    "toBack": "To back",
+    "orderHint": "Text always lies above stickers, shapes and pictures.",
+    "duplicate": "Duplicate",
+    "delete": "Delete",
+    "areaShape": "Area shape",
+    "back": "Back"
+  },
+  "overlays": {
+    "stickerHint": "Tap a sticker. It appears at the playhead. Then drag it in the preview, and resize and turn it with the handles.",
+    "shapeHint": "Tap a shape. It appears at the playhead. Drag the handles to move, enlarge or turn it.",
+    "shape": {
+      "rect": "Frame",
+      "ellipse": "Ellipse",
+      "arrow": "Arrow"
+    },
+    "shapes": "Shapes",
+    "header": {
+      "sticker": "Sticker · {name}",
+      "shape": "Shape · {name}",
+      "stroke": "Stroke"
+    },
+    "lineWidth": "Line width",
+    "penWidth": "Pen width",
+    "penWidths": {
+      "thin": "Thin",
+      "medium": "Medium",
+      "thick": "Thick"
+    },
+    "startDrawing": "Start drawing",
+    "done": "Done",
+    "drawHint": "After you start, paint over the preview with a finger or mouse. Each stroke appears at the playhead.",
+    "drawHintOn": "Drawing is on. Paint over the preview with a mouse or finger. Done stops drawing.",
+    "undoStroke": "Undo last stroke",
+    "noStrokes": "No strokes in this project yet.",
+    "timelineLabel": "Overlay: {name}",
+    "player": {
+      "box": "Overlay {name}",
+      "move": "Move",
+      "scale": "Resize",
+      "rotate": "Rotate",
+      "surface": "Drawing surface: paint with a mouse or your finger",
+      "drawing": "Drawing"
+    }
+  },
+  "overlays2": {
+    "regionHeader": "Area · {name}",
+    "regionHint": "The area blurs or pixelates what lies under it, for example a face or a number plate. It appears at the playhead.",
+    "blurAction": "Blur an area",
+    "pixelateAction": "Pixelate an area",
+    "effect": "Effect",
+    "effects": {
+      "blur": "Blur",
+      "pixelate": "Pixelate"
+    },
+    "strength": "Strength",
+    "pictureHeader": "Picture · {name}",
+    "pictureHint": "Tap an image or video. It appears over the video at the playhead.",
+    "noPictures": "No images or videos in the library.",
+    "addPicture": "Add {name} at the playhead",
+    "pictureShape": "Picture shape",
+    "pictureShapes": {
+      "rect": "Square",
+      "rounded": "Rounded",
+      "round": "Round"
+    },
+    "pictureStart": "Start in the video (s)",
+    "speed": "Speed",
+    "border": "Border width",
+    "borderColor": "Border colour",
+    "pictureSound": "The sound of a video is not played."
+  },
+  "overlays3": {
+    "penOpacity": "Opacity",
+    "markerPreset": "Marker (highlighter)",
+    "anim": {
+      "fade": "Fade",
+      "pop": "Pop",
+      "slideFromTop": "Slide in from top",
+      "slideFromBottom": "Slide in from bottom",
+      "slideFromLeft": "Slide in from left",
+      "slideFromRight": "Slide in from right",
+      "slideToTop": "Slide out to top",
+      "slideToBottom": "Slide out to bottom",
+      "slideToLeft": "Slide out to left",
+      "slideToRight": "Slide out to right"
+    },
+    "sticker": {
+      "star": "Star",
+      "heart": "Heart",
+      "check": "Check mark",
+      "cross": "Cross",
+      "arrowRight": "Arrow right",
+      "arrowUp": "Arrow up",
+      "speech": "Speech bubble",
+      "thought": "Thought bubble",
+      "exclamation": "Exclamation mark",
+      "question": "Question mark",
+      "lightbulb": "Idea",
+      "thumbsUp": "Thumbs up",
+      "smile": "Smile",
+      "sun": "Sun",
+      "cloud": "Cloud",
+      "lightning": "Lightning",
+      "flag": "Flag",
+      "music": "Music note",
+      "camera": "Camera",
+      "play": "Play button",
+      "crown": "Crown",
+      "sparkles": "Sparkles",
+      "badge1": "Badge 1",
+      "badge2": "Badge 2",
+      "badge3": "Badge 3"
+    },
+    "regionShape": {
+      "rect": "Rectangle",
+      "ellipse": "Oval",
+      "roundRect": "Rounded"
+    }
+  },
+  "text": {
+    "whySeparate": "Text has its own tab because you type it. Everything else is picked from a gallery.",
+    "add": "Add text",
+    "presets": "Presets",
+    "defaultText": "Text",
+    "sample": "Aa",
+    "fontSample": "Aa Hello",
+    "presetNames": {
+      "title": "Title",
+      "subtitle": "Subtitle",
+      "neon": "Neon",
+      "poster": "Poster",
+      "script": "Script",
+      "note": "Note"
+    },
+    "presetAria": "Preset {name}",
+    "header": "Text · \"{text}\"",
+    "content": "Text content",
+    "font": "Font",
+    "size": "Size",
+    "outline": "Outline",
+    "outlineColor": "Outline colour"
+  },
+  "library": {
+    "asPicture": "As picture in picture"
+  }
+}
