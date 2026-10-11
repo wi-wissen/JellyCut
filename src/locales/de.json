@@ -310,6 +310,19 @@
       "camera": "Bild und Ton",
       "screen": "Bildschirm, mit Ton wenn möglich"
     },
+    "micSwitch": "Mikrofon mitsprechen",
+    "micHelp": "Dein Ton wird zusammen mit dem Bildschirm aufgenommen. Laut genug sprechen, Kopfhörer vermeiden Echo.",
+    "mic": {
+      "denied": "Ohne Mikrofon aufgenommen: Zugriff nicht erlaubt",
+      "missing": "Ohne Mikrofon aufgenommen: kein Mikrofon gefunden",
+      "failed": "Ohne Mikrofon aufgenommen: es konnte nicht genutzt werden"
+    },
+    "details": {
+      "title": "Technische Details",
+      "hint": "Wenn es immer wieder scheitert, kopiere diesen Text und schicke ihn an die Person, die sich um Jelly Cut kümmert. Er enthält keine Namen oder Webadressen.",
+      "copy": "Kopieren",
+      "copied": "Kopiert"
+    },
     "waiting": "Bitte erlaube den Zugriff im Browser. Dann beginnt die Aufnahme.",
     "preview": "Vorschau",
     "level": "Lautstärke",
@@ -681,6 +694,7 @@
       "toLight": "Zum hellen Design wechseln",
       "toDark": "Zum dunklen Design wechseln"
     },
+    "version": "Version {id}",
     "footer": {
       "text": "Jelly Cut ist Open Source. Dateien bleiben auf deinem Gerät.",
       "github": "Quellcode auf GitHub"

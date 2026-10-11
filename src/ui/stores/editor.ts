@@ -14,6 +14,7 @@ import {
   bringForward,
   bringToFront,
   moveOverlay as moveOverlayInTime,
+  moveOverlayToLane as moveOverlayToLaneInStack,
   removeLastStroke,
   sendBackward,
   sendToBack,
@@ -166,6 +167,8 @@ const ID_PREFIX: Record<ItemKind, string> = { clip: 'clip-', text: 'text-', musi
  * state: it is only needed between begin and end of one gesture.
  */
 let gestureBase: Project | null = null
+/** History, dirty flag and unsaved time at the start of a gesture, so Escape can put everything back. */
+let gestureStart: { history: HistoryState<Project>; dirty: boolean; since: number | null } | null = null
 
 function freshId(project: Project, prefix: string): string {
   return nextId(projectIds(project), prefix)
@@ -684,9 +687,23 @@ export const useEditorStore = defineStore('editor', {
      */
     beginGesture() {
       gestureBase = this.project
+      gestureStart = { history: this.history, dirty: this.dirtySinceFileSave, since: this.unsavedSince }
+    },
+    /** Escape during a drag: drops every edit of the gesture, leaves no undo step and no redo entry. */
+    cancelGesture() {
+      const start = gestureStart
+      if (start && this.history !== start.history) {
+        this.history = start.history
+        warmAnimatedSheets(this.history.present.overlays)
+        this.dirtySinceFileSave = start.dirty
+        this.unsavedSince = start.since
+        this.scheduleAutosave()
+      }
+      this.endGesture()
     },
     endGesture() {
       gestureBase = null
+      gestureStart = null
       this.history = breakCoalescing(this.history)
     },
     /** Applies an edit to the gesture's base project (or the current one outside a gesture). */
@@ -956,6 +973,13 @@ export const useEditorStore = defineStore('editor', {
     },
     moveOverlay(id: string, t: Micros) {
       this.editProject((base) => moveOverlayInTime(base, id, t), `overlay-move:${id}`)
+    },
+    /** Drag in the overlay lanes: optionally moves in time, then puts the item into the lane row (one undo step with the move). */
+    moveOverlayToLane(id: string, row: number, start?: Micros) {
+      this.editProject(
+        (base) => moveOverlayToLaneInStack(start === undefined ? base : moveOverlayInTime(base, id, start), id, row),
+        `overlay-move:${id}`
+      )
     },
     trimOverlayStart(id: string, t: Micros) {
       this.editProject((base) => trimOverlayStartInTime(base, id, t), `overlay-trim-start:${id}`)

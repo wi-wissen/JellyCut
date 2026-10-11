@@ -35,6 +35,8 @@ export default defineComponent({
     left: { type: Number, required: true },
     width: { type: Number, required: true },
     offset: { type: Number, default: 0 },
+    /** Vertical drag between overlay lanes: the bar follows the pointer by this many pixels. */
+    offsetY: { type: Number, default: 0 },
     selected: { type: Boolean, default: false },
     interactive: { type: Boolean, default: true },
     handles: { type: Boolean, default: false },
@@ -82,14 +84,12 @@ export default defineComponent({
         color,
         // Room for the "more" button on touch lanes.
         paddingRight: this.moreButton && this.selected ? '48px' : undefined,
-        // Selection: a 2 px lime outline, with a thin dark line inside so it also shows on amber and lime-ish tracks.
-        boxShadow: this.selected
-          ? 'inset 0 0 0 2px var(--jc-signal), inset 0 0 0 3px var(--jc-signal-fg)'
-          : 'inset 0 0 0 1px var(--jc-panel)'
+        // The selection ring is its own element (jc-bar__ring), so the bar keeps one clean radius.
+        boxShadow: this.selected ? 'none' : 'inset 0 0 0 1px var(--jc-panel)'
       }
     },
     rootStyle(): Record<string, string | number> {
-      const shift = this.offset ? `translateX(${this.offset}px)` : ''
+      const shift = this.offset || this.offsetY ? `translate(${this.offset}px, ${this.offsetY}px)` : ''
       const lifted = this.lifted
       return {
         left: `${this.left}px`,
@@ -97,9 +97,9 @@ export default defineComponent({
         top: `${this.row * this.laneHeight + this.inset}px`,
         height: `${this.laneHeight - 2 * this.inset}px`,
         transform: lifted ? `${shift} scale(1.04)`.trim() : shift || 'none',
-        filter: lifted ? 'drop-shadow(0 6px 10px rgb(0 0 0 / 0.35))' : 'none',
+        filter: lifted || this.offsetY ? 'drop-shadow(0 6px 10px rgb(0 0 0 / 0.35))' : 'none',
         // The selected bar stays on top of any bars it overlaps in the same row.
-        zIndex: this.offset || lifted ? 10 : this.selected ? 2 : 'auto'
+        zIndex: this.offset || this.offsetY || lifted ? 10 : this.selected ? 2 : 'auto'
       }
     }
   },
@@ -174,11 +174,18 @@ export default defineComponent({
 </script>
 
 <template>
-  <div class="absolute" :class="{ 'pointer-events-none': !interactive }" :style="rootStyle" :data-kind="variant" :data-lifted="lifted ? 'true' : undefined">
+  <div
+    class="jc-bar absolute"
+    :class="{ 'pointer-events-none': !interactive }"
+    :style="rootStyle"
+    :data-kind="variant"
+    :data-lifted="lifted ? 'true' : undefined"
+    :data-selected="selected ? 'true' : undefined"
+  >
     <button
       v-if="interactive"
       type="button"
-      class="flex h-full w-full touch-none select-none items-center overflow-hidden rounded-md px-2 text-left text-[11px] font-semibold [-webkit-touch-callout:none]"
+      class="flex h-full w-full touch-none select-none items-center overflow-hidden rounded-md px-2.5 text-left text-[11px] font-semibold [-webkit-touch-callout:none]"
       :style="bodyStyle"
       :aria-label="ariaLabel || label"
       :aria-pressed="selected"
@@ -196,21 +203,27 @@ export default defineComponent({
       <span class="truncate">{{ label }}</span>
     </div>
 
+    <span class="jc-bar__ring pointer-events-none absolute inset-0 rounded-md" aria-hidden="true" />
+
     <template v-if="handles && selected">
       <div
-        class="absolute inset-y-0 left-0 w-[7px] cursor-ew-resize touch-none rounded-l-md bg-signal"
+        class="jc-bar__handle absolute inset-y-0 left-[2px] flex w-[7px] cursor-ew-resize touch-none items-center justify-center"
         :title="startLabel"
         :data-handle="'start'"
         aria-hidden="true"
         @pointerdown="onHandleDown('start', $event)"
-      />
+      >
+        <span class="jc-bar__grip" />
+      </div>
       <div
-        class="absolute inset-y-0 right-0 w-[7px] cursor-ew-resize touch-none rounded-r-md bg-signal"
+        class="jc-bar__handle absolute inset-y-0 right-[2px] flex w-[7px] cursor-ew-resize touch-none items-center justify-center"
         :title="endLabel"
         :data-handle="'end'"
         aria-hidden="true"
         @pointerdown="onHandleDown('end', $event)"
-      />
+      >
+        <span class="jc-bar__grip" />
+      </div>
     </template>
 
     <button
@@ -231,3 +244,41 @@ export default defineComponent({
     </button>
   </div>
 </template>
+
+<style scoped>
+/*
+ * One ring for every state, same radius as the bar. Selected: 2 px lime ring inside the bar edge and a 2 px
+ * contrast ring outside. Keyboard focus: a 2 px violet ring outside (replaces the contrast ring), so it differs
+ * from the selection but is just as round.
+ */
+.jc-bar__ring {
+  box-shadow: none;
+}
+/* The ring below replaces the global focus outline. */
+.jc-bar > button:focus-visible {
+  outline: none;
+}
+.jc-bar[data-selected] .jc-bar__ring {
+  box-shadow:
+    inset 0 0 0 2px var(--jc-signal),
+    0 0 0 2px var(--jc-sel-halo);
+}
+.jc-bar:has(> button:focus-visible) .jc-bar__ring {
+  box-shadow: 0 0 0 2px var(--jc-fill);
+}
+.jc-bar[data-selected]:has(> button:focus-visible) .jc-bar__ring {
+  box-shadow:
+    inset 0 0 0 2px var(--jc-signal),
+    0 0 0 2px var(--jc-fill);
+}
+/* The handle is a short rounded grip inside the ring; the 7 px wide element around it is the hit area. */
+.jc-bar__grip {
+  width: 3px;
+  height: 55%;
+  max-height: 20px;
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgb(20 18 31 / 0.45);
+  pointer-events: none;
+}
+</style>

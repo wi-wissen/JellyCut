@@ -115,7 +115,7 @@ Taken from the code comments, [`decisions.md`](decisions.md) and [`performance.m
 - Overlays and areas have no keyframes: each keeps its position and size for its whole length.
 - Overlay and text rasters are capped at 4096 px per side; the output at 8192 px.
 - Text in an export can only use the fonts bundled for the export worker (`src/ui/fontUrls.ts`); emoji typed into a text item use the system emoji font, so they look different per system.
-- The gallery offers 128 picture stickers and 13 plain shapes; 60 of the pictures also have an animation (switch 'Animated'). Pictures have no colour or outline. Older vector and emoji stickers still render but are no longer offered.
+- The gallery offers 128 picture stickers and 13 plain shapes; 60 of the pictures also have an animation (animated by default when added, switch per item). Pictures have no colour or outline. Older vector and emoji stickers still render but are no longer offered.
 - An animated sticker is always a whole number of loops long (about 1 to 4 s each) and ends before the video end by less than one loop; an animation sheet is about 100 kB and is loaded the first time it is needed. Offline and not loaded before, the still picture is shown instead.
 - A "mirrored edges" background is not part of version 1.
 

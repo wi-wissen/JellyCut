@@ -202,15 +202,15 @@ await check('context menu: Duplicate runs the store action and adds one clip', a
   assert(after === before + 1, `clips ${before} -> ${after}`)
 })
 
-await check('context menu on a sticker offers only the common actions', async () => {
+await check('context menu on a sticker offers the common actions and the four stacking entries', async () => {
   await st(page, '(ed) => ed.addStickerAtPlayhead("🎉")')
   const sticker = page.getByRole('button', { name: /🎉/ }).first()
   await sticker.click({ button: 'right' })
   const menu = page.getByRole('menu', { name: 'Actions for the selected item' })
   await menu.waitFor()
   const count = await menu.getByRole('menuitem').count()
-  assert(count === 2, `${count} entries`)
   await page.keyboard.press('Escape')
+  assert(count === 6, `${count} entries`)
 })
 
 // Timeline height: fixed, resizable, lanes scroll inside, hint for hidden lanes

@@ -48,6 +48,8 @@ The site is built by Vite as several real HTML pages (`vite.config.ts`). There i
 
 `base: './'` makes the site work under any domain or sub path. Help pages are found by their folder (`help/**/index.html`); their order and names are in `HELP_PAGES` (`src/ui/site/helpPages.ts`).
 
+The build id (short git commit, `__APP_VERSION__` from `vite.config.ts`, `dev` if unknown) is shown quietly in the site footer and at the bottom of the project menu. Screen recordings are re-drawn through a canvas at 30 fps (long side capped at 1920 px) with the microphone mixed in; a failed recording offers copyable technical details.
+
 Deployment: `.github/workflows/ci.yml` runs typecheck, tests and build for pull requests and for pushes to branches other than `main`. `.github/workflows/pages.yml` does the same on `main` and then deploys `dist/` to GitHub Pages (pull requests only build). The custom domain is set in the repository settings. The real-browser scripts are not in CI; run them before a release (see [`docs/release-checklist.md`](docs/release-checklist.md)).
 
 ## Offline use (PWA)
@@ -126,6 +128,7 @@ The scripts in `scripts/e2e-*.mjs` drive Chromium with Playwright (`playwright-c
 | `e2e-overlays2.mjs` | 5250 | opacity, animations, blur and pixelate areas, pictures and videos |
 | `e2e-overlays3.mjs` | 5250 | vector stickers, directions, stacking, marker, picture timing |
 | `e2e-zorder.mjs` | 5340 | true stacking order of areas and other overlays |
+| `e2e-laneorder.mjs` | 5410 | stacking from the timeline: menu, shortcuts, lane drag, Escape, undo |
 | `e2e-stickers.mjs` | 5360 | picture stickers: gallery, preview and export pixels, save and load |
 | `e2e-animstickers.mjs` | 5390 | animated stickers: no sheet on first load, lazy sheets, whole loops, loop pixels in preview and export, snapping, save and load, fallback |
 | `e2e-design.mjs` | 5310 | design tabs: shared sections, no position fields, arrow keys (`E2E_PORT`) |

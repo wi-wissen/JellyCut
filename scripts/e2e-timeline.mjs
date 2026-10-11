@@ -121,7 +121,7 @@ await check('clicking a clip selects it (aria-pressed, handles on the selected v
 })
 
 await check('selection outline uses the signal colour', async () => {
-  const shadow = await clipButton(page, 'Beach.mp4').evaluate((el) => getComputedStyle(el).boxShadow)
+  const shadow = await clipButton(page, 'Beach.mp4').evaluate((el) => getComputedStyle(el.parentElement.querySelector('.jc-bar__ring')).boxShadow)
   assert(shadow.includes('rgb(198, 244, 50)') || shadow.includes('c6f432'), `box-shadow ${shadow}`)
 })
 

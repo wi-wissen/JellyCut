@@ -1,4 +1,4 @@
-// Real-browser check of the picture stickers (Fluent Emoji): gallery with category tabs and search, adding one
+// Real-browser check of the picture stickers (Fluent Emoji): gallery with a category dropdown and search, adding one
 // puts it on the canvas (preview pixels), the exported MP4 frame (worker export) contains it, a project round trip
 // keeps it, and old projects with vector and emoji stickers still render. Writes screenshots to OVERLAY_SHOTS.
 // Usage: node scripts/e2e-stickers.mjs (exit code 1 when a check fails). Port 5360 only.
@@ -23,6 +23,13 @@ function findChromium() {
 const server = await createServer({ server: { port: PORT, strictPort: true }, logLevel: 'error' })
 await server.listen()
 const browser = await chromium.launch({ executablePath: findChromium(), args: ['--no-sandbox'] })
+
+/** Opens the category dropdown and picks an entry by its name. */
+async function pickCategory(page, name) {
+  const trigger = page.locator('[data-role="sticker-category"] button').first()
+  if ((await trigger.getAttribute('aria-expanded')) !== 'true') await trigger.click()
+  await page.getByRole('option', { name, exact: true }).click()
+}
 
 let failed = 0
 const check = (name, ok, detail = '') => {
@@ -111,17 +118,32 @@ async function openStickers(page) {
   const { context, page, st } = await openEditor({ width: 1440, height: 900 }, 'light')
   await openStickers(page)
 
-  const tabs = await page.getByRole('tab').evaluateAll((els) => els.map((e) => e.textContent.trim()).filter((t) => !/^(Design|Gestalten)$/.test(t)))
-  check('gallery: eight categories plus Shapes are offered as tabs', tabs.includes('Faces') && tabs.includes('Animals') && tabs.includes('Shapes') && tabs.length >= 9, JSON.stringify(tabs))
+  const trigger = page.locator('[data-role="sticker-category"] button').first()
+  check('gallery: a labelled "Category" dropdown replaces the sideways scroller', (await page.getByText('Category', { exact: true }).count()) === 1 && (await trigger.getAttribute('aria-haspopup')) === 'listbox')
+  const tbox = await trigger.boundingBox()
+  check('gallery: the dropdown is 44 px tall and shows the current category', tbox && tbox.height >= 44 && (await trigger.textContent()).includes('Faces'), JSON.stringify(tbox))
+  check('gallery: no horizontal scroller is left', (await page.locator('#sticker-grid').evaluate((g) => g.parentElement.querySelectorAll('.overflow-x-auto').length)) === 0)
+  await trigger.click()
+  const opts = await page.getByRole('option').evaluateAll((els) => els.map((e) => e.textContent.trim()))
+  check('gallery: the list starts with All and offers every category plus Shapes', opts[0] === 'All' && opts.includes('Faces') && opts.includes('Animals') && opts.at(-1) === 'Shapes' && opts.length === 11, JSON.stringify(opts))
+  check('gallery: options carry an icon', (await page.getByRole('option').first().locator('svg, img').count()) >= 1 && (await page.getByRole('option', { name: 'Animals' }).locator('img').count()) === 1)
+  await page.screenshot({ path: `${SHOTS}/stickers-dropdown-open-desktop-light.png` })
+  await page.keyboard.press('Escape')
+  check('gallery: Escape closes the list and the focus is back on the dropdown', (await trigger.getAttribute('aria-expanded')) === 'false' && (await trigger.evaluate((e) => e === document.activeElement)))
   const facesCount = await page.locator('#sticker-grid [data-sticker]').count()
   check('gallery: the first tab shows the faces', facesCount >= 8 && (await page.locator('[data-sticker="grin"]').count()) === 1, String(facesCount))
-  await page.getByRole('tab', { name: 'Animals' }).click()
+  await pickCategory(page, 'Animals')
   check('gallery: the Animals tab shows animals and no faces', (await page.locator('[data-sticker="panda"]').count()) === 1 && (await page.locator('[data-sticker="grin"]').count()) === 0)
 
-  // keyboard: arrow right moves to the next tab
-  await page.getByRole('tab', { name: 'Animals' }).focus()
-  await page.keyboard.press('ArrowRight')
-  check('gallery: the arrow keys move between the category tabs', (await page.getByRole('tab', { name: 'Party' }).getAttribute('aria-selected')) === 'true')
+  // keyboard: arrow down opens the list, arrows move, Enter picks
+  await trigger.focus()
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Enter')
+  check('gallery: the keyboard picks the next category (Party)', (await trigger.textContent()).includes('Party') && (await trigger.getAttribute('aria-expanded')) === 'false')
+  await pickCategory(page, 'All')
+  check('gallery: All shows every category', (await page.locator('[data-sticker="grin"]').count()) === 1 && (await page.locator('[data-sticker="panda"]').count()) === 1)
+  await pickCategory(page, 'Animals')
 
   const small = await page.locator('#sticker-grid button').first().boundingBox()
   check('gallery: tiles are big touch targets', small && small.width >= 80 && small.height >= 80, JSON.stringify(small))
@@ -148,8 +170,8 @@ async function openStickers(page) {
   check('search: clearing the search shows the category again', (await page.locator('#sticker-grid [data-sticker]').count()) > 0)
 
   // adding a sticker
-  await page.getByRole('tab', { name: 'Faces' }).click()
-  await page.getByRole('tab', { name: 'Hearts & hands' }).click()
+  await pickCategory(page, 'Faces')
+  await pickCategory(page, 'Hearts & hands')
   await page.waitForTimeout(150)
   const bg = await (async () => {
     await st('(ed) => ed.select(null)')
@@ -252,10 +274,10 @@ async function openStickers(page) {
   await st('(ed) => { ed.setPlayhead(1000000); ed.select(null) }')
   await page.waitForTimeout(800)
   writeFileSync(`${SHOTS}/stickers-frame-light.png`, Buffer.from(await canvasShot(page), 'base64'))
-  await page.getByRole('tab', { name: 'Faces' }).click().catch(() => {})
+  await pickCategory(page, 'Faces').catch(() => {})
   await page.waitForTimeout(300)
   await page.screenshot({ path: `${SHOTS}/stickers-gallery-desktop-light.png` })
-  await page.getByRole('tab', { name: 'Hearts & hands' }).click().catch(() => {})
+  await pickCategory(page, 'Hearts & hands').catch(() => {})
   await page.waitForTimeout(300)
   await page.screenshot({ path: `${SHOTS}/stickers-gallery-desktop-hearts-light.png` })
   await page.getByRole('searchbox').fill('par')
@@ -281,12 +303,15 @@ async function openStickers(page) {
 {
   const { context, page, st } = await openEditor({ width: 1440, height: 900 }, 'dark', 'de')
   await openStickers(page)
-  check('german: the tabs and the search are translated', (await page.getByRole('tab', { name: 'Tiere' }).count()) === 1 && (await page.getByRole('searchbox').getAttribute('aria-label')) === 'Aufkleber suchen')
+  check('german: the dropdown and the search are translated', (await page.getByText('Kategorie', { exact: true }).count()) === 1 && (await page.getByRole('searchbox').getAttribute('aria-label')) === 'Aufkleber suchen')
   await page.getByRole('searchbox').fill('heart')
   await page.waitForTimeout(150)
   check('german: searching the English word finds German-labelled stickers', (await page.locator('[data-sticker="heart"]').count()) === 1)
   await page.getByRole('searchbox').fill('')
-  await page.getByRole('tab', { name: 'Tiere' }).click()
+  await page.locator('[data-role="sticker-category"] button').first().click()
+  await page.waitForTimeout(200)
+  await page.screenshot({ path: `${SHOTS}/stickers-dropdown-open-desktop-dark.png` })
+  await page.getByRole('option', { name: 'Tiere', exact: true }).click()
   await page.waitForTimeout(500)
   await page.screenshot({ path: `${SHOTS}/stickers-gallery-desktop-dark.png` })
   await st(
@@ -311,6 +336,15 @@ for (const scheme of ['light', 'dark']) {
   const tile = await page.locator('#sticker-grid button').first().boundingBox()
   check(`phone ${scheme}: tiles keep 44 px touch targets`, tile && tile.width >= 44 && tile.height >= 44, JSON.stringify(tile))
   await page.screenshot({ path: `${SHOTS}/stickers-gallery-phone-${scheme}.png` })
+  const ptrigger = page.locator('[data-role="sticker-category"] button').first()
+  const pbox = await ptrigger.boundingBox()
+  check(`phone ${scheme}: the category dropdown is 44 px tall and fits the width`, pbox && pbox.height >= 44 && pbox.x >= 0 && pbox.x + pbox.width <= 390, JSON.stringify(pbox))
+  await ptrigger.click()
+  await page.waitForTimeout(200)
+  const obox = await page.getByRole('option').nth(1).boundingBox()
+  check(`phone ${scheme}: list options keep 44 px`, obox && obox.height >= 44 && obox.x + obox.width <= 390, JSON.stringify(obox))
+  await page.screenshot({ path: `${SHOTS}/stickers-dropdown-open-phone-${scheme}.png` })
+  await page.keyboard.press('Escape')
   await page.locator('#sticker-grid').scrollIntoViewIfNeeded()
   await page.waitForTimeout(300)
   await page.screenshot({ path: `${SHOTS}/stickers-gallery-phone-scrolled-${scheme}.png` })

@@ -1,6 +1,7 @@
 {
   "stickers": {
     "categories": {
+      "all": "All",
       "faces": "Faces",
       "moreFaces": "Smileys",
       "hearts": "Hearts & hands",
@@ -145,17 +146,19 @@
     "search": "Search stickers",
     "placeholder": "Search, e.g. heart",
     "none": "Nothing found. Try another word.",
-    "tabs": "Categories",
     "results": "Search results",
     "credit": "Stickers: Fluent Emoji (3D and animated) by Microsoft (MIT licence)",
     "animated": {
-      "switch": "Animated",
-      "badge": "Has an animation",
+      "badge": "Animated",
       "tile": "{name} (animated)"
     },
     "loops": "{count} ×",
     "loopInfo": "The length is always a whole number of loops. One loop takes {seconds} s.",
-    "animatedFor": "Animated"
+    "animatedFor": "Animated",
+    "category": {
+      "label": "Category",
+      "searching": "Searching all categories"
+    }
   },
   "overlays3": {
     "sticker": {}

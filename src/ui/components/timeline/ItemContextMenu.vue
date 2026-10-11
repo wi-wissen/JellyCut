@@ -7,6 +7,9 @@ export interface MenuEntry {
   label: string
   icon: string
   enabled: boolean
+  /** Shown at the right of the row and announced as the key shortcut. */
+  shortcut?: string
+  keys?: string
 }
 
 const VIEWPORT_MARGIN_PX = 8
@@ -103,7 +106,7 @@ export default defineComponent({
       ref="root"
       role="menu"
       :aria-label="ariaLabel"
-      class="jc-item-menu fixed z-[60] flex min-w-[196px] flex-col gap-0.5 rounded-xl border border-line bg-panel p-1.5 text-fg shadow-xl"
+      class="jc-item-menu fixed z-[60] flex min-w-[236px] flex-col gap-0.5 rounded-xl border border-line bg-panel p-1.5 text-fg shadow-xl"
       :style="{ left: left + 'px', top: top + 'px' }"
       @keydown="onMenuKey"
     >
@@ -115,10 +118,12 @@ export default defineComponent({
         class="jc-item-menu__row flex items-center gap-2.5 rounded-lg px-2.5 text-left text-[13px] font-semibold hover:bg-panel2 focus-visible:bg-panel2"
         :class="entry.enabled ? '' : 'cursor-not-allowed opacity-40'"
         :aria-disabled="!entry.enabled"
+        :aria-keyshortcuts="entry.keys"
         @click="run(entry)"
       >
         <Icon :name="entry.icon" class="size-4 shrink-0 text-muted" aria-hidden="true" />
-        <span>{{ entry.label }}</span>
+        <span class="min-w-0 flex-1">{{ entry.label }}</span>
+        <span v-if="entry.shortcut" class="shrink-0 pl-3 text-[11px] font-medium text-muted" aria-hidden="true">{{ entry.shortcut }}</span>
       </button>
     </div>
   </Teleport>

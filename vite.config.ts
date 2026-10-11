@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { resolve, join, sep } from 'node:path'
@@ -7,6 +8,17 @@ import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 
 const here = import.meta.dirname
+
+// Short commit id shown (very quietly) in the footer and the project menu, so a bug report can name the build.
+function appVersion(): string {
+  const fromCi = process.env.GITHUB_SHA?.slice(0, 7)
+  if (fromCi) return fromCi
+  try {
+    return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() || 'dev'
+  } catch {
+    return 'dev'
+  }
+}
 
 // Sprite sheets of the animated stickers (src/assets/stickers-animated, file name prefix `sticker-anim-`): about 6 MB
 // that most people never need. They stay out of the precache; the service worker caches them on first use.
@@ -78,6 +90,7 @@ function htmlInputs(): Record<string, string> {
 
 export default defineConfig({
   base: './',
+  define: { __APP_VERSION__: JSON.stringify(appVersion()) },
   appType: 'mpa',
   plugins: [vue(), tailwindcss(), serviceWorkerPlugin()],
   optimizeDeps: { include: ['mediabunny'] },

@@ -27,6 +27,13 @@ const server = await createServer({ server: { port: PORT, strictPort: true, hmr:
 await server.listen()
 const browser = await chromium.launch({ executablePath: findChromium(), args: ['--no-sandbox'] })
 
+/** Opens the category dropdown and picks an entry by its name. */
+async function pickCategory(page, name) {
+  const trigger = page.locator('[data-role="sticker-category"] button').first()
+  if ((await trigger.getAttribute('aria-expanded')) !== 'true') await trigger.click()
+  await page.getByRole('option', { name, exact: true }).click()
+}
+
 let failed = 0
 const check = (name, ok, detail = '') => {
   console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${ok ? '' : ` ${detail}`}`)
@@ -193,50 +200,75 @@ const { context, page, st, requests } = await openEditor({ width: 1440, height: 
   check('first load: the editor with a clip requests no animated sheet', requests.length === 0, JSON.stringify(requests))
   await openStickers(page)
   await page.waitForTimeout(500)
-  check('gallery (switch off): opening the sticker panel requests no sheet either', requests.length === 0, JSON.stringify(requests))
-  const sw = animSwitch(page)
-  check('switch: it is a labelled switch, off by default, and keyboard reachable', (await sw.getAttribute('role')) === 'switch' && (await sw.getAttribute('aria-checked')) === 'false' && (await page.getByText('Animated', { exact: true }).count()) >= 1)
+  check('gallery: opening the sticker panel requests no sheet either', requests.length === 0, JSON.stringify(requests))
+  check('gallery: there is no global "Animated" switch any more', (await page.locator('#sticker-grid').evaluate((g) => g.parentElement.querySelectorAll('[role="switch"], [data-animated-switch]').length)) === 0)
   const badges = await page.locator('#sticker-grid [data-animated-badge]').count()
   const faceTiles = await page.locator('#sticker-grid [data-sticker]').count()
   check('badges: the faces that have an animation show a badge, not every tile', badges >= 8 && badges < faceTiles, `${badges}/${faceTiles}`)
-  check('gallery (switch off): the tiles show still pictures only', (await page.locator('#sticker-grid [data-sticker-animation]').count()) === 0)
+  const badge = page.locator('[data-sticker="grin"] [data-animated-badge]')
+  check('badges: the badge is a plain image-like indicator (no button, no play triangle) named "Animated"', (await badge.evaluate((e) => e.tagName === 'SPAN' && e.getAttribute('role') === 'img' && e.getAttribute('aria-label') === 'Animated' && !e.querySelector('path[d^="M3.5"]'))))
+  check('gallery: the tiles show still pictures only', (await page.locator('#sticker-grid [data-sticker-animation]').count()) === 0)
   const tileName = await page.locator('[data-sticker="grin"]').innerText()
-  check('badges: a tile with an animation says so for screen readers', /has an animation/i.test(tileName), tileName)
+  check('badges: a tile with an animation says so for screen readers', /animated/i.test(tileName), tileName)
 
-  // keyboard: Tab to the switch and Space toggles it
-  await sw.focus()
-  await page.keyboard.press('Space')
-  await page.waitForFunction(() => document.querySelector('[data-animated-switch] [role="switch"]')?.getAttribute('aria-checked') === 'true')
-  check('switch: Space turns it on', (await sw.getAttribute('aria-checked')) === 'true')
-  await page.waitForFunction(() => [...document.querySelectorAll('#sticker-grid [data-sticker-animation]')].filter((c) => getComputedStyle(c).visibility === 'visible').length >= 5, null, { timeout: 15000 })
-  await page.waitForTimeout(600)
-  // The tiles that were on screen got their sheet; the ones below the fold wait until they scroll into view.
-  const visibleIds = await page.locator('#sticker-grid [data-sticker-animation]').evaluateAll((els) => els.filter((e) => getComputedStyle(e).visibility === 'visible').map((e) => e.dataset.stickerAnimationId))
-  const asked = sheetsOf(requests)
-  check('lazy: exactly the sheets of the visible tiles are requested', JSON.stringify(asked) === JSON.stringify([...visibleIds].sort()) && asked.length >= 5, JSON.stringify({ asked, visibleIds }))
-  check('lazy: a sheet of another tab (Thumbs up) was not requested', !asked.includes('thumbsUp') && !asked.includes('clap'))
-  check('gallery (switch on): the tile of a sticker without an animation stays a still picture', (await page.locator('[data-sticker="grin"] [data-sticker-animation]').count()) === 1 && (await page.locator('[data-sticker="exploding"] [data-sticker-animation]').count()) === 0)
-  check('switch: the choice is kept in localStorage', (await page.evaluate(() => localStorage.getItem('jellycut.animatedStickers'))) === '1')
-
-  // the tile really moves: its canvas changes over time
+  // hover: a quick pass downloads nothing, resting for 150 ms loads only that tile's sheet
+  const centre = async (id) => {
+    const box = await page.locator(`[data-sticker="${id}"]`).boundingBox()
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+  }
+  const grin = await centre('grin')
+  await page.mouse.move(grin.x, grin.y)
+  await page.waitForTimeout(60)
+  await page.mouse.move(5, 5)
+  await page.waitForTimeout(500)
+  check('hover: a quick pass over a tile requests no sheet', requests.length === 0, JSON.stringify(requests))
+  await page.mouse.move(grin.x, grin.y)
+  await page.waitForFunction(() => document.querySelector('[data-sticker="grin"] [data-sticker-animation]')?.style.visibility === 'visible', null, { timeout: 15000 })
+  await page.waitForTimeout(300)
+  check('hover: only the hovered tile\'s sheet is requested', JSON.stringify(sheetsOf(requests)) === JSON.stringify(['grin']), JSON.stringify(requests))
   const tileFrames = await page.evaluate(async () => {
-    const canvas = document.querySelector('#sticker-grid [data-sticker-animation]')
-    const grab = () => canvas.toDataURL()
-    const seen = new Set([grab()])
+    const canvas = document.querySelector('[data-sticker="grin"] [data-sticker-animation]')
+    const seen = new Set([canvas.toDataURL()])
     for (let i = 0; i < 14; i++) {
       await new Promise((r) => setTimeout(r, 90))
-      seen.add(grab())
+      seen.add(canvas.toDataURL())
     }
     return seen.size
   })
-  check('gallery (switch on): a tile animates (its canvas shows several different pictures)', tileFrames >= 4, String(tileFrames))
-
+  check('hover: the tile animates (its canvas shows several different pictures)', tileFrames >= 4, String(tileFrames))
   await page.screenshot({ path: `${SHOTS}/animstickers-gallery-desktop-light.png` })
+  const laugh = await centre('laugh')
+  await page.mouse.move(laugh.x, laugh.y)
+  await page.waitForTimeout(700)
+  const canvases = await page.locator('#sticker-grid [data-sticker-animation]').count()
+  check('hover: at most one tile animates at a time', canvases <= 1 && (await page.locator('[data-sticker="grin"] [data-sticker-animation]').count()) === 0, String(canvases))
+  await page.mouse.move(5, 5)
+  await page.waitForTimeout(200)
+  check('hover: leaving the tile shows the still picture again', (await page.locator('#sticker-grid [data-sticker-animation]').count()) === 0)
 
-  // other tab: hearts & gestures; its sheets are requested only now
-  await page.getByRole('tab', { name: 'Hearts & hands' }).click()
-  await page.waitForFunction(() => [...document.querySelectorAll('#sticker-grid [data-sticker-animation]')].filter((c) => getComputedStyle(c).visibility === 'visible').length >= 5, null, { timeout: 15000 })
-  check('lazy: opening the next tab requests its sheets then', sheetsOf(requests).includes('thumbsUp') && sheetsOf(requests).includes('clap'), JSON.stringify(sheetsOf(requests)))
+  // keyboard focus plays too, blur stops it
+  await page.keyboard.press('Shift')
+  await page.locator('[data-sticker="grin"]').focus()
+  await page.waitForFunction(() => document.querySelector('[data-sticker="grin"] [data-sticker-animation]') !== null, null, { timeout: 5000 })
+  check('focus: a keyboard-focused tile plays its animation', true)
+  await page.locator('[data-sticker="grin"]').blur()
+  await page.waitForTimeout(200)
+  check('focus: blur stops it', (await page.locator('#sticker-grid [data-sticker-animation]').count()) === 0)
+
+  // reduced motion: no playback, no request
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  const requestsBefore = requests.length
+  const wink = await centre('wink')
+  await page.mouse.move(wink.x, wink.y)
+  await page.waitForTimeout(700)
+  check('reduced motion: hovering plays nothing and requests nothing', (await page.locator('#sticker-grid [data-sticker-animation]').count()) === 0 && requests.length === requestsBefore, JSON.stringify(requests))
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.mouse.move(5, 5)
+
+  // other tab: no sheet is requested by switching
+  await pickCategory(page, 'Hearts & hands')
+  await page.waitForTimeout(500)
+  check('lazy: opening the next tab requests no sheet', !sheetsOf(requests).includes('thumbsUp') && !sheetsOf(requests).includes('clap'), JSON.stringify(sheetsOf(requests)))
 
   // --- add an animated sticker (clap: big motion, 1.2 s loop)
   const loopOf = (id) => page.evaluate(async (i) => (await import('/src/core/render/stickerAnimations.ts')).animatedSticker(i).loopMicros, id)
@@ -244,8 +276,9 @@ const { context, page, st, requests } = await openEditor({ width: 1440, height: 
   await st('(ed) => ed.select(null)')
   await page.locator('[data-sticker="clap"]').click()
   await page.waitForTimeout(700)
+  check('add: adding requests the sheet of that sticker', sheetsOf(requests).includes('clap'), JSON.stringify(sheetsOf(requests)))
   const item = await st('(ed) => ed.project.overlays[0]')
-  check('add: a tap with the switch on adds an animated sticker', item?.kind === 'sticker' && item.imageId === 'clap' && item.animated === true && item.emoji === undefined, JSON.stringify(item))
+  check('add: a tap adds an animated sticker by default', item?.kind === 'sticker' && item.imageId === 'clap' && item.animated === true && item.emoji === undefined, JSON.stringify(item))
   check('add: it is selected', (await st('(ed) => ed.selection?.id')) === item.id)
   check('add: its length is exactly three loops (a whole number of loops, in whole microseconds)', item.duration === 3 * CLAP && Number.isInteger(item.duration), `${item.duration} vs ${3 * CLAP}`)
   check('timeline: the bar says how many loops it has ("3 ×")', /Clapping · 3 ×/.test(await page.locator('body').innerText()))
@@ -455,17 +488,13 @@ const { context, page, st, requests } = await openEditor({ width: 1440, height: 
     await page.keyboard.press('Escape')
     await page.waitForTimeout(300)
   }
-  // --- switch off in the gallery: still tiles, a tap adds a still sticker
+  // --- the gallery has no switch: a tap adds an animated sticker again
   await st('(ed) => { ed.select(null); ed.commitProject({ ...ed.project, overlays: [] }) }')
-  await page.getByRole('tab', { name: 'Hearts & hands' }).click().catch(() => {})
-  await animSwitch(page).click()
-  await page.waitForTimeout(300)
-  check('gallery: switching off shows still tiles again and keeps the badges', (await page.locator('#sticker-grid [data-sticker-animation]').count()) === 0 && (await page.locator('#sticker-grid [data-animated-badge]').count()) >= 5)
-  check('switch: the choice "off" is kept too', (await page.evaluate(() => localStorage.getItem('jellycut.animatedStickers'))) === '0')
+  await pickCategory(page, 'Hearts & hands').catch(() => {})
   await page.locator('[data-sticker="clap"]').click()
   await page.waitForTimeout(400)
-  const stillItem = await st('(ed) => ed.project.overlays[0]')
-  check('gallery (switch off): a tap adds a normal still sticker with the free default length', stillItem.imageId === 'clap' && stillItem.animated === undefined && stillItem.duration === 3000000, JSON.stringify(stillItem))
+  const againItem = await st('(ed) => ed.project.overlays[0]')
+  check('gallery: a tap adds an animated sticker with whole loops', againItem.imageId === 'clap' && againItem.animated === true && againItem.duration === 3 * CLAP, JSON.stringify(againItem))
 }
 await context.close()
 
@@ -505,11 +534,10 @@ await context.close()
 {
   const { context: ctx, page: p, st: s4 } = await openEditor({ width: 1440, height: 1200 }, 'dark', 'de')
   await openStickers(p)
-  await p.evaluate(() => localStorage.setItem('jellycut.animatedStickers', '0'))
-  await p.getByText('Animiert', { exact: true }).first().waitFor()
-  check('german: the switch is labelled "Animiert"', (await animSwitch(p).getAttribute('aria-label')) === 'Animiert')
-  await animSwitch(p).click()
-  await p.waitForFunction(() => [...document.querySelectorAll('#sticker-grid [data-sticker-animation]')].filter((c) => getComputedStyle(c).visibility === 'visible').length >= 5, null, { timeout: 15000 })
+  check('german: the badge is named "Animiert"', (await p.locator('[data-sticker="laugh"] [data-animated-badge]').getAttribute('aria-label')) === 'Animiert')
+  const lb = await p.locator('[data-sticker="laugh"]').boundingBox()
+  await p.mouse.move(lb.x + lb.width / 2, lb.y + lb.height / 2)
+  await p.waitForFunction(() => document.querySelector('[data-sticker="laugh"] [data-sticker-animation]')?.style.visibility === 'visible', null, { timeout: 15000 })
   await p.waitForTimeout(300)
   await p.screenshot({ path: `${SHOTS}/animstickers-gallery-desktop-dark.png` })
   await p.locator('[data-sticker="laugh"]').click()
@@ -524,13 +552,8 @@ for (const scheme of ['light', 'dark']) {
   await p.getByRole('button', { name: /^(Stickers|Aufkleber)$/ }).click().catch(() => {})
   await p.waitForSelector('#sticker-grid')
   await p.waitForTimeout(300)
-  const sw = animSwitch(p)
-  const box = await sw.boundingBox()
-  check(`phone ${scheme}: the switch is a 44 px target`, box && box.height >= 44, JSON.stringify(box))
-  await sw.click()
-  // On the phone the gallery is below the picture: its sheets load once the tiles scroll into view.
+  // On the phone the gallery is below the picture; there is no hover, so no sheet is requested before a tap.
   await p.locator('#sticker-grid').scrollIntoViewIfNeeded()
-  await p.waitForFunction(() => [...document.querySelectorAll('#sticker-grid [data-sticker-animation]')].filter((c) => getComputedStyle(c).visibility === 'visible').length >= 2, null, { timeout: 15000 })
   await p.waitForTimeout(400)
   check(`phone ${scheme}: no horizontal page scroll`, !(await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)))
   const tile = await p.locator('#sticker-grid button').first().boundingBox()

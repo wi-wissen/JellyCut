@@ -25,7 +25,7 @@ export default defineComponent({
   name: 'ProjectMenu',
   components: { Icon, CreditsDialog },
   data() {
-    return { open: false, now: Date.now(), clock: 0 }
+    return { open: false, now: Date.now(), clock: 0, version: __APP_VERSION__ }
   },
   computed: {
     ...mapState(useEditorStore, [
@@ -303,6 +303,7 @@ export default defineComponent({
         <p class="font-semibold">{{ saveStateText }}</p>
         <p v-if="saveStateHint" class="mt-0.5 text-muted">{{ saveStateHint }}</p>
       </div>
+      <p class="px-2.5 pt-2 text-[11px] tabular-nums text-muted" data-role="app-version" :title="`Build ${version}`">{{ $t('site.version', { id: version }) }}</p>
     </div>
 
     <!-- Mounted here because the top bar is always present; it opens for the menu item and the library tiles. -->

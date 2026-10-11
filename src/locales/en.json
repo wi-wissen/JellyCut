@@ -310,6 +310,19 @@
       "camera": "Picture and sound",
       "screen": "Screen, with sound if possible"
     },
+    "micSwitch": "Record my voice",
+    "micHelp": "Your voice is recorded together with the screen. Speak loud enough; headphones avoid echo.",
+    "mic": {
+      "denied": "Recorded without microphone: access was not allowed",
+      "missing": "Recorded without microphone: no microphone was found",
+      "failed": "Recorded without microphone: it could not be used"
+    },
+    "details": {
+      "title": "Technical details",
+      "hint": "If this keeps failing, copy this text and send it to whoever looks after Jelly Cut. It contains no names or web addresses.",
+      "copy": "Copy",
+      "copied": "Copied"
+    },
     "waiting": "Please allow access in the browser. Recording starts then.",
     "preview": "Preview",
     "level": "Volume",
@@ -681,6 +694,7 @@
       "toLight": "Switch to light theme",
       "toDark": "Switch to dark theme"
     },
+    "version": "Version {id}",
     "footer": {
       "text": "Jelly Cut is open source. Your files stay on your device.",
       "github": "Source code on GitHub"

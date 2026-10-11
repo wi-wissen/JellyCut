@@ -1,6 +1,7 @@
 {
   "stickers": {
     "categories": {
+      "all": "Alle",
       "faces": "Gesichter",
       "moreFaces": "Smileys",
       "hearts": "Herzen & Gesten",
@@ -145,17 +146,19 @@
     "search": "Aufkleber suchen",
     "placeholder": "Suche, z. B. Herz",
     "none": "Nichts gefunden. Probiere ein anderes Wort.",
-    "tabs": "Kategorien",
     "results": "Suchergebnisse",
     "credit": "Aufkleber: Fluent Emoji (3D und animiert) von Microsoft (MIT-Lizenz)",
     "animated": {
-      "switch": "Animiert",
-      "badge": "Hat eine Animation",
+      "badge": "Animiert",
       "tile": "{name} (animiert)"
     },
     "loops": "{count} ×",
     "loopInfo": "Die Länge ist immer eine ganze Zahl von Durchläufen. Ein Durchlauf dauert {seconds} s.",
-    "animatedFor": "Animiert"
+    "animatedFor": "Animiert",
+    "category": {
+      "label": "Kategorie",
+      "searching": "Suche in allen Kategorien"
+    }
   },
   "overlays3": {
     "sticker": {}

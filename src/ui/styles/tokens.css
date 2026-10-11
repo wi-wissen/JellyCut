@@ -11,6 +11,8 @@
   --jc-txt: #5b3fe0;
   --jc-signal: #c6f432;
   --jc-signal-fg: #14121f;
+  /* Outer contrast ring of a selected timeline bar: dark on the light lanes, the page colour on the dark ones. */
+  --jc-sel-halo: #14121f;
   --jc-stage: #dcd8ee;
   /* Track colours (see docs/ui-layout.md): video blues alternate so cuts show, audio green, music teal, text amber. */
   --jc-track-video-1: #2b5cb0;
@@ -38,6 +40,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     --jc-bg: #0e0f14;
+    --jc-sel-halo: #0e0f14;
     --jc-panel: #171923;
     --jc-panel2: #222536;
     --jc-line: #2a2d3c;
@@ -63,6 +66,7 @@
 }
 :root[data-theme='dark'] {
   --jc-bg: #0e0f14;
+  --jc-sel-halo: #0e0f14;
   --jc-panel: #171923;
   --jc-panel2: #222536;
   --jc-line: #2a2d3c;

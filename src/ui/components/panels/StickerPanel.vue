@@ -1,9 +1,9 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
 import { mapActions, mapState } from 'pinia'
+import Icon from '../Icon.vue'
 import ChoiceTile from './ChoiceTile.vue'
 import ColorPicker from './ColorPicker.vue'
-import ToggleSwitch from './ToggleSwitch.vue'
 import StickerAnimation from './StickerAnimation.vue'
 import { allMessages } from '../../i18n'
 import { useEditorStore } from '../../stores/editor'
@@ -13,19 +13,28 @@ import { STICKER_SHAPES, type StickerShapeId } from '../../../core/render/sticke
 import { animatedSticker } from '../../../core/render/stickerAnimations'
 import { BASIC_STICKER_IDS } from '../../../core/timeline/overlayCatalog'
 
-/** The 'Animated' switch is kept per browser; storage can be blocked, then it simply starts off. */
-const ANIMATED_KEY = 'jellycut.animatedStickers'
+/** A tile starts playing its animation after the pointer rested on it this long, so a quick pass downloads nothing. */
+const HOVER_DELAY_MS = 150
 
-function readAnimatedChoice(): boolean {
-  try {
-    return localStorage.getItem(ANIMATED_KEY) === '1'
-  } catch {
-    return false
-  }
+function prefersReducedMotion(): boolean {
+  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
-type Tab = (typeof STICKER_IMAGE_CATEGORIES)[number] | 'basics'
-const TABS: readonly Tab[] = [...STICKER_IMAGE_CATEGORIES, 'basics']
+type Tab = (typeof STICKER_IMAGE_CATEGORIES)[number] | 'basics' | 'all'
+const TABS: readonly Tab[] = ['all', ...STICKER_IMAGE_CATEGORIES, 'basics']
+
+/** A sticker that stands for its category in the dropdown; 'all' and 'basics' use an icon instead. */
+const CATEGORY_STICKER: Partial<Record<Tab, string>> = {
+  faces: 'grin',
+  moreFaces: 'smile',
+  hearts: 'heart',
+  animals: 'panda',
+  celebrate: 'partyPopper',
+  nature: 'sun',
+  food: 'pizza',
+  symbols: 'star',
+  school: 'books'
+}
 
 interface Entry {
   kind: 'image' | 'shape'
@@ -34,6 +43,9 @@ interface Entry {
   /** Lower-case labels in both languages, so 'Herz' and 'heart' find the same sticker. */
   haystack: string
 }
+
+// Outside the component data: a timer id needs no reactivity.
+let hoverTimer = 0
 
 type MessageTree = { [key: string]: MessageTree | string }
 
@@ -48,14 +60,14 @@ function lookup(tree: MessageTree, path: string): string {
 }
 
 /**
- * Gallery of picture stickers (category tabs and a search field) and the plain colourable shapes. A tap adds
- * one at the playhead; shapes are drawn in the colour shown under the 'Shapes' tab.
+ * Gallery of picture stickers (category dropdown and a search field) and the plain colourable shapes. A tap adds
+ * one at the playhead; shapes are drawn in the colour shown under the 'Shapes' category.
  */
 export default defineComponent({
   name: 'StickerPanel',
-  components: { ChoiceTile, ColorPicker, ToggleSwitch, StickerAnimation },
+  components: { Icon, ChoiceTile, ColorPicker, StickerAnimation },
   data() {
-    return { tab: 'faces' as Tab, query: '', tabs: TABS, animatedOn: readAnimatedChoice() }
+    return { tab: 'faces' as Tab, query: '', tabs: TABS, playing: null as string | null, menuOpen: false, menuBox: { left: 0, top: 0, width: 0, maxHeight: 352, up: false } }
   },
   computed: {
     ...mapState(useEditorStore, ['overlayColor']),
@@ -78,11 +90,15 @@ export default defineComponent({
         const terms = fold(this.query).split(/\s+/).filter(Boolean)
         return this.entries.filter((e) => terms.every((t) => e.haystack.includes(t)))
       }
-      return this.entries.filter((e) => e.tab === this.tab)
+      return this.tab === 'all' ? this.entries : this.entries.filter((e) => e.tab === this.tab)
     },
     showColour(): boolean {
-      return this.searching ? this.visible.some((e) => e.kind === 'shape') : this.tab === 'basics'
+      return this.searching || this.tab === 'all' ? this.visible.some((e) => e.kind === 'shape') : this.tab === 'basics'
     }
+  },
+  beforeUnmount() {
+    this.stopPlaying()
+    this.stopListening()
   },
   methods: {
     ...mapActions(useEditorStore, ['addImageStickerAtPlayhead', 'addVectorStickerAtPlayhead', 'setOverlayColor']),
@@ -99,31 +115,100 @@ export default defineComponent({
     hasAnimation(entry: Entry): boolean {
       return entry.kind === 'image' && animatedSticker(entry.id) !== null
     },
-    setAnimated(): void {
-      this.animatedOn = !this.animatedOn
-      try {
-        localStorage.setItem(ANIMATED_KEY, this.animatedOn ? '1' : '0')
-      } catch {
-        // Not stored: the choice only lasts until the page closes.
-      }
+    /** Hover (mouse) or keyboard focus plays the tile's animation; one tile at a time, none with reduced motion. */
+    playLater(entry: Entry): void {
+      this.stopPlaying()
+      if (!this.hasAnimation(entry) || prefersReducedMotion()) return
+      hoverTimer = window.setTimeout(() => {
+        hoverTimer = 0
+        this.playing = entry.id
+      }, HOVER_DELAY_MS)
+    },
+    stopPlaying(): void {
+      window.clearTimeout(hoverTimer)
+      hoverTimer = 0
+      this.playing = null
+    },
+    onTileEnter(entry: Entry, event: PointerEvent): void {
+      if (event.pointerType === 'mouse') this.playLater(entry)
+    },
+    onTileFocus(entry: Entry, event: FocusEvent): void {
+      if (event.target instanceof HTMLElement && event.target.matches(':focus-visible')) this.playLater(entry)
     },
     add(entry: Entry): void {
-      if (entry.kind === 'image') this.addImageStickerAtPlayhead(entry.id, this.animatedOn && this.hasAnimation(entry))
+      if (entry.kind === 'image') this.addImageStickerAtPlayhead(entry.id, this.hasAnimation(entry))
       else this.addVectorStickerAtPlayhead(entry.id as StickerShapeId)
+    },
+    categoryImage(id: Tab): string | null {
+      const sticker = CATEGORY_STICKER[id]
+      return sticker ? stickerImageUrl(sticker) : null
     },
     pick(tab: Tab): void {
       this.tab = tab
       this.query = ''
+      this.closeMenu(true)
     },
-    /** Arrow keys move between the category tabs; the focused tab opens at once. */
-    onTabKey(event: KeyboardEvent): void {
-      const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0
-      const jump = event.key === 'Home' ? 0 : event.key === 'End' ? TABS.length - 1 : null
-      if (step === 0 && jump === null) return
+    options(): HTMLElement[] {
+      return Array.from((this.$refs.menu as HTMLElement | undefined)?.querySelectorAll<HTMLElement>('[role="option"]') ?? [])
+    },
+    /** The list is fixed to the window so the scrolling panel cannot clip it, follows the trigger on scroll and opens upwards when there is more room above. */
+    placeMenu(): void {
+      const rect = (this.$refs.trigger as HTMLElement).getBoundingClientRect()
+      const below = window.innerHeight - rect.bottom - 12
+      const above = rect.top - 12
+      const up = below < 260 && above > below
+      this.menuBox = { left: rect.left, top: up ? rect.top - 4 : rect.bottom + 4, width: rect.width, maxHeight: Math.min(352, up ? above : below), up }
+    },
+    openMenu(): void {
+      this.placeMenu()
+      this.menuOpen = true
+      document.addEventListener('pointerdown', this.onOutside, true)
+      window.addEventListener('resize', this.onWindowChange)
+      window.addEventListener('scroll', this.onWindowChange, true)
+      void this.$nextTick(() => (this.options().find((o) => o.id === `sticker-cat-${this.tab}`) ?? this.options()[0])?.focus({ preventScroll: true }))
+    },
+    closeMenu(restoreFocus: boolean): void {
+      if (!this.menuOpen) return
+      this.menuOpen = false
+      this.stopListening()
+      if (restoreFocus) void this.$nextTick(() => (this.$refs.trigger as HTMLElement | undefined)?.focus())
+    },
+    stopListening(): void {
+      document.removeEventListener('pointerdown', this.onOutside, true)
+      window.removeEventListener('resize', this.onWindowChange)
+      window.removeEventListener('scroll', this.onWindowChange, true)
+    },
+    onWindowChange(event: Event): void {
+      if (event.target instanceof Node && (this.$refs.menu as HTMLElement | undefined)?.contains(event.target)) return
+      this.placeMenu()
+    },
+    onOutside(event: PointerEvent): void {
+      const root = this.$refs.picker as HTMLElement | undefined
+      if (root && event.target instanceof Node && !root.contains(event.target)) this.closeMenu(false)
+    },
+    onTriggerKey(event: KeyboardEvent): void {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault()
+        this.openMenu()
+      }
+    },
+    /** Listbox keys: arrows, Home and End move; Enter or Space picks; Escape and Tab close. */
+    onMenuKey(event: KeyboardEvent): void {
+      const options = this.options()
+      const index = options.indexOf(event.target as HTMLElement)
+      if (event.key === 'Escape' || event.key === 'Tab') {
+        event.preventDefault()
+        this.closeMenu(true)
+        return
+      }
+      let next: number | null = null
+      if (event.key === 'ArrowDown') next = (index + 1) % options.length
+      else if (event.key === 'ArrowUp') next = (index - 1 + options.length) % options.length
+      else if (event.key === 'Home') next = 0
+      else if (event.key === 'End') next = options.length - 1
+      if (next === null) return
       event.preventDefault()
-      const index = jump ?? (TABS.indexOf(this.tab) + step + TABS.length) % TABS.length
-      this.pick(TABS[index]!)
-      void this.$nextTick(() => (this.$refs.tabButtons as HTMLElement | undefined)?.querySelector<HTMLElement>('[aria-selected="true"]')?.focus())
+      options[next]?.focus()
     }
   }
 })
@@ -134,14 +219,60 @@ export default defineComponent({
     <h2 class="shrink-0 text-sm font-bold">{{ $t('tabs.sticker') }}</h2>
     <p class="shrink-0 text-xs leading-relaxed text-muted">{{ $t('overlays.stickerHint') }}</p>
 
-    <ToggleSwitch
-      class="shrink-0"
-      :label="$t('stickers.animated.switch')"
-      :state-text="animatedOn ? $t('timeline.on') : $t('timeline.off')"
-      :checked="animatedOn"
-      data-animated-switch
-      @toggle="setAnimated"
-    />
+    <div ref="picker" class="shrink-0" data-role="sticker-category">
+      <span id="sticker-category-label" class="mb-1 block text-xs font-semibold text-muted">{{ $t('stickers.category.label') }}</span>
+      <button
+        ref="trigger"
+        type="button"
+        class="flex min-h-11 w-full items-center gap-2.5 rounded-lg border border-line bg-panel px-3 text-left text-sm font-semibold text-fg hover:bg-panel2"
+        aria-haspopup="listbox"
+        aria-labelledby="sticker-category-label sticker-category-value"
+        :aria-expanded="menuOpen"
+        aria-controls="sticker-category-list"
+        @click="menuOpen ? closeMenu(true) : openMenu()"
+        @keydown="onTriggerKey"
+      >
+        <template v-if="!searching">
+          <img v-if="categoryImage(tab)" :src="categoryImage(tab)!" alt="" width="20" height="20" class="size-5 shrink-0" />
+          <Icon v-else :name="tab === 'all' ? 'grid' : 'shapes'" class="size-5 shrink-0 text-muted" />
+        </template>
+        <Icon v-else name="grid" class="size-5 shrink-0 text-muted" />
+        <span id="sticker-category-value" class="min-w-0 flex-1 truncate">
+          {{ searching ? $t('stickers.category.searching') : $t(`stickers.categories.${tab}`) }}
+        </span>
+        <Icon name="chevronDown" class="size-4 shrink-0 text-muted transition-transform" :class="menuOpen ? 'rotate-180' : ''" />
+      </button>
+      <ul
+        v-show="menuOpen"
+        id="sticker-category-list"
+        ref="menu"
+        role="listbox"
+        class="fixed z-[60] flex flex-col gap-0.5 overflow-y-auto rounded-xl border border-line bg-panel p-1.5 shadow-xl"
+        :style="{ left: menuBox.left + 'px', width: menuBox.width + 'px', maxHeight: menuBox.maxHeight + 'px', top: menuBox.top + 'px', transform: menuBox.up ? 'translateY(-100%)' : 'none' }"
+        aria-labelledby="sticker-category-label"
+        @keydown="onMenuKey"
+      >
+        <li
+          v-for="id in tabs"
+          :id="`sticker-cat-${id}`"
+          :key="id"
+          role="option"
+          tabindex="-1"
+          class="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 text-sm font-semibold hover:bg-panel2 focus-visible:bg-panel2"
+          :class="!searching && tab === id ? 'bg-panel2' : ''"
+          :aria-selected="!searching && tab === id"
+          :data-category="id"
+          @click="pick(id)"
+          @keydown.enter.prevent="pick(id)"
+          @keydown.space.prevent="pick(id)"
+        >
+          <img v-if="categoryImage(id)" :src="categoryImage(id)!" alt="" width="20" height="20" loading="lazy" class="size-5 shrink-0" />
+          <Icon v-else :name="id === 'all' ? 'grid' : 'shapes'" class="size-5 shrink-0 text-muted" />
+          <span class="min-w-0 flex-1 truncate">{{ $t(`stickers.categories.${id}`) }}</span>
+          <Icon v-if="!searching && tab === id" name="check" class="size-4 shrink-0 text-muted" />
+        </li>
+      </ul>
+    </div>
 
     <input
       v-model="query"
@@ -154,35 +285,10 @@ export default defineComponent({
     />
 
     <div
-      ref="tabButtons"
-      class="-mx-3 flex shrink-0 gap-1.5 overflow-x-auto px-3 pb-1"
-      role="tablist"
-      :aria-label="$t('stickers.tabs')"
-      @keydown="onTabKey"
-    >
-      <button
-        v-for="id in tabs"
-        :id="`sticker-tab-${id}`"
-        :key="id"
-        type="button"
-        role="tab"
-        class="min-h-11 shrink-0 whitespace-nowrap rounded-full px-3.5 text-xs font-semibold"
-        :class="!searching && tab === id ? 'bg-fill text-fill-fg' : 'bg-panel2 text-fg hover:bg-panel'"
-        :aria-selected="!searching && tab === id"
-        :aria-controls="'sticker-grid'"
-        :tabindex="tab === id ? 0 : -1"
-        @click="pick(id)"
-      >
-        {{ $t(`stickers.categories.${id}`) }}
-      </button>
-    </div>
-
-    <div
       id="sticker-grid"
       class="grid shrink-0 grid-cols-3 content-start gap-2.5"
-      role="tabpanel"
-      :aria-labelledby="searching ? undefined : `sticker-tab-${tab}`"
-      :aria-label="searching ? $t('stickers.results') : undefined"
+      role="group"
+      :aria-label="searching ? $t('stickers.results') : $t(`stickers.categories.${tab}`)"
     >
       <ChoiceTile
         v-for="entry in visible"
@@ -193,6 +299,10 @@ export default defineComponent({
         :data-sticker="entry.kind === 'image' ? entry.id : `shape-${entry.id}`"
         :data-has-animation="hasAnimation(entry) ? 'true' : undefined"
         @choose="add(entry)"
+        @pointerenter="onTileEnter(entry, $event)"
+        @pointerleave="stopPlaying"
+        @focusin="onTileFocus(entry, $event)"
+        @focusout="stopPlaying"
       >
         <img
           v-if="entry.kind === 'image'"
@@ -205,15 +315,16 @@ export default defineComponent({
           draggable="false"
           class="absolute inset-0 m-auto size-[78%] object-contain"
         />
-        <StickerAnimation v-if="animatedOn && hasAnimation(entry)" :id="entry.id" class="absolute inset-0 m-auto size-[78%] object-contain" />
+        <StickerAnimation v-if="playing === entry.id" :id="entry.id" class="absolute inset-0 m-auto size-[78%] object-contain" />
         <span
           v-if="hasAnimation(entry)"
-          class="absolute left-1.5 top-1.5 flex size-5 items-center justify-center rounded-full bg-fill text-fill-fg shadow"
+          class="absolute left-1.5 top-1.5 flex size-5 items-center justify-center rounded-full bg-panel/85 text-fg shadow"
+          role="img"
+          :aria-label="$t('stickers.animated.badge')"
           :title="$t('stickers.animated.badge')"
           data-animated-badge
-          aria-hidden="true"
         >
-          <svg viewBox="0 0 12 12" class="size-2.5" fill="currentColor"><path d="M3.5 2.2v7.6a.6.6 0 0 0 .9.5l6-3.8a.6.6 0 0 0 0-1l-6-3.8a.6.6 0 0 0-.9.5Z" /></svg>
+          <Icon name="sparkles" class="size-3" />
         </span>
         <span v-if="entry.kind === 'shape'" class="absolute inset-0 flex items-center justify-center p-[22%]" :style="{ color: overlayColor }" aria-hidden="true">
           <svg viewBox="0 0 24 24" class="size-full">

@@ -12,11 +12,14 @@ import {
   addStroke,
   duplicateOverlay,
   moveOverlay,
+  moveOverlayToLane,
+  overlayRowOf,
   removeLastStroke,
   trimOverlayEnd,
   trimOverlayStart,
   updateOverlay
 } from './overlayOps'
+import { OVERLAY_ROW_LIMIT } from './overlayRows'
 import { deleteItem, duplicateItem, projectIds } from './ops'
 
 const s = (seconds: number) => secondsToMicros(seconds)
@@ -329,5 +332,90 @@ describe('overlays and the video end', () => {
   it('a copy at the end is placed flush with the end', () => {
     const p = duplicateOverlay(addSticker(videoOf(30), 'overlay-1', s(28), '⭐'), 'overlay-1', 'overlay-2')
     expect(p.overlays[1]).toMatchObject({ id: 'overlay-2', start: s(28), duration: s(2) })
+  })
+})
+
+describe('moveOverlayToLane', () => {
+  /** Stickers back to front with the given [id, start s, end s]. */
+  function lanes(...specs: [string, number, number][]): Project {
+    const template = withSticker().overlays[0]!
+    return { ...base(), overlays: specs.map(([id, a, b]) => ({ ...template, id, start: s(a), duration: s(b - a) })) }
+  }
+  const order = (p: Project) => p.overlays.map((o) => o.id)
+  const rows = (p: Project) => p.overlays.map((o) => overlayRowOf(p, o.id))
+
+  it('reads the lane row of an item (front item on top)', () => {
+    const p = lanes(['a', 0, 4], ['b', 0, 4], ['c', 0, 4])
+    expect(rows(p)).toEqual([2, 1, 0])
+    expect(overlayRowOf(p, 'nope')).toBe(-1)
+  })
+
+  it('dropped into a higher lane it goes in front of the items there', () => {
+    const p = lanes(['a', 0, 4], ['b', 0, 4], ['c', 0, 4])
+    expect(order(moveOverlayToLane(p, 'a', 0))).toEqual(['b', 'c', 'a'])
+    const middle = moveOverlayToLane(p, 'a', 1)
+    expect(order(middle)).toEqual(['b', 'a', 'c'])
+    expect(overlayRowOf(middle, 'a')).toBe(1)
+  })
+
+  it('dropped into a lower lane it goes behind the items there', () => {
+    const p = lanes(['a', 0, 4], ['b', 0, 4], ['c', 0, 4])
+    expect(order(moveOverlayToLane(p, 'c', 2))).toEqual(['c', 'a', 'b'])
+    const middle = moveOverlayToLane(p, 'c', 1)
+    expect(order(middle)).toEqual(['a', 'c', 'b'])
+    expect(overlayRowOf(middle, 'c')).toBe(1)
+  })
+
+  it('the same lane changes nothing and returns the same project', () => {
+    const p = lanes(['a', 0, 4], ['b', 0, 4])
+    expect(moveOverlayToLane(p, 'a', 1)).toBe(p)
+    expect(moveOverlayToLane(p, 'b', 0)).toBe(p)
+  })
+
+  it('only items that overlap it in time matter', () => {
+    // 'late' does not overlap 'a'; x and y are the stack in the first seconds.
+    const p = lanes(['x', 0, 2], ['late', 5, 8], ['y', 0, 2])
+    expect(rows(p)).toEqual([1, 0, 0])
+    expect(order(moveOverlayToLane(p, 'x', 0))).toEqual(['late', 'y', 'x'])
+    // 'late' is alone in its time: there is no other lane to go to
+    expect(moveOverlayToLane(p, 'late', 1)).toBe(p)
+    expect(moveOverlayToLane(p, 'late', 0)).toBe(p)
+  })
+
+  it('with several overlapping items it passes all of them in the target lane and below', () => {
+    // a (back) is overlapped by b, c, d; c and d do not overlap each other and share a lane above b.
+    const p = lanes(['a', 0, 10], ['b', 0, 10], ['c', 0, 4], ['d', 5, 9])
+    expect(rows(p)).toEqual([2, 1, 0, 0])
+    const up = moveOverlayToLane(p, 'a', 0)
+    expect(order(up)).toEqual(['b', 'c', 'd', 'a'])
+    expect(overlayRowOf(up, 'a')).toBe(0)
+    // Down onto b's lane: behind b (and a), so it ends one lane below b.
+    const down = moveOverlayToLane(p, 'd', 1)
+    expect(order(down)).toEqual(['a', 'd', 'b', 'c'])
+    expect(overlayRowOf(down, 'd')).toBe(2)
+  })
+
+  it('a lane past the last one opens a new lane at the bottom', () => {
+    const p = lanes(['a', 0, 4], ['b', 0, 4])
+    expect(order(moveOverlayToLane(p, 'b', 2))).toEqual(['b', 'a'])
+  })
+
+  it('respects the row limit and the shared stack row', () => {
+    const specs: [string, number, number][] = ['a', 'b', 'c', 'd', 'e', 'f'].map((id) => [id, 0, 4])
+    const p = lanes(...specs)
+    expect(Math.max(...rows(p))).toBe(OVERLAY_ROW_LIMIT - 1)
+    // Rows beyond the limit are clamped: the front item sent to "row 9" goes behind everything it overlaps.
+    expect(order(moveOverlayToLane(p, 'f', 9))).toEqual(['f', 'a', 'b', 'c', 'd', 'e'])
+    // From the stack row to the top.
+    expect(order(moveOverlayToLane(p, 'a', 0))).toEqual(['b', 'c', 'd', 'e', 'f', 'a'])
+  })
+
+  it('leaves times, other fields and unknown ids alone, and stays valid', () => {
+    const p = lanes(['a', 0, 4], ['b', 1, 3])
+    const next = moveOverlayToLane(p, 'a', 0)
+    expect(next.overlays.find((o) => o.id === 'a')).toBe(p.overlays[0])
+    expect(moveOverlayToLane(p, 'zzz', 0)).toBe(p)
+    expect(moveOverlayToLane(p, 'a', Number.NaN)).toBe(p)
+    expect(validateProject(next).ok).toBe(true)
   })
 })

@@ -1,6 +1,6 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
-import { mapActions } from 'pinia'
+import { mapActions, mapState } from 'pinia'
 import TopBar from '../components/TopBar.vue'
 import LeftPanel from '../components/LeftPanel.vue'
 import PlayerStage from '../components/PlayerStage.vue'
@@ -30,9 +30,21 @@ export default defineComponent({
   beforeUnmount() {
     document.removeEventListener('keydown', this.onKeydown)
   },
+  computed: {
+    ...mapState(useEditorStore, ['selection'])
+  },
   methods: {
-    ...mapActions(useEditorStore, ['applyTheme', 'undo', 'redo', 'saveProject']),
+    ...mapActions(useEditorStore, ['applyTheme', 'undo', 'redo', 'saveProject', 'stackSelectedOverlay']),
     onKeydown(event: KeyboardEvent): void {
+      // Stacking of the selected overlay. Matches the typed character, so it also works where the bracket needs AltGr.
+      if ((event.ctrlKey || event.metaKey) && !isTextEntry(event.target) && this.selection?.kind === 'overlay') {
+        const direction = { ']': 'forward', '}': 'front', '[': 'backward', '{': 'back' }[event.key] as 'forward' | 'front' | 'backward' | 'back' | undefined
+        if (direction) {
+          event.preventDefault()
+          this.stackSelectedOverlay(direction)
+          return
+        }
+      }
       if (!(event.ctrlKey || event.metaKey) || event.altKey) return
       const key = event.key.toLowerCase()
       // Save has no native meaning in a text field, so it works everywhere; undo and redo leave text fields alone.

@@ -147,6 +147,9 @@ interface Gesture {
   others: { leftPx: number; endPx: number }[]
   originIndex: number
   dropIndex: number
+  originY: number
+  /** Overlay drags: the start time of the last horizontal step, applied together with a lane change. */
+  lastStart: Micros | null
 }
 
 function isTextEntry(target: EventTarget | null): boolean {
@@ -180,6 +183,9 @@ export default defineComponent({
       dragKey: null as string | null,
       dragOffset: 0,
       dropPx: null as number | null,
+      /** Overlay drag between lanes: the lane row under the pointer (when it is not the bar's own row), and how far the bar follows. */
+      laneDrop: null as { row: number; up: boolean } | null,
+      dragOffsetY: 0,
       timelineHeight: loadTimelineHeight(),
       minTimelineHeight: MIN_TIMELINE_HEIGHT_PX,
       menu: null as ItemMenuState | null,
@@ -359,6 +365,22 @@ export default defineComponent({
           { key: 'delete', label: t('delete'), icon: 'trash', enabled: true }
         ]
       }
+      if (ref.kind === 'overlay') {
+        // overlays[] is back to front: the last item is in front.
+        const index = this.project.overlays.findIndex((o) => o.id === ref.id)
+        const last = this.project.overlays.length - 1
+        const canForward = index >= 0 && index < last
+        const canBackward = index > 0
+        const m = (key: string): string => this.$t(`polish.menu.${key}`)
+        return [
+          { key: 'duplicate', label: t('duplicate'), icon: 'copy', enabled: true },
+          { key: 'front', label: m('stackFront'), icon: 'orderFront', enabled: canForward, shortcut: 'Ctrl+Shift+]', keys: 'Control+Shift+BracketRight' },
+          { key: 'forward', label: m('stackForward'), icon: 'orderUp', enabled: canForward, shortcut: 'Ctrl+]', keys: 'Control+BracketRight' },
+          { key: 'backward', label: m('stackBackward'), icon: 'orderDown', enabled: canBackward, shortcut: 'Ctrl+[', keys: 'Control+BracketLeft' },
+          { key: 'back', label: m('stackBack'), icon: 'orderBack', enabled: canBackward, shortcut: 'Ctrl+Shift+[', keys: 'Control+Shift+BracketLeft' },
+          { key: 'delete', label: t('delete'), icon: 'trash', enabled: true }
+        ]
+      }
       if (ref.kind !== 'clip') {
         return [
           { key: 'duplicate', label: t('duplicate'), icon: 'copy', enabled: true },
@@ -456,6 +478,7 @@ export default defineComponent({
     el?.removeEventListener('wheel', this.pauseFollow)
     el?.removeEventListener('touchstart', this.pauseFollow)
     el?.removeEventListener('pointerdown', this.onScrollerPointerdown)
+    document.removeEventListener('keydown', this.onGestureKey, true)
   },
   methods: {
     ...mapActions(useEditorStore, [
@@ -472,6 +495,9 @@ export default defineComponent({
       'trimOverlayStart',
       'trimOverlayEnd',
       'moveOverlay',
+      'moveOverlayToLane',
+      'stackSelectedOverlay',
+      'cancelGesture',
       'reorderClip',
       'beginGesture',
       'endGesture',
@@ -521,6 +547,9 @@ export default defineComponent({
     },
     offsetFor(item: LaneItem): number {
       return this.dragKey === item.key ? this.dragOffset : 0
+    },
+    offsetYFor(item: LaneItem): number {
+      return this.dragKey === item.key ? this.dragOffsetY : 0
     },
 
     // --- zoom ---
@@ -704,6 +733,12 @@ export default defineComponent({
         case 'freeze':
           this.insertFreezeFrame()
           break
+        case 'front':
+        case 'forward':
+        case 'backward':
+        case 'back':
+          this.stackSelectedOverlay(key)
+          break
         case 'delete':
           this.deleteSelected()
           break
@@ -734,11 +769,15 @@ export default defineComponent({
         candidates: [],
         others: [],
         originIndex: -1,
-        dropIndex: -1
+        dropIndex: -1,
+        originY: event.clientY,
+        lastStart: null
       }
     },
     onScrubDown(event: PointerEvent) {
       if (event.button !== 0) return
+      // Some Chromium builds (Edge) start a native drag of the selection or an image ghost while scrubbing.
+      if (event.pointerType === 'mouse') event.preventDefault()
       ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
       ;(this.$refs.scroller as HTMLElement).focus({ preventScroll: true })
       this.gesture = this.makeGesture('scrub', event)
@@ -757,13 +796,13 @@ export default defineComponent({
         gesture.others = videoItems
           .filter((other) => other.key !== item.key)
           .map((other) => ({ leftPx: other.leftPx, endPx: other.leftPx + other.widthPx }))
-        this.gesture = gesture
+        this.startGesture(gesture)
       } else {
         // Text, pictures and shapes, and own sound: all move in time with the snap points of the project.
         this.beginGesture()
         const gesture = this.makeGesture('move-text', event, item)
         gesture.candidates = collectSnapPoints(this.project, item.ref.id, this.playheadMicros)
-        this.gesture = gesture
+        this.startGesture(gesture)
       }
     },
     onHandleDown(edge: 'start' | 'end', event: PointerEvent, item: LaneItem) {
@@ -771,7 +810,29 @@ export default defineComponent({
       this.beginGesture()
       const gesture = this.makeGesture(edge === 'start' ? 'trim-start' : 'trim-end', event, item)
       gesture.candidates = collectSnapPoints(this.project, item.ref.id, this.playheadMicros)
+      this.startGesture(gesture)
+    },
+    /** A drag in progress can be cancelled with Escape from anywhere on the page. */
+    startGesture(gesture: Gesture) {
       this.gesture = gesture
+      document.addEventListener('keydown', this.onGestureKey, true)
+    },
+    onGestureKey(event: KeyboardEvent) {
+      if (event.key !== 'Escape' || !this.gesture || this.gesture.kind === 'scrub') return
+      event.preventDefault()
+      event.stopPropagation()
+      // A clip reorder only shows a ghost until release; the other drags edit live and are rolled back.
+      if (this.gesture.kind !== 'reorder') this.cancelGesture()
+      this.clearGesture()
+    },
+    clearGesture() {
+      document.removeEventListener('keydown', this.onGestureKey, true)
+      this.gesture = null
+      this.dragKey = null
+      this.dragOffset = 0
+      this.dragOffsetY = 0
+      this.dropPx = null
+      this.laneDrop = null
     },
     onPointerMove(event: PointerEvent) {
       const gesture = this.gesture
@@ -817,12 +878,30 @@ export default defineComponent({
         this.trimTextEnd(gesture.id, t)
       }
     },
+    /** Which lane row the pointer is over while an overlay bar is dragged; a row other than its own is a drop target. */
+    updateLaneDrag(gesture: Gesture, event: PointerEvent) {
+      const lane = this.lanes.find((l) => l.id === 'overlay')
+      const el = (this.$el as HTMLElement).querySelector<HTMLElement>('[data-lane="overlay"]')
+      if (!lane || !el) return
+      const dy = event.clientY - gesture.originY
+      if (this.laneDrop === null && Math.abs(dy) < DRAG_THRESHOLD_PX) return
+      const height = this.rowHeightOf(lane)
+      const current = lane.items.find((i) => i.key === gesture.key)?.row ?? 0
+      // One row past the last opens a new lane at the bottom (while the limit allows it).
+      const last = Math.min(lane.rows ?? 1, OVERLAY_ROW_LIMIT - 1)
+      const row = Math.max(0, Math.min(last, Math.floor((event.clientY - el.getBoundingClientRect().top) / height)))
+      this.dragKey = gesture.key
+      this.laneDrop = row === current ? null : { row, up: row < current }
+      this.dragOffsetY = this.laneDrop ? dy : 0
+    },
     updateTextMove(gesture: Gesture, event: PointerEvent) {
+      if (gesture.itemKind === 'overlay') this.updateLaneDrag(gesture, event)
       const dx = event.clientX - gesture.originX
       if (dx === 0 && !gesture.moved) return
       gesture.moved = true
       let t = gesture.originStart + pxToMicros(dx, this.pxPerSecond)
       if (this.snapping) t = snapTime(t, gesture.candidates, pxToMicros(SNAP_THRESHOLD_PX, this.pxPerSecond))
+      gesture.lastStart = Math.max(0, t)
       if (gesture.itemKind === 'overlay') this.moveOverlay(gesture.id, Math.max(0, t))
       else if (gesture.itemKind === 'music') this.moveMusic(gesture.id, Math.max(0, t))
       else this.moveText(gesture.id, Math.max(0, t))
@@ -858,12 +937,13 @@ export default defineComponent({
           this.reorderClip(gesture.id, gesture.dropIndex)
         }
       } else if (gesture.kind !== 'scrub') {
+        // A lane change and the time move of the same drag are one undo step.
+        if (gesture.kind === 'move-text' && gesture.itemKind === 'overlay' && this.laneDrop) {
+          this.moveOverlayToLane(gesture.id, this.laneDrop.row, gesture.moved ? (gesture.lastStart ?? undefined) : undefined)
+        }
         this.endGesture()
       }
-      this.gesture = null
-      this.dragKey = null
-      this.dragOffset = 0
-      this.dropPx = null
+      this.clearGesture()
     },
 
     // --- keyboard (active while focus is inside the timeline) ---
@@ -1006,6 +1086,8 @@ export default defineComponent({
           :style="{ width: contentWidth + 'px' }"
           :data-px-per-second="pxPerSecond"
           @pointerdown="onScrubDown"
+          @dragstart.prevent
+          @selectstart.prevent
         >
           <div class="pointer-events-none relative border-b border-line" :style="{ height: rulerHeight + 'px' }" data-role="ruler">
             <span
@@ -1045,6 +1127,7 @@ export default defineComponent({
               :left="item.leftPx"
               :width="item.widthPx"
               :offset="offsetFor(item)"
+              :offset-y="offsetYFor(item)"
               :selected="isSelected(item)"
               :interactive="item.ref !== null"
               :handles="handlesFor(item)"
@@ -1057,6 +1140,29 @@ export default defineComponent({
               @context-menu="(event) => onItemContext(item, event)"
               @more="(button) => onItemMore(item, button)"
             />
+            <template v-if="lane.id === 'overlay' && laneDrop">
+              <div
+                class="pointer-events-none absolute inset-x-0 z-[4] bg-signal/15"
+                :style="{ top: laneDrop.row * rowHeightOf(lane) + 'px', height: rowHeightOf(lane) + 'px' }"
+                data-role="lane-drop-row"
+                aria-hidden="true"
+              />
+              <div
+                class="pointer-events-none absolute z-[6] h-0.5 rounded-full bg-signal shadow-[0_0_0_1px_var(--jc-sel-halo)]"
+                :style="{ top: (laneDrop.up ? laneDrop.row : laneDrop.row + 1) * rowHeightOf(lane) - 1 + 'px', left: 0, right: 0 }"
+                data-role="lane-drop-line"
+                :data-side="laneDrop.up ? 'front' : 'back'"
+                aria-hidden="true"
+              />
+              <div
+                v-for="item in lane.items.filter((other) => other.key === dragKey)"
+                :key="`ghost-${item.key}`"
+                class="pointer-events-none absolute z-[5] rounded-md border-2 border-dashed border-signal bg-signal/20"
+                :style="{ left: item.leftPx + 'px', width: Math.max(item.widthPx, 0) + 'px', top: laneDrop.row * rowHeightOf(lane) + barInset + 'px', height: rowHeightOf(lane) - 2 * barInset + 'px' }"
+                data-role="lane-drop-ghost"
+                aria-hidden="true"
+              />
+            </template>
             <template v-if="lane.id === 'video'">
               <div
                 v-for="zone in transitionZones"

@@ -31,6 +31,7 @@ import {
   type LineWidthId
 } from './overlayCatalog'
 import { editedSpan, fitSpan, placeSpan, videoEnd, wholeLoops, type Span } from './fit'
+import { OVERLAY_ROW_LIMIT, packRows, type Span as RowSpan } from './overlayRows'
 
 export const MIN_OVERLAY_DURATION: Micros = 100_000
 const MIN_SCALE = 0.1
@@ -398,6 +399,56 @@ export function bringToFront(project: Project, id: string): Project {
 
 export function sendToBack(project: Project, id: string): Project {
   return reorder(project, id, () => 0)
+}
+
+/** The lane row (0 = top) the overlay is drawn in, or -1 for an unknown id. */
+export function overlayRowOf(project: Project, id: string): number {
+  const index = project.overlays.findIndex((o) => o.id === id)
+  if (index < 0) return -1
+  return packRows(project.overlays.map(spanOf), OVERLAY_ROW_LIMIT).rows[index]!
+}
+
+/**
+ * Stacking by lane: puts the overlay into `targetRow` of the lane (0 = top, clamped to the row limit; one past
+ * the last row opens a new lane at the bottom). Only items that overlap it in time matter. Dropped into a higher
+ * lane it goes in front of the items from that lane down; dropped into a lower lane it goes behind the items
+ * down to that lane. Items elsewhere in time keep their place, so the result is the closest reachable lane.
+ * Returns the project unchanged when the order would not change.
+ */
+export function moveOverlayToLane(project: Project, id: string, targetRow: number): Project {
+  const from = project.overlays.findIndex((o) => o.id === id)
+  if (from < 0 || !Number.isFinite(targetRow)) return project
+  const { rows } = packRows(project.overlays.map(spanOf), OVERLAY_ROW_LIMIT)
+  const row = rows[from]!
+  const target = clamp(Math.round(targetRow), 0, OVERLAY_ROW_LIMIT - 1)
+  if (target === row) return project
+  const self = spanOf(project.overlays[from]!)
+  const rest = project.overlays.filter((_, i) => i !== from)
+  const restRows = rows.filter((_, i) => i !== from)
+  const overlapping = rest.map((o, i) => ({ i, row: restRows[i]!, hit: overlaps(spanOf(o), self) })).filter((e) => e.hit)
+  let at: number
+  if (target < row) {
+    // In front of everything it overlaps from the target lane down.
+    const behind = overlapping.filter((e) => e.row >= target)
+    if (behind.length === 0) return project
+    at = Math.max(...behind.map((e) => e.i)) + 1
+  } else {
+    // Behind everything it overlaps that sits below it, down to the target lane.
+    const front = overlapping.filter((e) => e.row > row && e.row <= target)
+    if (front.length === 0) return project
+    at = Math.min(...front.map((e) => e.i))
+  }
+  const overlays = rest.slice()
+  overlays.splice(at, 0, project.overlays[from]!)
+  return overlays.every((o, i) => o === project.overlays[i]) ? project : { ...project, overlays }
+}
+
+function spanOf(o: OverlayItem): RowSpan {
+  return { start: o.start, end: o.start + o.duration }
+}
+
+function overlaps(a: RowSpan, b: RowSpan): boolean {
+  return a.start < b.end && b.start < a.end
 }
 
 /** Moves one item to a new list index (clamped). Returns the project unchanged when nothing moves. */

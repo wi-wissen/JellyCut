@@ -122,7 +122,8 @@ await page.getByRole('heading', { name: /^Text · / }).waitFor()
 kinds.text = { sections: await sectionTitles(), selection: await st('(ed) => ed.selection') }
 
 await page.getByRole('button', { name: 'Stickers', exact: true }).click()
-await page.getByRole('tab', { name: 'Shapes', exact: true }).click()
+await page.locator('[data-role="sticker-category"] button').first().click()
+await page.getByRole('option', { name: 'Shapes', exact: true }).click()
 await page.getByRole('button', { name: 'Star', exact: true }).click()
 await page.getByRole('heading', { name: /^Sticker · / }).waitFor()
 kinds.sticker = { sections: await sectionTitles(), selection: await st('(ed) => ed.selection') }
