@@ -264,6 +264,7 @@ await settle(200)
 // --- 4. sticker: fade in, then a wiggle loop
 await page.getByRole('button', { name: 'Back', exact: true }).click().catch(() => undefined)
 await page.getByRole('button', { name: 'Stickers', exact: true }).click()
+await page.getByRole('tab', { name: 'Shapes', exact: true }).click()
 await page.getByRole('button', { name: 'Star', exact: true }).click()
 await settle()
 let star = (await overlayNamed('sticker'))[0]

@@ -60,7 +60,7 @@ function assertNoGaps(clips) {
 
 const pxPerSecond = async (page) => Number(await page.locator('[data-px-per-second]').getAttribute('data-px-per-second'))
 const contentBox = (page) => page.locator('[data-px-per-second]').boundingBox()
-const timecode = async (page) => (await page.locator('span.tabular-nums').textContent()).trim()
+const timecode = async (page) => (await page.locator('.jc-actionbar span.font-mono').textContent()).trim()
 const playheadPx = async (page) => parseFloat(await page.locator('[data-role="playhead"]').evaluate((el) => el.style.left))
 const clipButton = (page, name) => page.getByRole('button', { name: `Clip: ${name}` }).first()
 const actionButton = (page, name) => page.getByRole('button', { name, exact: true })
@@ -181,10 +181,11 @@ await check('Mute toggles the selected clip and hides its original audio; undo r
   await clipButton(page, 'Beach.mp4').click()
   const audioBefore = await page.locator('[data-lane="originalAudio"] [data-kind="audio"]').count()
   await actionButton(page, 'Mute').click()
-  assert((await actionButton(page, 'Mute').getAttribute('aria-pressed')) === 'true', 'Mute not pressed')
+  // The label names the next action: a muted clip offers "Unmute".
+  assert((await actionButton(page, 'Unmute').count()) === 1, 'label did not change to Unmute')
   assert((await page.locator('[data-lane="originalAudio"] [data-kind="audio"]').count()) === audioBefore - 1, 'audio lane not updated')
   await page.keyboard.press('Control+z')
-  assert((await actionButton(page, 'Mute').getAttribute('aria-pressed')) === 'false', 'undo did not unmute')
+  assert((await actionButton(page, 'Mute').count()) === 1, 'undo did not restore the Mute label')
 })
 
 await check('Flip toggles the flip state', async () => {
@@ -198,6 +199,10 @@ await check('Speed cycles the clip speed and changes its length on the track; un
   const before = (await videoClips(page))[1].width
   const speedButton = page.getByRole('button', { name: /^Speed/ })
   await speedButton.click()
+  // Speed opens the tempo dialog; a quick choice applies and closes it.
+  const dialog = page.getByRole('dialog', { name: 'Change tempo' })
+  await dialog.locator('[data-speed="1.5"]').click()
+  await dialog.waitFor({ state: 'detached' })
   assert((await speedButton.textContent()).includes('1.5'), `speed label ${await speedButton.textContent()}`)
   const after = (await videoClips(page))[1].width
   assert(near(after, before / 1.5, 2), `width ${before} -> ${after} at 1.5x (px/s ${pps})`)

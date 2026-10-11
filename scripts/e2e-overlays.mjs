@@ -145,6 +145,7 @@ const base = await canvasShot()
 // --- 2. sticker from the Stickers panel ---
 await page.getByRole('tab', { name: 'Design' }).click()
 await page.getByRole('button', { name: 'Stickers', exact: true }).click()
+await page.getByRole('tab', { name: 'Shapes', exact: true }).click()
 await page.getByRole('button', { name: 'Star', exact: true }).click()
 await settle()
 let s = await overlayState()
