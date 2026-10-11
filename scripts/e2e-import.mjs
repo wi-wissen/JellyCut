@@ -9,7 +9,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const PORT = 5191
-const APP_URL = `http://localhost:${PORT}/app`
+const APP_URL = `http://localhost:${PORT}/app/`
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const FIXTURES = join(ROOT, 'tests', 'fixtures')
 const SHOT_PATH =

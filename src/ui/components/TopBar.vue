@@ -1,4 +1,5 @@
 <script lang="ts">
+import logoUrl from '../../assets/logo.svg'
 import { defineComponent } from 'vue'
 import { mapActions, mapState } from 'pinia'
 import Icon from './Icon.vue'
@@ -13,7 +14,7 @@ export default defineComponent({
   name: 'TopBar',
   components: { Icon, ProjectMenu, ExportDialog, RelinkDialog, RemoveAssetConfirm },
   data() {
-    return { logoUrl: `${import.meta.env.BASE_URL}logo.svg` }
+    return { logoUrl }
   },
   computed: {
     ...mapState(useEditorStore, ['project', 'resolvedDark', 'canUndo', 'canRedo'])

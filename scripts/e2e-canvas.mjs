@@ -120,7 +120,7 @@ async function boxRelativeToCanvas(selector) {
 const near = (a, b, tol) => Math.abs(a - b) <= tol
 
 // ---------------------------------------------------------------- setup
-await page.goto(`http://localhost:${PORT}/app`)
+await page.goto(`http://localhost:${PORT}/app/`)
 await page.waitForSelector('header')
 await page.locator('header button[aria-haspopup]').first().click()
 await page.getByRole('menuitem', { name: /New project|Neues Projekt/ }).click()

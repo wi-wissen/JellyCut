@@ -3,7 +3,7 @@ import { chromium } from 'playwright-core'
 import { createServer } from 'vite'
 import { existsSync, readdirSync } from 'node:fs'
 
-const [out = 'shot.png', theme = 'light', width = '1120', height = '700', locale = 'de', path = '/app'] = process.argv.slice(2)
+const [out = 'shot.png', theme = 'light', width = '1120', height = '700', locale = 'de', path = '/app/'] = process.argv.slice(2)
 
 function findChromium() {
   const root = process.env.PLAYWRIGHT_BROWSERS_PATH ?? '/opt/pw-browsers'

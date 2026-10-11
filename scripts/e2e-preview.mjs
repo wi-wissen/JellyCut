@@ -55,7 +55,7 @@ async function settle(expected, tol = 0, timeout = 6000) {
   return { ok: false, got }
 }
 
-await page.goto('http://localhost:5188/app')
+await page.goto('http://localhost:5188/app/')
 await page.waitForSelector('header')
 // Fresh project, then import the frame-coded clip and put it on the timeline.
 await page.locator('header button[aria-haspopup]').first().click()

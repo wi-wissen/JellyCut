@@ -38,7 +38,7 @@ async function openPage(options) {
   const errors = []
   page.on('pageerror', (e) => errors.push(e.message))
   page.on('console', (m) => m.type() === 'error' && !/favicon|404/.test(m.text()) && errors.push(m.text()))
-  await page.goto('http://localhost:5184/app')
+  await page.goto('http://localhost:5184/app/')
   await page.waitForSelector('header')
   return { context, page, errors }
 }

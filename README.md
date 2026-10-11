@@ -24,7 +24,10 @@ src/engine/   browser layer: WebGL2 compositor, preview, export (runs in a worke
               media probing, exact frame access, keyframes, waveform
 src/platform/ File System Access API, IndexedDB
 src/ui/       Vue components and Pinia stores
+src/landing/, src/app/, src/help/   entry points of the three real pages
 ```
+
+The site is built from three real HTML pages (no client-side router, no 404 fallback needed): `index.html` (landing page), `app/index.html` (the editor) and `help/sources/index.html` (guide). The landing and help pages never load the editor code. `vite.config.ts` uses `base: './'`, so the site works under any domain or sub path. Deployment: `.github/workflows/pages.yml` (GitHub Pages from Actions; the custom domain is set in the repository settings).
 
 Preview and export draw through the same `Scene` and the same `Compositor`, so what you see is what you export. All times are whole integer microseconds. Cuts land on real source timestamps.
 
@@ -50,6 +53,14 @@ node scripts/e2e-export-worker.mjs
 node scripts/e2e-export-ui.mjs
 node scripts/e2e-panels.mjs
 node scripts/e2e-waveform.mjs
+node scripts/e2e-playback.mjs     # picture follows the playhead, also on a slow CPU
+node scripts/e2e-hidpi.mjs        # canvas drawn at device resolution
+node scripts/e2e-canvas.mjs       # editing text and clips directly in the player
+node scripts/e2e-finecut.mjs
+node scripts/e2e-record.mjs
+node scripts/e2e-relink.mjs
+node scripts/e2e-media-remove.mjs
+npm run build && node scripts/e2e-build.mjs   # smoke test of the production build
 ```
 
 The test Chromium decodes and encodes VP8/VP9/AV1 and Opus but not H.264/AAC. Fixtures in `tests/fixtures` are generated with ffmpeg (VP9/Opus WebM); one H.264 MP4 checks the "cannot decode" path. Real Chrome/Edge also encode H.264.

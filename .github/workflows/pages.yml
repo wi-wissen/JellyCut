@@ -28,10 +28,6 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
-      # GitHub Pages has no server-side rewrites: it serves 404.html for unknown paths, and the app router
-      # then handles /app, /help/sources and so on. (The custom domain is set in the repository settings;
-      # a CNAME file is ignored for Actions deployments.)
-      - run: cp dist/index.html dist/404.html
       - uses: actions/configure-pages@v5
         if: github.event_name != 'pull_request'
       - uses: actions/upload-pages-artifact@v3

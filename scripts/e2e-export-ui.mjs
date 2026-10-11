@@ -7,7 +7,7 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const PORT = 5186
-const APP_URL = `http://localhost:${PORT}/app`
+const APP_URL = `http://localhost:${PORT}/app/`
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const SHOT_DIR = process.env.SHOT_DIR ?? '/tmp/claude-0/-home-user-JellyCut/8ac8332d-b077-5711-8558-272fe1bb4e47/scratchpad'
 const FRAMES = join(root, 'tests/fixtures/frames.webm')

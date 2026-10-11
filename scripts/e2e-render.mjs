@@ -5,7 +5,7 @@ import { createServer } from 'vite'
 import { existsSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs'
 
 const PORT = 5194
-const APP_URL = `http://localhost:${PORT}/app`
+const APP_URL = `http://localhost:${PORT}/app/`
 const SHOT_DIR = process.env.SHOT_DIR ?? '/tmp/claude-0/-home-user-JellyCut/8ac8332d-b077-5711-8558-272fe1bb4e47/scratchpad'
 
 function findChromium() {

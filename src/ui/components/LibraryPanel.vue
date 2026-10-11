@@ -69,7 +69,8 @@ export default defineComponent({
       return ACCEPT
     },
     sourcesHref(): string {
-      return this.$router.resolve({ name: 'sources' }).href
+      // The editor lives at /app/, the guide at /help/sources/ (real pages, see vite.config.ts).
+      return '../help/sources/'
     }
   },
   methods: {

@@ -48,7 +48,7 @@ async function canvasBits() {
   }, buf.toString('base64'))
 }
 
-await page.goto('http://localhost:5180/app')
+await page.goto('http://localhost:5180/app/')
 await page.waitForSelector('header')
 await page.locator('header button[aria-haspopup]').first().click()
 await page.getByRole('menuitem', { name: /New project|Neues Projekt/ }).click()

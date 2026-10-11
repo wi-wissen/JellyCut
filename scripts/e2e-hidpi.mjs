@@ -22,7 +22,7 @@ async function measure(dpr, viewport) {
   const ctx = await browser.newContext({ viewport, deviceScaleFactor: dpr, locale: 'en' })
   const page = await ctx.newPage()
   page.on('pageerror', (e) => errors.push(e.message))
-  await page.goto('http://localhost:5179/app')
+  await page.goto('http://localhost:5179/app/')
   await page.waitForSelector('canvas')
   await page.waitForTimeout(1200)
   const r = await page.evaluate(() => {

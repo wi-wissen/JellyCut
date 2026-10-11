@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const PORT = 5198
-const APP_URL = `http://localhost:${PORT}/app`
+const APP_URL = `http://localhost:${PORT}/app/`
 const SHOT_DIR = process.env.SHOT_DIR ?? null
 const workDir = mkdtempSync(join(tmpdir(), 'jellycut-e2e-'))
 const PICKER_APIS = ['showOpenFilePicker', 'showSaveFilePicker', 'showDirectoryPicker']
