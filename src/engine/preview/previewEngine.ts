@@ -19,10 +19,16 @@ interface AssetEntry {
   bitmap: ImageBitmap | null
 }
 
-/** Longest side of the preview canvas in pixels; the export always uses the full format size. */
+/** Longest side of the preview canvas until the real display size is known; the export always uses the full format size. */
 const PREVIEW_MAX_SIDE = 1280
 /** A media element further away from its wanted position than this is re-synchronised. */
 const MAX_DRIFT_SECONDS = 0.2
+/** The wall clock is trusted while it agrees with the media element this closely; beyond that the media wins. */
+const RESYNC_TOLERANCE: Micros = 60_000
+/** After this long without a picture the clock runs on regardless, so a broken file cannot freeze playback. */
+const MAX_STALL_MS = 4000
+/** A media element is not seeked again sooner than this after its last seek (avoids seek storms). */
+const SEEK_COOLDOWN_MS = 600
 /** Elements of clips starting within this window are prepared in advance (no stall at the cut). */
 const PRELOAD_WINDOW: Micros = 1_500_000
 
@@ -46,6 +52,9 @@ export class PreviewEngine {
   private startWall = 0
   private startTime: Micros = 0
   private renderToken = 0
+  private stallSince = 0
+  private lastSeek = new WeakMap<HTMLMediaElement, number>()
+  private targetSize: { width: number; height: number } | null = null
   private disposed = false
   private fontsReady: Promise<unknown>
 
@@ -139,6 +148,7 @@ export class PreviewEngine {
     if (this.isPlaying || this.disposed) return
     if (this.time >= this.duration) this.time = 0
     this.isPlaying = true
+    this.stallSince = 0
     this.startWall = performance.now()
     this.startTime = this.time
     this.renderToken++
@@ -169,7 +179,8 @@ export class PreviewEngine {
 
   private tick = (now: number): void => {
     if (!this.isPlaying || this.disposed || !this.project) return
-    const t = this.startTime + Math.round((now - this.startWall) * 1000)
+    let t = this.startTime + Math.round((now - this.startWall) * 1000)
+    t = this.followMedia(t, now)
     if (t >= this.duration) {
       this.time = this.duration
       this.isPlaying = false
@@ -188,7 +199,7 @@ export class PreviewEngine {
     for (const layer of scene.videos) {
       activeClips.add(layer.clipId)
       const clip = this.planned.clips.find((c) => c.id === layer.clipId)
-      const source = clip ? this.playbackFrame(clip, layer.srcTime) : null
+      const source = clip ? this.playbackFrame(clip, layer.srcTime, now) : null
       if (source) frames.set(layer.clipId, source)
       else complete = false
     }
@@ -201,22 +212,73 @@ export class PreviewEngine {
     this.raf = requestAnimationFrame(this.tick)
   }
 
-  private playbackFrame(clip: Clip, srcTime: Micros): FrameSource | null {
+  /**
+   * The media element of the front video clip is the master clock: when its picture stalls (slow disk,
+   * big file, decoder busy) the timeline waits instead of skipping ahead and then seeking back, which
+   * caused stuttering and frozen pictures. Without a video clip (gaps, pictures, text only) the wall
+   * clock runs on its own.
+   */
+  private followMedia(wallTime: Micros, now: number): Micros {
+    if (!this.project) return wallTime
+    const front = buildScene(this.project, this.planned, wallTime).videos.at(-1)
+    const clip = front ? this.planned.clips.find((c) => c.id === front.clipId) : undefined
+    const asset = clip ? this.assets.get(clip.assetId) : undefined
+    const el = clip && asset && asset.kind === 'video' ? this.videoEls.get(clip.id) : undefined
+    if (!clip || !el) {
+      this.stallSince = 0
+      return wallTime
+    }
+    // The wall clock may just have crossed into this clip: start its element now, otherwise the timeline
+    // would wait for a picture that nobody asked for.
+    this.driveElement(el, clip, front!.srcTime, now)
+    const ready = !el.paused && !el.seeking && el.readyState >= 2
+    if (ready) {
+      this.stallSince = 0
+      const mediaTime = clip.start + Math.round((el.currentTime * 1_000_000 - clip.srcIn) / clip.speed)
+      if (Math.abs(mediaTime - wallTime) > RESYNC_TOLERANCE) {
+        this.startWall = now
+        this.startTime = mediaTime
+        return mediaTime
+      }
+      return wallTime
+    }
+    if (!this.stallSince) this.stallSince = now
+    if (now - this.stallSince < MAX_STALL_MS) {
+      // Hold the clock where it was until the picture is there.
+      this.startWall = now
+      this.startTime = this.time
+      return this.time
+    }
+    return wallTime
+  }
+
+  private playbackFrame(clip: Clip, srcTime: Micros, now: number): FrameSource | null {
     const asset = this.assets.get(clip.assetId)
     if (!asset) return null
     if (asset.kind === 'image') return asset.bitmap
     const el = this.videoElement(clip, asset)
+    this.driveElement(el, clip, srcTime, now)
+    return el.readyState >= 2 && !el.seeking ? el : null
+  }
+
+  /** Makes a clip's element play at the right position and settings. Safe to call every frame. */
+  private driveElement(el: HTMLVideoElement, clip: Clip, srcTime: Micros, now: number): void {
     const wanted = srcTime / 1_000_000
-    el.playbackRate = clip.speed
+    if (el.playbackRate !== clip.speed) el.playbackRate = clip.speed
     el.muted = clip.muted
     el.volume = clamp01(clip.volume)
+    const seekAllowed = now - (this.lastSeek.get(el) ?? -Infinity) > SEEK_COOLDOWN_MS
     if (el.paused) {
-      if (Math.abs(el.currentTime - wanted) > 0.05) el.currentTime = wanted
+      if (Math.abs(el.currentTime - wanted) > 0.05) this.seekTo(el, wanted, now)
       void el.play().catch(() => undefined)
-    } else if (Math.abs(el.currentTime - wanted) > MAX_DRIFT_SECONDS) {
-      el.currentTime = wanted
+    } else if (seekAllowed && Math.abs(el.currentTime - wanted) > MAX_DRIFT_SECONDS) {
+      this.seekTo(el, wanted, now)
     }
-    return el.readyState >= 2 && !el.seeking ? el : null
+  }
+
+  private seekTo(el: HTMLMediaElement, seconds: number, now: number): void {
+    this.lastSeek.set(el, now)
+    el.currentTime = seconds
   }
 
   private videoElement(clip: Clip, asset: AssetEntry): HTMLVideoElement {
@@ -279,6 +341,7 @@ export class PreviewEngine {
 
   /** Re-anchors the clock and the media elements after a seek or project change while playing. */
   private resync(): void {
+    this.stallSince = 0
     this.startWall = performance.now()
     this.startTime = this.time
     for (const el of this.videoEls.values()) el.pause()
@@ -304,12 +367,34 @@ export class PreviewEngine {
 
   // --- helpers ---------------------------------------------------------------------------
 
+  /**
+   * Sets the size the preview should be drawn at, in device pixels (CSS size times devicePixelRatio).
+   * Drawing at the displayed resolution keeps text and edges crisp on HiDPI screens; the project's own
+   * output size is the upper limit.
+   */
+  setPreviewSize(width: number, height: number): void {
+    if (!(width > 0) || !(height > 0)) return
+    this.targetSize = { width, height }
+    this.fitCanvas()
+    if (!this.isPlaying) void this.renderPaused()
+  }
+
   private fitCanvas(): void {
     if (!this.project) return
     const { width, height } = this.project.format
-    const scale = Math.min(1, PREVIEW_MAX_SIDE / Math.max(width, height))
-    const w = Math.max(2, Math.round(width * scale))
-    const h = Math.max(2, Math.round(height * scale))
+    let w = width
+    let h = height
+    if (this.targetSize) {
+      const scale = Math.min(1, this.targetSize.width / width, this.targetSize.height / height)
+      w = width * scale
+      h = height * scale
+    } else {
+      const scale = Math.min(1, PREVIEW_MAX_SIDE / Math.max(width, height))
+      w = width * scale
+      h = height * scale
+    }
+    w = Math.max(2, Math.round(w))
+    h = Math.max(2, Math.round(h))
     if (this.canvas.width !== w || this.canvas.height !== h) {
       this.canvas.width = w
       this.canvas.height = h
