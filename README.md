@@ -67,6 +67,7 @@ Nothing is uploaded. Videos, pictures and projects stay on the device:
 ## Assets and licences
 
 - Fonts: Bebas Neue, Caveat, DM Mono, Fredoka, Inter, Lora, Pacifico, Sora, self-hosted through Fontsource, SIL Open Font License 1.1.
+- Photos in `src/assets/photos` (sea turtle, reef background, cut-out turtle): generated with an AI image model (Google Gemini image model via OpenRouter) for this project; no third-party artwork is included. Check the provider's output terms before a commercial release.
 - Sticker pictures: [Fluent Emoji](https://github.com/microsoft/fluentui-emoji), 3D style, by Microsoft, MIT licence. The licence text with the copyright notice is `src/assets/stickers/LICENSE-FluentEmoji.txt`; the source of each file is listed in `src/assets/stickers/SOURCES.txt`. The technology help page credits them.
 - Help photos in `src/assets/photos`: origin and licence still to be recorded (open item in the release checklist).
 - Libraries (licences read from `node_modules`): Mediabunny MPL-2.0, lucide-vue-next ISC, Vue, Vue I18n, Pinia, Tailwind, Vite and Vitest MIT, Playwright (development only) Apache-2.0. The technology help page names them.
@@ -126,6 +127,7 @@ The scripts in `scripts/e2e-*.mjs` drive Chromium with Playwright (`playwright-c
 | `e2e-zorder.mjs` | 5340 | true stacking order of areas and other overlays |
 | `e2e-stickers.mjs` | 5360 | picture stickers: gallery, preview and export pixels, save and load |
 | `e2e-design.mjs` | 5310 | design tabs: shared sections, no position fields, arrow keys (`E2E_PORT`) |
+| `e2e-fitend.mjs` | 5370 | overlays and texts end with the video: new items, drag, delete the last clip, undo |
 | **Export** | | |
 | `e2e-export-worker.mjs` | 5187 | export in a worker, progress, cancel (root page) |
 | `e2e-export.mjs` | 5190 | exported MP4 frame by frame and audio (root page) |
