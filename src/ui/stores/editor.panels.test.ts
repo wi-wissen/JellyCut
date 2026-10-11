@@ -98,22 +98,22 @@ describe('editor store: panel actions', () => {
     expect(validateProject(store.project).ok).toBe(true)
   })
 
-  it('toggles fit for the selected clip only, and for all clips when nothing is selected', () => {
+  it('sets fit for the whole project, whatever is selected', () => {
     const store = useEditorStore()
     store.select({ kind: 'clip', id: 'clip-beach' })
-    store.setFitForSelection('fill')
-    expect(store.project.clips.map((c) => c.transform.fit)).toEqual(['fit', 'fill', 'fit'])
-    store.select(null)
-    store.setFitForSelection('fill')
+    store.setProjectFit('fill')
+    expect(store.project.format.fit).toBe('fill')
     expect(store.project.clips.map((c) => c.transform.fit)).toEqual(['fill', 'fill', 'fill'])
-    store.setFitForSelection('fit')
+    store.select(null)
+    store.setProjectFit('fit')
+    expect(store.project.format.fit).toBe('fit')
     expect(store.project.clips.map((c) => c.transform.fit)).toEqual(['fit', 'fit', 'fit'])
   })
 
   it('treats a selected text as "nothing selected" for fit', () => {
     const store = useEditorStore()
     store.select({ kind: 'text', id: 'text-1' })
-    store.setFitForSelection('fill')
+    store.setProjectFit('fill')
     expect(store.project.clips.every((c) => c.transform.fit === 'fill')).toBe(true)
   })
 

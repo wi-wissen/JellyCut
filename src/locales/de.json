@@ -126,7 +126,21 @@
       "square": "Quadrat",
       "portraitTall": "Hochformat 4:5"
     },
-    "close": "Schließen"
+    "close": "Schließen",
+    "pictureFit": {
+      "title": "Bildanpassung",
+      "chip": "Bildanpassung: {mode}",
+      "chipAria": "Bildanpassung, aktuell {mode}. Öffnet die Optionen zur Bildanpassung",
+      "explain": "Einpassen zeigt das ganze Bild, Füllen schneidet es zu, damit es den Bildschirm ausfüllt",
+      "scope": "Gilt für alle Clips und für Clips, die du später hinzufügst"
+    },
+    "overlay": {
+      "textBox": "Text: {text}",
+      "clipBox": "Bild: {name}",
+      "scale": "Größe",
+      "move": "Verschieben",
+      "keys": "Pfeiltasten verschieben, Umschalt für größere Schritte, Entf löscht. Doppelklick auf den Text bearbeitet ihn."
+    }
   },
   "landing": {
     "title": "Jelly Cut",
@@ -168,7 +182,9 @@
     "transitionSummary": "{name} · {seconds}",
     "transitionChange": "Ändern",
     "transitionRemove": "Entfernen",
-    "firstClip": "Der erste Clip hat keinen Schnitt davor. Übergänge gibt es nur zwischen zwei Clips."
+    "firstClip": "Der erste Clip hat keinen Schnitt davor. Übergänge gibt es nur zwischen zwei Clips.",
+    "sound": "Ton",
+    "timing": "Zeit"
   },
   "transitions": {
     "title": "Übergänge",
@@ -232,7 +248,11 @@
     "swatchOutline": "Konturfarbe {hex}",
     "customTextColor": "Eigene Textfarbe",
     "customOutlineColor": "Eigene Konturfarbe",
-    "presetAria": "Vorlage {name}"
+    "presetAria": "Vorlage {name}",
+    "dragHint": "Ziehe den Text im Bild, um ihn zu platzieren",
+    "posLeft": "Links",
+    "posCenter": "Mitte",
+    "posRight": "Rechts"
   },
   "music": {
     "header": "Eigener Ton · {name}",
@@ -292,6 +312,131 @@
       "missing": "Für den Export fehlen Dateien: {names}. Importiere sie in der Bibliothek erneut.",
       "unsupported": "Dieser Browser kann dieses Projekt nicht exportieren.",
       "failed": "Der Export ist fehlgeschlagen. {message}"
+    }
+  },
+  "record": {
+    "title": "Aufnahme",
+    "kinds": {
+      "microphone": "Mikrofon",
+      "camera": "Kamera",
+      "screen": "Bildschirm"
+    },
+    "hints": {
+      "microphone": "Nur Ton",
+      "camera": "Bild und Ton",
+      "screen": "Bildschirm, mit Ton wenn möglich"
+    },
+    "waiting": "Bitte erlaube den Zugriff im Browser. Dann beginnt die Aufnahme.",
+    "preview": "Vorschau",
+    "level": "Lautstärke",
+    "stop": "Stopp",
+    "pause": "Pause",
+    "resume": "Weiter",
+    "cancel": "Abbrechen",
+    "finishing": "Die Aufnahme wird in die Bibliothek übernommen …",
+    "doneTitle": "Aufnahme fertig",
+    "doneText": "Die Aufnahme liegt jetzt in der Bibliothek.",
+    "addToTimeline": "Zur Timeline hinzufügen",
+    "again": "Neu aufnehmen",
+    "tryAgain": "Erneut versuchen",
+    "announceTime": "Aufnahmezeit {time}",
+    "status": {
+      "started": "Aufnahme gestartet",
+      "paused": "Aufnahme pausiert",
+      "resumed": "Aufnahme läuft weiter",
+      "stopped": "Aufnahme beendet",
+      "cancelled": "Aufnahme verworfen"
+    },
+    "error": {
+      "permission": "Der Zugriff wurde nicht erlaubt. Erlaube ihn im Browser, wenn er nachfragt.",
+      "noDevice": "Es wurde kein passendes Gerät gefunden. Schließe ein Mikrofon oder eine Kamera an.",
+      "busy": "Das Gerät wird gerade von einem anderen Programm benutzt.",
+      "aborted": "Die Aufnahme wurde unterbrochen.",
+      "empty": "Die Aufnahme ist leer. Nimm etwas länger auf.",
+      "unsupported": "Dieser Browser kann hier nicht aufnehmen. Chrome oder Edge funktionieren.",
+      "import": "Die Aufnahme konnte nicht verarbeitet werden.",
+      "generic": "Die Aufnahme hat nicht geklappt. Versuche es noch einmal."
+    }
+  },
+  "fineCut": {
+    "title": "Feinschnitt",
+    "chip": "{name} · {fps} fps",
+    "fullscreen": "Vollbild",
+    "exitFullscreen": "Vollbild beenden",
+    "done": "Fertig",
+    "cutHere": "Hier schneiden",
+    "before": "Letztes Bild vor dem Schnitt",
+    "after": "Erstes Bild nach dem Schnitt",
+    "cutBadge": "Schnitt",
+    "frameInfo": "Bild {frame} · {time}",
+    "loadingFrame": "Bild wird geladen …",
+    "noFile": "Diese Datei ist nicht geladen. Importiere sie in der Bibliothek erneut.",
+    "tooShort": "Dieser Clip ist zu kurz für einen Schnitt.",
+    "cannotCut": "Hier ist kein Schnitt möglich.",
+    "previousPause": "Vorherige Pause",
+    "nextPause": "Nächste Pause",
+    "pause": "Pause",
+    "pauseLabel": "Pause {seconds} s",
+    "previousKeyframe": "Vorheriger Keyframe",
+    "nextKeyframe": "Nächster Keyframe",
+    "keyframe": "Keyframe",
+    "previousFrame": "Ein Frame zurück",
+    "nextFrame": "Ein Frame vor",
+    "frame": "1 Frame",
+    "zoom": "Zoom",
+    "zoomValue": "1 Frame = {px} px",
+    "snap": "Einrasten an Keyframes: {state}",
+    "sound": "Ton beim Schritt: {state}",
+    "fade": "Überblendung 15 ms",
+    "on": "an",
+    "off": "aus",
+    "hint": "Pfeiltasten: 1 Frame · Umschalt: 10 Frames · K: nächster Keyframe · P: nächste Pause · Enter: hier schneiden · Esc: schließen",
+    "noSound": "Kein Ton in dieser Datei",
+    "waveform": "Wellenform",
+    "waveformLoading": "Wellenform wird berechnet",
+    "strip": "Frame-Streifen",
+    "keyTile": "KEY {n}",
+    "frameTile": "#{n}"
+  },
+  "relink": {
+    "apply": "Übernehmen",
+    "close": "Schließen",
+    "banner": "{count} Datei fehlt. Verknüpfe sie neu, um weiterzuarbeiten. | {count} Dateien fehlen. Verknüpfe sie neu, um weiterzuarbeiten.",
+    "selectFiles": "Dateien auswählen…",
+    "chooseFolder": "Ordner auswählen…",
+    "tileButton": "Neu verknüpfen",
+    "tileLabel": "{name} neu verknüpfen",
+    "title": "Dateien fehlen",
+    "intro": "Diese Dateien sind im Projekt, aber der Browser kennt sie gerade nicht. Wähle sie erneut aus oder wähle den Ordner, in dem sie liegen. Es wird nichts kopiert oder hochgeladen.",
+    "dropHint": "Dateien hierher ziehen",
+    "scanning": "Ordner wird durchsucht… {count} Dateien geprüft",
+    "summary": "{matched} verknüpft, {choose} zur Auswahl, {notFound} nicht gefunden",
+    "allLinked": "Alle Dateien sind wieder verknüpft.",
+    "size": "Größe {size}",
+    "length": "Länge {duration}",
+    "status": {
+      "matchedName": "Gefunden über Name und Größe",
+      "matchedLength": "Gefunden über Größe und Länge (umbenannt)",
+      "matchedPath": "Im Arbeitsordner gefunden",
+      "matchedManual": "Von dir ausgewählt",
+      "notFound": "Noch nicht gefunden",
+      "choose": "Mehrere Dateien passen. Wähle die richtige aus.",
+      "chooseLabel": "Datei für {name}",
+      "none": "Keine Auswahl"
+    },
+    "errors": {
+      "wrongFile": "Diese Datei passt nicht: Länge oder Typ weichen vom Projekt ab. Wähle die richtige Datei.",
+      "unsupported": "Dieser Browser kann diese Datei nicht lesen. Bitte nutze Chrome oder Edge.",
+      "unknown": "Dieses Medium gehört nicht mehr zum Projekt."
+    },
+    "folder": {
+      "none": "Noch kein Arbeitsordner gewählt.",
+      "noAccess": "Der Browser hat keinen Zugriff auf den Arbeitsordner erlaubt. Erlaube den Zugriff erneut oder wähle den Ordner neu.",
+      "pickFailed": "Der Ordner konnte nicht geöffnet werden. Bitte versuche es noch einmal.",
+      "grant": "Zugriff erneut erlauben",
+      "forget": "Ordner vergessen",
+      "importFromFolder": "Aus Arbeitsordner importieren…",
+      "needsAccess": "Der Browser fragt nach dem Start erneut nach dem Zugriff."
     }
   }
 }

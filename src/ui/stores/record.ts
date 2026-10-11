@@ -131,11 +131,11 @@ export const useRecordStore = defineStore('record', {
     async stop(): Promise<void> {
       if (!recorder || !this.live) return
       const finished = recorder
+      this.tick()
       this.phase = 'finishing'
       this.stopTicker()
       try {
         const file = await finished.stop()
-        this.elapsedMs = finished.elapsedMs()
         await this.importRecording(file)
       } catch (e) {
         this.fail(e)

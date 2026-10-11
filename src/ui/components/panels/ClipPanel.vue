@@ -29,9 +29,6 @@ export default defineComponent({
     isFirst(): boolean {
       return this.clip !== null && !canHaveTransition(this.project, this.clip.id)
     },
-    isFit(): boolean {
-      return this.clip?.transform.fit !== 'fill'
-    },
     zoomPercent(): number {
       return Math.round((this.clip?.transform.scale ?? 1) * 100)
     },
@@ -56,7 +53,6 @@ export default defineComponent({
   },
   methods: {
     ...mapActions(useEditorStore, [
-      'setFitForSelection',
       'setSelectedClipProps',
       'removeTransition',
       'setActiveTab',
@@ -65,9 +61,6 @@ export default defineComponent({
     ]),
     keyFor(field: string): string {
       return `clip-${field}:${this.clip?.id ?? ''}`
-    },
-    setFit(fill: boolean): void {
-      this.setFitForSelection(fill ? 'fill' : 'fit')
     },
     onZoom(percent: number): void {
       this.setSelectedClipProps({ transform: { scale: percent / 100 } }, this.keyFor('zoom'))
@@ -96,32 +89,12 @@ export default defineComponent({
 </script>
 
 <template>
-  <div v-if="clip" class="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto p-3">
+  <div v-if="clip" class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
     <BackLink />
     <h2 class="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">{{ header }}</h2>
 
-    <section class="flex flex-col gap-3 rounded-[10px] border border-line bg-bg p-3">
-      <h3 class="text-[13px] font-semibold">{{ $t('clip.picture') }}</h3>
-      <div class="flex gap-1 rounded-lg bg-panel2 p-[3px]" role="group" :aria-label="$t('clip.picture')">
-        <button
-          type="button"
-          class="flex min-h-11 flex-1 items-center justify-center rounded-md text-xs font-semibold"
-          :class="isFit ? 'bg-fill text-fill-fg' : 'text-fg hover:bg-panel'"
-          :aria-pressed="isFit"
-          @click="setFit(false)"
-        >
-          {{ $t('clip.fit') }}
-        </button>
-        <button
-          type="button"
-          class="flex min-h-11 flex-1 items-center justify-center rounded-md text-xs font-semibold"
-          :class="!isFit ? 'bg-fill text-fill-fg' : 'text-fg hover:bg-panel'"
-          :aria-pressed="!isFit"
-          @click="setFit(true)"
-        >
-          {{ $t('clip.fill') }}
-        </button>
-      </div>
+    <section class="flex flex-col gap-1.5">
+      <h3 class="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">{{ $t('clip.picture') }}</h3>
       <RangeField
         :label="$t('clip.zoom')"
         :model-value="zoomPercent"
@@ -133,7 +106,8 @@ export default defineComponent({
       />
     </section>
 
-    <section class="flex flex-col gap-3 rounded-[10px] border border-line bg-bg p-3">
+    <section class="flex flex-col gap-1.5 border-t border-line pt-3">
+      <h3 class="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">{{ $t('clip.sound') }}</h3>
       <RangeField
         :label="$t('clip.volume')"
         :model-value="volumePercent"
@@ -149,6 +123,10 @@ export default defineComponent({
         :checked="!clip.muted"
         @toggle="toggleOriginalAudio"
       />
+    </section>
+
+    <section class="flex flex-col gap-1.5 border-t border-line pt-3">
+      <h3 class="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">{{ $t('clip.timing') }}</h3>
       <RangeField
         :label="$t('clip.tempo')"
         :model-value="speedIndex"
@@ -161,8 +139,8 @@ export default defineComponent({
       />
     </section>
 
-    <section class="flex flex-col gap-2 rounded-[10px] border border-line bg-bg p-3">
-      <h3 class="text-[13px] font-semibold">{{ $t('clip.transition') }}</h3>
+    <section class="flex flex-col gap-1.5 border-t border-line pt-3">
+      <h3 class="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">{{ $t('clip.transition') }}</h3>
       <p v-if="isFirst" class="text-xs text-muted">{{ $t('clip.firstClip') }}</p>
       <template v-else>
         <p class="text-xs text-muted" data-testid="transition-summary">{{ transitionSummary }}</p>

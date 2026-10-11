@@ -1,4 +1,5 @@
 import type { MediaInfo } from '../../engine/media/probe'
+import { projectFit } from '../project/format'
 import type { Asset, Clip, MusicItem, Project } from '../project/types'
 import type { Micros } from '../time'
 import { clipEnd, rippleClose } from './edit'
@@ -110,7 +111,7 @@ function newVideoClip(project: Project, assetId: string, newClipId: string, star
     srcOut,
     start,
     speed: 1,
-    transform: { fit: 'fit', scale: 1, x: 0, y: 0, rotation: 0, flipX: false },
+    transform: { fit: projectFit(project), scale: 1, x: 0, y: 0, rotation: 0, flipX: false },
     volume: 1,
     muted: false,
     filter: null,

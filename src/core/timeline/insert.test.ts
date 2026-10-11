@@ -347,3 +347,16 @@ describe('insertClipAt', () => {
     expectValid(next)
   })
 })
+
+describe('new clips follow the project-wide fit', () => {
+  it('appendClip and insertClipAt use fill when the project is set to fill', () => {
+    const project = { ...projectWith([video('v1')], [clip('a', 0, 4 * SEC)]), format: { ...projectWith([]).format, fit: 'fill' as const } }
+    expect(appendClip(project, 'v1', 'c1').clips.at(-1)!.transform.fit).toBe('fill')
+    expect(insertClipAt(project, 'v1', 'c2', 0).clips.find((c) => c.id === 'c2')!.transform.fit).toBe('fill')
+  })
+
+  it('defaults to fit when the project has no fit field', () => {
+    const project = projectWith([video('v1')])
+    expect(appendClip(project, 'v1', 'c1').clips[0]!.transform.fit).toBe('fit')
+  })
+})

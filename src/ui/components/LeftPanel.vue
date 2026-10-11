@@ -1,7 +1,6 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
 import { mapActions, mapState } from 'pinia'
-import Icon from './Icon.vue'
 import TabBar from './TabBar.vue'
 import LibraryPanel from './LibraryPanel.vue'
 import ClipPanel from './panels/ClipPanel.vue'
@@ -9,6 +8,7 @@ import TextPanel from './panels/TextPanel.vue'
 import TextProperties from './panels/TextProperties.vue'
 import MusicProperties from './panels/MusicProperties.vue'
 import TransitionsPanel from './panels/TransitionsPanel.vue'
+import RecordPanel from './panels/RecordPanel.vue'
 import { useEditorStore } from '../stores/editor'
 import type { Clip, MusicItem, TextItem } from '../../core/project/types'
 
@@ -17,7 +17,7 @@ type View = 'clip' | 'text-item' | 'music-item' | 'transitions' | 'library' | 'a
 
 export default defineComponent({
   name: 'LeftPanel',
-  components: { Icon, TabBar, LibraryPanel, ClipPanel, TextPanel, TextProperties, MusicProperties, TransitionsPanel },
+  components: { TabBar, LibraryPanel, ClipPanel, TextPanel, TextProperties, MusicProperties, TransitionsPanel, RecordPanel },
   computed: {
     ...mapState(useEditorStore, ['activeTab', 'selection', 'selectedItem']),
     view(): View {
@@ -57,15 +57,7 @@ export default defineComponent({
     <MusicProperties v-else-if="view === 'music-item' && selectedMusicItem" :item="selectedMusicItem" />
     <TransitionsPanel v-else-if="view === 'transitions'" />
     <TextPanel v-else-if="view === 'text'" />
-    <section v-else-if="view === 'record'" class="flex min-h-0 flex-1 flex-col p-3">
-      <div class="flex flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-line bg-panel2 p-6 text-center">
-        <span class="flex size-12 items-center justify-center rounded-full bg-panel text-muted">
-          <Icon name="record" class="size-6" />
-        </span>
-        <h2 class="text-sm font-bold">{{ $t('leftPanel.recordSoon') }}</h2>
-        <p class="max-w-[28ch] text-xs text-muted">{{ $t('leftPanel.recordText') }}</p>
-      </div>
-    </section>
+    <RecordPanel v-else-if="view === 'record'" />
     <LibraryPanel
       v-else-if="view === 'audio'"
       :kinds="['audio']"

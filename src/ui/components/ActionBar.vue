@@ -3,6 +3,8 @@ import { defineComponent } from 'vue'
 import { mapActions, mapState } from 'pinia'
 import Icon from './Icon.vue'
 import { useEditorStore } from '../stores/editor'
+import { useFineCutStore } from '../stores/fineCut'
+import { clipForFineCut } from '../../core/timeline/fineCut'
 
 type ActionKey = 'split' | 'fineCut' | 'duplicate' | 'flip' | 'rotate' | 'speed' | 'mute' | 'delete'
 
@@ -30,7 +32,7 @@ export default defineComponent({
     return { actions: ACTIONS }
   },
   computed: {
-    ...mapState(useEditorStore, ['timecode', 'isPlaying', 'selection', 'selectedClip', 'canSplitAtPlayhead']),
+    ...mapState(useEditorStore, ['timecode', 'isPlaying', 'selection', 'selectedClip', 'canSplitAtPlayhead', 'project', 'playheadMicros']),
     playLabel(): string {
       return this.$t(this.isPlaying ? 'actions.pause' : 'actions.play')
     },
@@ -39,6 +41,7 @@ export default defineComponent({
     }
   },
   methods: {
+    ...mapActions(useFineCutStore, { openFineCut: 'open' }),
     ...mapActions(useEditorStore, [
       'togglePlaying',
       'stepFrame',
@@ -56,7 +59,7 @@ export default defineComponent({
         case 'split':
           return this.canSplitAtPlayhead
         case 'fineCut':
-          return true
+          return clipForFineCut(this.project, this.playheadMicros, this.selection) !== null
         case 'duplicate':
         case 'delete':
           return this.selection !== null
@@ -97,7 +100,7 @@ export default defineComponent({
           this.toggleMuteSelected()
           break
         case 'fineCut':
-          // Not implemented yet.
+          void this.openFineCut()
           break
       }
     }
@@ -145,6 +148,8 @@ export default defineComponent({
         action.hot ? 'bg-signal text-signal-fg hover:bg-signal' : 'text-fg hover:bg-panel2',
         enabled(action.key) ? '' : 'cursor-not-allowed opacity-40'
       ]"
+      :id="action.key === 'fineCut' ? 'fine-cut-button' : undefined"
+      :aria-haspopup="action.key === 'fineCut' ? 'dialog' : undefined"
       :aria-disabled="!enabled(action.key)"
       :aria-pressed="pressed(action.key)"
       :aria-label="action.key === 'speed' ? `${$t('actions.speed')}: ${speedValue}` : undefined"

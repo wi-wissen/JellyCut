@@ -50,12 +50,24 @@ export function setBackground(project: Project, background: FormatBackground): P
   return { ...project, format: { ...project.format, background: next } }
 }
 
-/** Sets Fit or Fill on every clip. Returns the same project when every clip already has that mode. */
+/** The project-wide picture fit; absent in older files means 'fit'. */
+export function projectFit(project: Pick<Project, 'format'>): FitMode {
+  return project.format.fit === 'fill' ? 'fill' : 'fit'
+}
+
+/**
+ * Sets Fit or Fill for the whole project: the format and every clip's transform. Returns the same
+ * project when the format and all clips already have that mode.
+ */
 export function setAllFit(project: Project, fit: FitMode): Project {
   if (fit !== 'fit' && fit !== 'fill') return project
-  if (project.clips.every((c) => c.transform.fit === fit)) return project
+  const clipsDone = project.clips.every((c) => c.transform.fit === fit)
+  if (clipsDone && project.format.fit === fit) return project
   return {
     ...project,
-    clips: project.clips.map((c) => (c.transform.fit === fit ? c : { ...c, transform: { ...c.transform, fit } }))
+    format: { ...project.format, fit },
+    clips: clipsDone
+      ? project.clips
+      : project.clips.map((c) => (c.transform.fit === fit ? c : { ...c, transform: { ...c.transform, fit } }))
   }
 }

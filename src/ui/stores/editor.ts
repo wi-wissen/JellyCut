@@ -51,13 +51,13 @@ import {
   projectFileName,
   saveInWorkFolder,
   saveProjectFile,
-  type FsDirectoryHandle,
   type FsFileHandle,
   type OpenedProjectFile,
   type ProjectFileCaps,
   type SavedProjectFile
 } from '../../platform/projectFiles'
 import { useMediaStore } from './media'
+import { activeWorkFolder, setActiveWorkFolder } from '../../platform/workFolder'
 
 export type TabId = 'media' | 'audio' | 'record' | 'text' | 'sticker' | 'draw' | 'captions' | 'filter' | 'transitions'
 export type GroupId = 'material' | 'design' | 'look'
@@ -235,7 +235,6 @@ interface AutosaveTarget {
 }
 
 const autosavers = new WeakMap<object, Autosaver<Project>>()
-let workFolder: FsDirectoryHandle | null = null
 let detachLifecycle: (() => void) | null = null
 
 function autosaverFor(target: AutosaveTarget): Autosaver<Project> {
@@ -481,8 +480,9 @@ export const useEditorStore = defineStore('editor', {
       const suggested = projectFileName(project.name)
       try {
         let saved: SavedProjectFile | null
+        const folder = activeWorkFolder()
         if (this.fileHandle) saved = await saveProjectFile(text, suggested, this.fileHandle)
-        else if (workFolder) saved = { name: await saveInWorkFolder(workFolder, text, suggested) }
+        else if (folder) saved = { name: await saveInWorkFolder(folder, text, suggested) }
         else saved = await saveProjectFile(text, suggested)
         if (!saved) return
         this.fileHandle = saved.handle ?? null
@@ -502,7 +502,7 @@ export const useEditorStore = defineStore('editor', {
       try {
         const dir = await chooseWorkFolder()
         if (!dir) return
-        workFolder = dir
+        setActiveWorkFolder(dir)
         this.workFolderName = dir.name
       } catch (e) {
         this.loadError = errorMessage(e)
@@ -525,7 +525,7 @@ export const useEditorStore = defineStore('editor', {
       })
       const startedFrom = this.history
       const [record, folder] = await Promise.all([kvGet<AutosaveRecord>(AUTOSAVE_KEY), loadWorkFolder()])
-      workFolder = folder
+      setActiveWorkFolder(folder)
       this.workFolderName = folder?.name ?? null
       // The user may have started editing while storage was loading; their work wins.
       if (this.history !== startedFrom) return
@@ -673,12 +673,9 @@ export const useEditorStore = defineStore('editor', {
     setBackground(background: FormatBackground, key?: string) {
       this.commitProject(setFormatBackground(this.project, background), key)
     },
-    /** Fit or Fill for the selected clip; with no clip selected (or a text or music item) for all clips. */
-    setFitForSelection(fit: FitMode, key?: string) {
-      const project = this.project
-      const clip = this.selectedClip
-      const next = clip ? setClipProps(project, clip.id, { transform: { fit } }) : setAllFit(project, fit)
-      this.commitProject(next, key)
+    /** Fit or Fill for the whole project (format and all clips); independent of the selection. */
+    setProjectFit(fit: FitMode, key?: string) {
+      this.commitProject(setAllFit(this.project, fit), key)
     },
     updateSelectedMusic(patch: MusicPatch, key?: string) {
       const ref = this.selection

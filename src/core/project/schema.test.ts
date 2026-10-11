@@ -41,6 +41,11 @@ describe('createProject', () => {
 })
 
 describe('validateProject', () => {
+  it('accepts the project-wide fit when it is fit or fill, and when it is absent', () => {
+    expect(validateProject(mutate((p) => (p.format.fit = 'fill'))).ok).toBe(true)
+    expect(validateProject(mutate((p) => (p.format.fit = 'fit'))).ok).toBe(true)
+    expect(validateProject(mutate((p) => delete p.format.fit)).ok).toBe(true)
+  })
   it('accepts a valid project and returns it', () => {
     const p = sample()
     const r = validateProject(p)
@@ -71,7 +76,9 @@ describe('validateProject', () => {
     ['missing assets list', (p) => delete p.assets],
     ['volume out of range', (p) => (p.clips[0].volume = 7)],
     ['bad asset kind', (p) => (p.assets[0].kind = 'gif')],
-    ['transition with negative duration', (p) => (p.clips[0].transitionIn = { type: 'wipe', duration: -5 })]
+    ['transition with negative duration', (p) => (p.clips[0].transitionIn = { type: 'wipe', duration: -5 })],
+    ['unknown project fit', (p) => (p.format.fit = 'stretch' as never)],
+    ['non-string project fit', (p) => (p.format.fit = 1 as never)]
   ]
   for (const [name, fn] of bad) {
     it(`rejects: ${name}`, () => {

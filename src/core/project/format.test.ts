@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createProject, validateProject } from './schema'
-import { formatForRatio, setAllFit, setBackground, setRatio } from './format'
+import { formatForRatio, projectFit, setAllFit, setBackground, setRatio } from './format'
 import type { Clip, Project } from './types'
 
 function clip(id: string, fit: 'fit' | 'fill' = 'fit'): Clip {
@@ -81,12 +81,31 @@ describe('setBackground', () => {
   })
 })
 
+describe('projectFit', () => {
+  it('defaults to fit when the format has no fit field', () => {
+    expect(projectFit(fixture())).toBe('fit')
+    expect(projectFit({ format: { ...fixture().format, fit: 'fill' } })).toBe('fill')
+  })
+})
+
 describe('setAllFit', () => {
-  it('sets every clip to the same mode and keeps the other transform fields', () => {
+  it('sets the project format and every clip to the same mode and keeps the other transform fields', () => {
     const next = setAllFit(fixture(), 'fill')
+    expect(next.format.fit).toBe('fill')
     expect(next.clips.map((c) => c.transform.fit)).toEqual(['fill', 'fill'])
     expect(next.clips[0]!.transform).toEqual({ fit: 'fill', scale: 1, x: 0, y: 0, rotation: 0, flipX: false })
     expect(validateProject(next).ok).toBe(true)
+  })
+
+  it('does not depend on the selection and leaves the other format fields alone', () => {
+    const next = setAllFit(fixture(), 'fit')
+    expect(next.format).toEqual({ ...fixture().format, fit: 'fit' })
+    expect(next.clips[0]!.transform.scale).toBe(1)
+  })
+
+  it('still sets the format field when there are no clips yet', () => {
+    const p = { ...fixture(), clips: [] }
+    expect(setAllFit(p, 'fill')).toEqual({ ...p, format: { ...p.format, fit: 'fill' } })
   })
 
   it('returns the same project when every clip already has the mode, and for an empty project', () => {
@@ -95,7 +114,7 @@ describe('setAllFit', () => {
     expect(setAllFit(setAllFit(p, 'fill'), 'fill')).toEqual(setAllFit(p, 'fill'))
     const done = setAllFit(p, 'fill')
     expect(setAllFit(done, 'fill')).toBe(done)
-    expect(setAllFit({ ...p, clips: [] }, 'fill').clips).toEqual([])
+    expect(setAllFit({ ...p, clips: [], format: { ...p.format, fit: 'fill' } }, 'fill').clips).toEqual([])
   })
 
   it('refuses an unknown mode', () => {

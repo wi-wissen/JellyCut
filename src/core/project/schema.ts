@@ -123,6 +123,9 @@ function validateFormat(value: unknown, path: string, errors: Errors): void {
   need(errors, isPositiveInt(format.width), `${path}.width`, 'must be a positive integer')
   need(errors, isPositiveInt(format.height), `${path}.height`, 'must be a positive integer')
   need(errors, isPositiveNumber(format.fps), `${path}.fps`, POSITIVE_MSG)
+  if (format.fit !== undefined) {
+    need(errors, FIT_MODES.includes(format.fit as (typeof FIT_MODES)[number]), `${path}.fit`, `must be one of ${FIT_MODES.join(', ')}`)
+  }
 
   const bg = record(format.background, `${path}.background`, errors)
   if (!bg) return

@@ -126,7 +126,21 @@
       "square": "Square",
       "portraitTall": "Portrait 4:5"
     },
-    "close": "Close"
+    "close": "Close",
+    "pictureFit": {
+      "title": "Picture fit",
+      "chip": "Picture fit: {mode}",
+      "chipAria": "Picture fit, currently {mode}. Opens the picture fit options",
+      "explain": "Fit shows the whole picture, Fill crops it to cover the screen",
+      "scope": "Applies to all clips and to clips you add later"
+    },
+    "overlay": {
+      "textBox": "Text: {text}",
+      "clipBox": "Picture: {name}",
+      "scale": "Scale",
+      "move": "Move",
+      "keys": "Arrow keys move, Shift for bigger steps, Delete removes. Double-click the text to edit it."
+    }
   },
   "landing": {
     "title": "Jelly Cut",
@@ -168,7 +182,9 @@
     "transitionSummary": "{name} · {seconds}",
     "transitionChange": "Change",
     "transitionRemove": "Remove",
-    "firstClip": "The first clip has no cut before it. Transitions go between two clips."
+    "firstClip": "The first clip has no cut before it. Transitions go between two clips.",
+    "sound": "Sound",
+    "timing": "Timing"
   },
   "transitions": {
     "title": "Transitions",
@@ -232,7 +248,11 @@
     "swatchOutline": "Outline colour {hex}",
     "customTextColor": "Custom text colour",
     "customOutlineColor": "Custom outline colour",
-    "presetAria": "Preset {name}"
+    "presetAria": "Preset {name}",
+    "dragHint": "Drag the text in the picture to place it",
+    "posLeft": "Left",
+    "posCenter": "Centre",
+    "posRight": "Right"
   },
   "music": {
     "header": "Own sound · {name}",
@@ -292,6 +312,131 @@
       "missing": "Files are missing for the export: {names}. Import them again in the library.",
       "unsupported": "This browser cannot export this project.",
       "failed": "The export failed. {message}"
+    }
+  },
+  "record": {
+    "title": "Record",
+    "kinds": {
+      "microphone": "Microphone",
+      "camera": "Camera",
+      "screen": "Screen"
+    },
+    "hints": {
+      "microphone": "Sound only",
+      "camera": "Picture and sound",
+      "screen": "Screen, with sound if possible"
+    },
+    "waiting": "Please allow access in the browser. Recording starts then.",
+    "preview": "Preview",
+    "level": "Volume",
+    "stop": "Stop",
+    "pause": "Pause",
+    "resume": "Resume",
+    "cancel": "Cancel",
+    "finishing": "Adding the recording to the library …",
+    "doneTitle": "Recording ready",
+    "doneText": "The recording is now in the library.",
+    "addToTimeline": "Add to timeline",
+    "again": "Record again",
+    "tryAgain": "Try again",
+    "announceTime": "Recording time {time}",
+    "status": {
+      "started": "Recording started",
+      "paused": "Recording paused",
+      "resumed": "Recording resumed",
+      "stopped": "Recording stopped",
+      "cancelled": "Recording discarded"
+    },
+    "error": {
+      "permission": "Access was not allowed. Allow it in the browser when it asks.",
+      "noDevice": "No suitable device was found. Connect a microphone or a camera.",
+      "busy": "The device is being used by another program right now.",
+      "aborted": "The recording was interrupted.",
+      "empty": "The recording is empty. Record a bit longer.",
+      "unsupported": "This browser cannot record here. Chrome or Edge work.",
+      "import": "The recording could not be processed.",
+      "generic": "The recording did not work. Please try again."
+    }
+  },
+  "fineCut": {
+    "title": "Fine cut",
+    "chip": "{name} · {fps} fps",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen",
+    "done": "Done",
+    "cutHere": "Cut here",
+    "before": "Last frame before the cut",
+    "after": "First frame after the cut",
+    "cutBadge": "cut",
+    "frameInfo": "Frame {frame} · {time}",
+    "loadingFrame": "Loading frame …",
+    "noFile": "This file is not loaded. Import it again in the library.",
+    "tooShort": "This clip is too short to cut.",
+    "cannotCut": "No cut is possible here.",
+    "previousPause": "Previous pause",
+    "nextPause": "Next pause",
+    "pause": "Pause",
+    "pauseLabel": "Pause {seconds} s",
+    "previousKeyframe": "Previous keyframe",
+    "nextKeyframe": "Next keyframe",
+    "keyframe": "Keyframe",
+    "previousFrame": "One frame back",
+    "nextFrame": "One frame forward",
+    "frame": "1 frame",
+    "zoom": "Zoom",
+    "zoomValue": "1 frame = {px} px",
+    "snap": "Snap to keyframes: {state}",
+    "sound": "Sound while stepping: {state}",
+    "fade": "Fade 15 ms at cuts",
+    "on": "on",
+    "off": "off",
+    "hint": "Arrow keys: 1 frame · Shift: 10 frames · K: next keyframe · P: next pause · Enter: cut here · Esc: close",
+    "noSound": "No sound in this file",
+    "waveform": "Waveform",
+    "waveformLoading": "Computing waveform",
+    "strip": "Frame strip",
+    "keyTile": "KEY {n}",
+    "frameTile": "#{n}"
+  },
+  "relink": {
+    "apply": "Apply",
+    "close": "Close",
+    "banner": "{count} file is missing. Re-link it to keep editing. | {count} files are missing. Re-link them to keep editing.",
+    "selectFiles": "Select files…",
+    "chooseFolder": "Choose folder…",
+    "tileButton": "Re-link",
+    "tileLabel": "Re-link {name}",
+    "title": "Missing files",
+    "intro": "These files are part of the project, but the browser no longer has them. Select them again, or choose the folder they are in. Nothing is copied or uploaded.",
+    "dropHint": "Drop files here",
+    "scanning": "Searching the folder… {count} files checked",
+    "summary": "{matched} re-linked, {choose} to choose, {notFound} not found",
+    "allLinked": "All files are linked again.",
+    "size": "Size {size}",
+    "length": "Length {duration}",
+    "status": {
+      "matchedName": "Found by name and size",
+      "matchedLength": "Found by size and length (renamed)",
+      "matchedPath": "Found in the work folder",
+      "matchedManual": "Chosen by you",
+      "notFound": "Not found yet",
+      "choose": "Several files fit. Choose the right one.",
+      "chooseLabel": "File for {name}",
+      "none": "No choice"
+    },
+    "errors": {
+      "wrongFile": "This file does not match: its length or type differs from the project. Choose the right file.",
+      "unsupported": "This browser cannot read this file. Please use Chrome or Edge.",
+      "unknown": "This media is no longer part of the project."
+    },
+    "folder": {
+      "none": "No work folder is chosen yet.",
+      "noAccess": "The browser did not allow access to the work folder. Allow access again or choose the folder anew.",
+      "pickFailed": "The folder could not be opened. Please try again.",
+      "grant": "Grant access again",
+      "forget": "Forget folder",
+      "importFromFolder": "Import from work folder…",
+      "needsAccess": "After a restart the browser asks for access again."
     }
   }
 }

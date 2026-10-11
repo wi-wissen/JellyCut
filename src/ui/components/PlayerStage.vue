@@ -5,6 +5,7 @@ import { useEditorStore } from '../stores/editor'
 import { getAssetFile, getFrameProvider, useMediaStore } from '../stores/media'
 import { PreviewEngine } from '../../engine/preview/previewEngine'
 import PlayerToolbar from './PlayerToolbar.vue'
+import PlayerOverlay from './PlayerOverlay.vue'
 
 // Not reactive on purpose: the engine owns DOM elements, textures and decoders. There is one player.
 let engine: PreviewEngine | null = null
@@ -14,7 +15,7 @@ const TEXT_TARGETS = new Set(['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A'])
 
 export default defineComponent({
   name: 'PlayerStage',
-  components: { PlayerToolbar },
+  components: { PlayerToolbar, PlayerOverlay },
   data() {
     return { engineError: false }
   },
@@ -123,7 +124,8 @@ export default defineComponent({
       :style="{ aspectRatio: String(aspect), width: `min(100cqw, calc(100cqh * ${aspect}))` }"
     >
       <canvas ref="canvas" class="block size-full" role="img" :aria-label="$t('player.canvasLabel')" />
-      <div class="absolute right-2.5 top-2.5">
+      <PlayerOverlay v-if="!engineError" :format="project.format" />
+      <div class="absolute right-2.5 top-2.5 z-10">
         <PlayerToolbar />
       </div>
       <p

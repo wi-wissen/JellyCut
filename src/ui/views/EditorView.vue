@@ -6,6 +6,7 @@ import LeftPanel from '../components/LeftPanel.vue'
 import PlayerStage from '../components/PlayerStage.vue'
 import ActionBar from '../components/ActionBar.vue'
 import TimelinePanel from '../components/TimelinePanel.vue'
+import FineCutOverlay from '../components/fineCut/FineCutOverlay.vue'
 import { useEditorStore } from '../stores/editor'
 import '../fonts'
 
@@ -22,7 +23,7 @@ function isTextEntry(target: EventTarget | null): boolean {
 
 export default defineComponent({
   name: 'EditorView',
-  components: { TopBar, LeftPanel, PlayerStage, ActionBar, TimelinePanel },
+  components: { TopBar, LeftPanel, PlayerStage, ActionBar, TimelinePanel, FineCutOverlay },
   async beforeRouteEnter() {
     if (restored) return
     restored = true
@@ -72,5 +73,6 @@ export default defineComponent({
       </main>
     </div>
     <TimelinePanel />
+    <FineCutOverlay />
   </div>
 </template>

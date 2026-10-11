@@ -4,12 +4,13 @@ import { mapActions, mapState } from 'pinia'
 import Icon from './Icon.vue'
 import ProjectMenu from './ProjectMenu.vue'
 import ExportDialog from './ExportDialog.vue'
+import RelinkDialog from './RelinkDialog.vue'
 import { useEditorStore } from '../stores/editor'
 import { useExportStore } from '../stores/export'
 
 export default defineComponent({
   name: 'TopBar',
-  components: { Icon, ProjectMenu, ExportDialog },
+  components: { Icon, ProjectMenu, ExportDialog, RelinkDialog },
   data() {
     return { logoUrl: `${import.meta.env.BASE_URL}logo.svg` }
   },
@@ -79,5 +80,6 @@ export default defineComponent({
       {{ $t('top.export') }}
     </button>
     <ExportDialog />
+    <RelinkDialog />
   </header>
 </template>

@@ -85,6 +85,8 @@ export interface ProjectFormat {
   height: number
   fps: number
   background: { type: 'blur' } | { type: 'color'; color: string }
+  /** Project-wide picture fit for all clips; absent means 'fit'. */
+  fit?: FitMode
 }
 
 export interface Project {
