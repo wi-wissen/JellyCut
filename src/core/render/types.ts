@@ -56,13 +56,32 @@ export interface TextLayer {
   offsetY: number
 }
 
+/** Placement of an overlay on screen: its own pose, changed by the animation at this time. */
+export interface OverlayPose {
+  /** Anchor as a fraction of the output (x of the width, y of the height). */
+  x: number
+  y: number
+  /** Multiplier on the item's scale. */
+  scale: number
+  /** Clockwise degrees, added to the item's own rotation. */
+  rotation: number
+}
+
+export interface OverlayLayer extends OverlayPose {
+  item: OverlayItem
+  /** 0..1: the item's opacity times its entrance / exit animation. */
+  alpha: number
+  /** Source time of a picture-in-picture video frame (microseconds); 0 for everything else. */
+  srcTime: Micros
+}
+
 /** Everything needed to draw one output frame. Pure data, identical for preview and export. */
 export interface Scene {
   time: Micros
   format: ProjectFormat
   /** Back to front. At most two layers (the two sides of a transition). */
   videos: VideoLayer[]
-  /** Stickers, shapes and strokes on screen at this time, back to front. */
-  overlays: OverlayItem[]
+  /** Overlays on screen at this time, back to front. */
+  overlays: OverlayLayer[]
   texts: TextLayer[]
 }

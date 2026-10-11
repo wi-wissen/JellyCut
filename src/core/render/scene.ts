@@ -1,4 +1,4 @@
-import type { Clip, Project, TextItem } from '../project/types'
+import type { Clip, OverlayItem, Project, TextItem } from '../project/types'
 import type { Micros } from '../time'
 import { clipGrade } from '../filters/ops'
 import { clipEnd, sourceTimeAt } from '../timeline/edit'
@@ -7,6 +7,7 @@ import {
   TEXT_ANIM_DURATION,
   TRANSITION_TYPES,
   type LayerTransition,
+  type OverlayLayer,
   type Scene,
   type TextLayer,
   type VideoLayer
@@ -78,8 +79,11 @@ export function buildScene(project: Project, planned: PlannedTimeline, t: Micros
     texts.push(textLayer(item, t))
   }
 
-  // Overlay items are immutable project data, so the scene can share them.
-  const overlays = project.overlays.filter((item) => item.start <= t && t < item.start + item.duration)
+  const overlays: OverlayLayer[] = []
+  for (const item of project.overlays) {
+    if (!(item.start <= t && t < item.start + item.duration)) continue
+    overlays.push(overlayLayer(item, t, project.assets))
+  }
 
   return {
     time: t,
@@ -120,7 +124,7 @@ interface AnimState {
 const VISIBLE: AnimState = { alpha: 1, scale: 1, offsetY: 0 }
 
 function textLayer(item: TextItem, t: Micros): TextLayer {
-  const state = textState(item, t)
+  const state = spanState(item, t)
   return {
     id: item.id,
     text: item.text,
@@ -132,7 +136,16 @@ function textLayer(item: TextItem, t: Micros): TextLayer {
   }
 }
 
-function textState(item: TextItem, t: Micros): AnimState {
+/** Anything with a start, a length and optional in / out animations: texts and overlays. */
+interface AnimatedSpan {
+  start: Micros
+  duration: Micros
+  animIn?: string | null
+  animOut?: string | null
+}
+
+/** Entrance and exit state of an item at time t. The default length is shortened to half the span when needed. */
+function spanState(item: AnimatedSpan, t: Micros): AnimState {
   const length = Math.min(TEXT_ANIM_DURATION, Math.floor(item.duration / 2))
   if (length <= 0) return VISIBLE
   const elapsed = t - item.start
@@ -141,6 +154,32 @@ function textState(item: TextItem, t: Micros): AnimState {
   if (item.animIn && elapsed < length) return animationAt(item.animIn, elapsed / length)
   if (item.animOut && remaining < length) return animationAt(item.animOut, remaining / length)
   return VISIBLE
+}
+
+/** Wiggle loop: a tilt of WIGGLE_DEG to either side, one swing per WIGGLE_PERIOD. */
+const WIGGLE_DEG = 8
+const WIGGLE_PERIOD: Micros = 900_000
+
+function overlayLayer(item: OverlayItem, t: Micros, assets: Project['assets']): OverlayLayer {
+  const anim = spanState(item, t)
+  const wiggle = item.loop === 'wiggle' ? WIGGLE_DEG * Math.sin((2 * Math.PI * (t - item.start)) / WIGGLE_PERIOD) : 0
+  return {
+    item,
+    x: item.pos.x,
+    y: item.pos.y + anim.offsetY,
+    scale: item.scale * anim.scale,
+    rotation: item.rotation + wiggle,
+    alpha: clamp01((item.opacity ?? 1) * anim.alpha),
+    srcTime: item.kind === 'media' ? pictureTime(item, t, assets) : 0
+  }
+}
+
+/** Frame of a picture-in-picture video at time t: it plays from its first frame and holds the last one. */
+function pictureTime(item: { start: Micros; assetId: string }, t: Micros, assets: Project['assets']): Micros {
+  const elapsed = Math.max(0, t - item.start)
+  const asset = assets.find((a) => a.id === item.assetId)
+  if (!asset || asset.kind !== 'video') return 0
+  return Math.min(elapsed, Math.max(0, asset.duration - 1))
 }
 
 /** `progress` runs 0 -> 1 over the in animation; out animations pass the reversed progress. */

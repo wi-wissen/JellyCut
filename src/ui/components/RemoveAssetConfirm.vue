@@ -22,6 +22,10 @@ export default defineComponent({
     },
     musicText(): string {
       return this.$t('relink.confirm.music', { count: this.pendingRemoval?.music ?? 0 })
+    },
+    pictureText(): string {
+      const count = this.pendingRemoval?.pictures ?? 0
+      return this.$t('overlays2.confirmPictures', { count }, count)
     }
   },
   watch: {
@@ -96,6 +100,7 @@ export default defineComponent({
         <p :id="`${titleId}-text`" class="mt-2 text-sm text-fg">
           <span class="block">{{ clipText }}</span>
           <span v-if="pendingRemoval && pendingRemoval.music > 0" class="mt-1 block text-muted">{{ musicText }}</span>
+          <span v-if="pendingRemoval && pendingRemoval.pictures > 0" class="mt-1 block text-muted">{{ pictureText }}</span>
         </p>
         <div class="mt-5 flex justify-end gap-2">
           <button

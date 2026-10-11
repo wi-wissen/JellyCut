@@ -1,4 +1,4 @@
-import type { OverlayItem } from '../../core/project/types'
+import type { ShapeOverlay, StickerOverlay, StrokeOverlay } from '../../core/project/types'
 import { overlayBounds } from '../../core/render/overlayLayout'
 import { createCanvas, type Canvas2D, type Ctx2D } from './text'
 
@@ -14,10 +14,13 @@ export interface OverlayRaster {
 }
 
 /** Items are immutable project data, so their keys are computed once per item and height (long strokes are big). */
-const keyCache = new WeakMap<OverlayItem, { outH: number; key: string }>()
+const keyCache = new WeakMap<DrawnOverlay, { outH: number; key: string }>()
+
+/** Overlays rasterised to a 2D canvas: stickers, shapes and strokes. */
+export type DrawnOverlay = StickerOverlay | ShapeOverlay | StrokeOverlay
 
 /** Cache key of an overlay's pixels: everything that changes the raster, nothing that only moves or rotates it. */
-export function overlayRasterKey(item: OverlayItem, outH: number): string {
+export function overlayRasterKey(item: DrawnOverlay, outH: number): string {
   const known = keyCache.get(item)
   if (known && known.outH === outH) return known.key
   let key: string
@@ -32,7 +35,7 @@ export function overlayRasterKey(item: OverlayItem, outH: number): string {
  * Rasterises one overlay at its base size (scale and rotation are applied when it is drawn), into the
  * box from core/render/overlayLayout. Pixels are premultiplied on upload, like text.
  */
-export function rasterizeOverlay(item: OverlayItem, outH: number): OverlayRaster | null {
+export function rasterizeOverlay(item: DrawnOverlay, outH: number): OverlayRaster | null {
   const b = overlayBounds(item)
   const unitW = b.maxX - b.minX
   const unitH = b.maxY - b.minY

@@ -275,6 +275,11 @@ function validateMusic(value: unknown, path: string, assetIds: Set<string>, erro
 }
 
 const OVERLAY_SHAPES = ['rect', 'ellipse', 'arrow'] as const
+const REGION_SHAPES = ['rect', 'ellipse'] as const
+const REGION_EFFECTS = ['blur', 'pixelate'] as const
+const OVERLAY_ANIMATIONS = ['fade', 'pop', 'slideUp'] as const
+const OVERLAY_LOOPS = ['wiggle'] as const
+const OVERLAY_KINDS = ['sticker', 'shape', 'stroke', 'region', 'media'] as const
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/
 const MAX_EMOJI_LENGTH = 16
 
@@ -294,6 +299,11 @@ function validateOverlays(value: unknown, path: string, errors: Errors): void {
     }
     need(errors, isPositiveNumber(o.scale), `${p}.scale`, POSITIVE_MSG)
     need(errors, isFiniteNumber(o.rotation), `${p}.rotation`, FINITE_MSG)
+    if (o.opacity !== undefined) need(errors, isFiniteNumber(o.opacity) && o.opacity >= 0 && o.opacity <= 1, `${p}.opacity`, 'must be a number from 0 to 1')
+    for (const key of ['animIn', 'animOut'] as const) {
+      if (o[key] !== undefined && o[key] !== null) need(errors, OVERLAY_ANIMATIONS.includes(o[key] as (typeof OVERLAY_ANIMATIONS)[number]), `${p}.${key}`, `must be one of ${OVERLAY_ANIMATIONS.join(', ')}`)
+    }
+    if (o.loop !== undefined && o.loop !== null) need(errors, OVERLAY_LOOPS.includes(o.loop as (typeof OVERLAY_LOOPS)[number]), `${p}.loop`, `must be one of ${OVERLAY_LOOPS.join(', ')}`)
 
     if (o.kind === 'sticker') {
       need(errors, typeof o.emoji === 'string' && o.emoji.length > 0 && o.emoji.length <= MAX_EMOJI_LENGTH, `${p}.emoji`, `must be a string of 1 to ${MAX_EMOJI_LENGTH} characters`)
@@ -312,8 +322,21 @@ function validateOverlays(value: unknown, path: string, errors: Errors): void {
       })
       need(errors, isPositiveNumber(o.lineWidth), `${p}.lineWidth`, POSITIVE_MSG)
       need(errors, typeof o.color === 'string' && HEX_COLOR.test(o.color), `${p}.color`, 'must be #RRGGBB')
+    } else if (o.kind === 'region') {
+      need(errors, REGION_SHAPES.includes(o.shape as (typeof REGION_SHAPES)[number]), `${p}.shape`, `must be one of ${REGION_SHAPES.join(', ')}`)
+      need(errors, REGION_EFFECTS.includes(o.effect as (typeof REGION_EFFECTS)[number]), `${p}.effect`, `must be one of ${REGION_EFFECTS.join(', ')}`)
+      need(errors, isFiniteNumber(o.strength) && o.strength >= 0 && o.strength <= 1, `${p}.strength`, 'must be a number from 0 to 1')
+      need(errors, isPositiveNumber(o.width), `${p}.width`, POSITIVE_MSG)
+      need(errors, isPositiveNumber(o.height), `${p}.height`, POSITIVE_MSG)
+    } else if (o.kind === 'media') {
+      need(errors, typeof o.assetId === 'string' && o.assetId.length > 0, `${p}.assetId`, 'must be the id of an asset')
+      need(errors, isPositiveNumber(o.width), `${p}.width`, POSITIVE_MSG)
+      need(errors, isPositiveNumber(o.height), `${p}.height`, POSITIVE_MSG)
+      need(errors, isFiniteNumber(o.radius) && o.radius >= 0, `${p}.radius`, 'must be a number of 0 or more')
+      need(errors, isFiniteNumber(o.border) && o.border >= 0, `${p}.border`, 'must be a number of 0 or more')
+      need(errors, typeof o.borderColor === 'string' && HEX_COLOR.test(o.borderColor), `${p}.borderColor`, 'must be #RRGGBB')
     } else {
-      errors.push(`${p}.kind must be one of sticker, shape, stroke`)
+      errors.push(`${p}.kind must be one of ${OVERLAY_KINDS.join(', ')}`)
     }
   })
 }

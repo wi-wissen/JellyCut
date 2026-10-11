@@ -234,8 +234,8 @@ export default defineComponent({
     },
     /** The topmost sticker, shape or stroke on screen at the playhead whose box contains the point. */
     overlayAt(p: Point): string | null {
-      for (const item of [...this.scene.overlays].reverse()) {
-        if (pointInRotatedRect(p, overlayBox(item, this.outW, this.outH))) return item.id
+      for (const layer of [...this.scene.overlays].reverse()) {
+        if (pointInRotatedRect(p, overlayBox(layer.item, this.outW, this.outH, layer))) return layer.item.id
       }
       return null
     },
@@ -243,6 +243,8 @@ export default defineComponent({
     overlayLabel(item: OverlayItem): string {
       if (item.kind === 'sticker') return item.emoji
       if (item.kind === 'shape') return this.$t(`overlays.shape.${item.shape}`)
+      if (item.kind === 'region') return this.$t(`overlays2.effects.${item.effect}`)
+      if (item.kind === 'media') return this.project.assets.find((a) => a.id === item.assetId)?.name ?? ''
       return this.$t('overlays.header.stroke')
     },
     /** Glyph box of a text layer; reading fontTick makes it measure again once the curated fonts have loaded. */

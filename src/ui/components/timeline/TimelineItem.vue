@@ -4,9 +4,29 @@ import { defineComponent, type PropType } from 'vue'
 export type TimelineItemVariant = 'video' | 'text' | 'music' | 'audio' | 'overlay'
 export type TrimEdge = 'start' | 'end'
 
+/** A touch press starts a move only after holding still this long; a quicker drag scrolls the timeline. */
+const LONG_PRESS_MS = 350
+const LONG_PRESS_SLOP_PX = 8
+
+interface PendingPress {
+  pointerId: number
+  x: number
+  y: number
+  element: HTMLElement
+  event: PointerEvent
+  timer: number
+  block: (event: TouchEvent) => void
+}
+
+// Outside the component data: timers and listeners must not be wrapped in a reactive proxy.
+const presses = new WeakMap<object, PendingPress>()
+
 /** One bar in a lane. Position and size are pixels; the parent owns all pointer logic except the press itself. */
 export default defineComponent({
   name: 'TimelineItem',
+  data() {
+    return { lifted: false }
+  },
   props: {
     label: { type: String, required: true },
     ariaLabel: { type: String, default: '' },
@@ -22,7 +42,9 @@ export default defineComponent({
     endLabel: { type: String, default: '' },
     /** Stacking row in a multi-row lane; the bar sits in that row, inset by 4 px like a single row. */
     row: { type: Number, default: 0 },
-    laneHeight: { type: Number, default: 38 }
+    laneHeight: { type: Number, default: 38 },
+    /** Space between the lane edge and the bar; 4 px on a mouse lane, 2 px on a touch lane (44 px bar). */
+    inset: { type: Number, default: 4 }
   },
   emits: {
     select: () => true,
@@ -58,21 +80,74 @@ export default defineComponent({
       }
     },
     rootStyle(): Record<string, string | number> {
+      const shift = this.offset ? `translateX(${this.offset}px)` : ''
+      const lifted = this.lifted
       return {
         left: `${this.left}px`,
         width: `${Math.max(this.width, 0)}px`,
-        top: `${this.row * this.laneHeight + 4}px`,
-        height: `${this.laneHeight - 8}px`,
-        transform: this.offset ? `translateX(${this.offset}px)` : 'none',
-        zIndex: this.offset ? 10 : 'auto'
+        top: `${this.row * this.laneHeight + this.inset}px`,
+        height: `${this.laneHeight - 2 * this.inset}px`,
+        transform: lifted ? `${shift} scale(1.04)`.trim() : shift || 'none',
+        filter: lifted ? 'drop-shadow(0 6px 10px rgb(0 0 0 / 0.35))' : 'none',
+        zIndex: this.offset || lifted ? 10 : 'auto'
       }
     }
+  },
+  beforeUnmount() {
+    this.endPress()
   },
   methods: {
     onBodyDown(event: PointerEvent) {
       event.stopPropagation()
-      ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
-      this.$emit('body-down', event)
+      const element = event.currentTarget as HTMLElement
+      if (event.pointerType !== 'touch') {
+        element.setPointerCapture(event.pointerId)
+        this.$emit('body-down', event)
+        return
+      }
+      // Touch: the press waits. Moving first lets the browser pan; holding still lifts the bar.
+      this.endPress()
+      const press: PendingPress = {
+        pointerId: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+        element,
+        event,
+        timer: window.setTimeout(() => this.lift(), LONG_PRESS_MS),
+        block: (touch: TouchEvent) => touch.preventDefault()
+      }
+      presses.set(this, press)
+    },
+    /** Long press reached: the bar lifts, gives a short haptic tick and takes over the finger's drag. */
+    lift() {
+      const press = presses.get(this)
+      if (!press) return
+      this.lifted = true
+      navigator.vibrate?.(10)
+      press.element.setPointerCapture(press.pointerId)
+      // Stops the browser from panning the timeline while the bar is carried.
+      press.element.addEventListener('touchmove', press.block, { passive: false })
+      this.$emit('body-down', press.event)
+    },
+    onPressMove(event: PointerEvent) {
+      const press = presses.get(this)
+      if (!press || press.pointerId !== event.pointerId || this.lifted) return
+      if (Math.hypot(event.clientX - press.x, event.clientY - press.y) > LONG_PRESS_SLOP_PX) this.endPress()
+    },
+    /** A long press on touch must not open the system menu over the lifted bar. */
+    onContextMenu(event: Event) {
+      if (presses.has(this)) event.preventDefault()
+    },
+    onPressEnd(event: PointerEvent) {
+      if (presses.get(this)?.pointerId === event.pointerId) this.endPress()
+    },
+    endPress() {
+      const press = presses.get(this)
+      if (!press) return
+      window.clearTimeout(press.timer)
+      press.element.removeEventListener('touchmove', press.block)
+      presses.delete(this)
+      this.lifted = false
     },
     onHandleDown(edge: TrimEdge, event: PointerEvent) {
       event.stopPropagation()
@@ -84,16 +159,20 @@ export default defineComponent({
 </script>
 
 <template>
-  <div class="absolute" :class="{ 'pointer-events-none': !interactive }" :style="rootStyle" :data-kind="variant">
+  <div class="absolute" :class="{ 'pointer-events-none': !interactive }" :style="rootStyle" :data-kind="variant" :data-lifted="lifted ? 'true' : undefined">
     <button
       v-if="interactive"
       type="button"
-      class="flex h-full w-full touch-none items-center overflow-hidden rounded-md px-2 text-left text-[11px] font-semibold"
+      class="flex h-full w-full touch-none select-none items-center overflow-hidden rounded-md px-2 text-left text-[11px] font-semibold [-webkit-touch-callout:none]"
       :style="bodyStyle"
       :aria-label="ariaLabel || label"
       :aria-pressed="selected"
       :title="label"
       @pointerdown="onBodyDown"
+      @pointermove="onPressMove"
+      @pointerup="onPressEnd"
+      @pointercancel="onPressEnd"
+      @contextmenu="onContextMenu"
       @click="$emit('select')"
     >
       <span class="truncate">{{ label }}</span>

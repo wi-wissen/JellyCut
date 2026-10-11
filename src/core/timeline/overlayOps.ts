@@ -1,6 +1,31 @@
-import type { OverlayItem, Project, ShapeOverlay, StickerOverlay, StrokeOverlay } from '../project/types'
+import type {
+  MediaOverlay,
+  OverlayAnimation,
+  OverlayItem,
+  OverlayLoop,
+  Project,
+  RegionOverlay,
+  ShapeOverlay,
+  StickerOverlay,
+  StrokeOverlay
+} from '../project/types'
 import type { Micros } from '../time'
-import { DEFAULT_OVERLAY_DURATION, DEFAULT_SHAPE_SIZE, DEFAULT_STICKER_SIZE, LINE_WIDTHS, type LineWidthId } from './overlayCatalog'
+import {
+  DEFAULT_MEDIA_BORDER_COLOR,
+  DEFAULT_MEDIA_HEIGHT,
+  DEFAULT_OVERLAY_DURATION,
+  DEFAULT_REGION_SIZE,
+  DEFAULT_REGION_STRENGTH,
+  DEFAULT_SHAPE_SIZE,
+  DEFAULT_STICKER_SIZE,
+  LINE_WIDTHS,
+  OVERLAY_ANIMATIONS,
+  OVERLAY_LOOPS,
+  REGION_EFFECTS,
+  REGION_SHAPES,
+  SHAPE_KINDS,
+  type LineWidthId
+} from './overlayCatalog'
 
 export const MIN_OVERLAY_DURATION: Micros = 100_000
 const MIN_SCALE = 0.1
@@ -11,6 +36,8 @@ const MIN_SHAPE_SIDE = 0.01
 const MAX_SHAPE_SIDE = 2
 const MIN_LINE_WIDTH = 0.001
 const MAX_LINE_WIDTH = 0.05
+const MAX_RADIUS = 0.5
+const MAX_BORDER = 0.05
 /** Points closer than this (output-height units) to the last kept point are dropped; keeps stroke data small. */
 const MIN_POINT_GAP = 0.002
 const MAX_EMOJI_LENGTH = 16
@@ -23,11 +50,31 @@ export interface OverlayPatch {
   pos?: Partial<{ x: number; y: number }>
   scale?: number
   rotation?: number
+  opacity?: number
+  animIn?: OverlayAnimation | null
+  animOut?: OverlayAnimation | null
+  loop?: OverlayLoop | null
   size?: number
+  shape?: ShapeOverlay['shape'] | RegionOverlay['shape']
   width?: number
   height?: number
   lineWidth?: number
   color?: string
+  effect?: RegionOverlay['effect']
+  strength?: number
+  radius?: number
+  border?: number
+  borderColor?: string
+}
+
+/** Fields every overlay has, and the fields each kind adds. Anything else rejects a patch. */
+const COMMON_FIELDS: readonly (keyof OverlayPatch)[] = ['start', 'duration', 'pos', 'scale', 'rotation', 'opacity', 'animIn', 'animOut', 'loop']
+const KIND_FIELDS: Record<OverlayItem['kind'], readonly (keyof OverlayPatch)[]> = {
+  sticker: ['size'],
+  shape: ['shape', 'width', 'height', 'lineWidth', 'color'],
+  stroke: ['lineWidth', 'color'],
+  region: ['shape', 'width', 'height', 'effect', 'strength'],
+  media: ['width', 'height', 'radius', 'border', 'borderColor']
 }
 
 /** Pointer position as a fraction of the output (x of the width, y of the height). */
@@ -128,6 +175,54 @@ export function addStroke(
   return { ...project, overlays: [...project.overlays, item] }
 }
 
+/** Adds a blur or pixelate area: a rectangle centred on `pos` that starts at the playhead. */
+export function addRegion(project: Project, newId: string, start: Micros, effect: RegionOverlay['effect'], pos = { x: 0.5, y: 0.5 }): Project {
+  if (!validId(project, newId) || !Number.isFinite(start) || !REGION_EFFECTS.includes(effect)) return project
+  const item: RegionOverlay = {
+    id: newId,
+    kind: 'region',
+    start: Math.max(0, Math.round(start)),
+    duration: DEFAULT_OVERLAY_DURATION,
+    pos: clampPos(pos),
+    scale: 1,
+    rotation: 0,
+    shape: 'rect',
+    effect,
+    strength: DEFAULT_REGION_STRENGTH,
+    width: DEFAULT_REGION_SIZE.width,
+    height: DEFAULT_REGION_SIZE.height
+  }
+  return { ...project, overlays: [...project.overlays, item] }
+}
+
+/**
+ * Adds a picture-in-picture item for an image or video of the project. The box starts at the asset's
+ * own shape. Returns the project unchanged for unknown or audio assets.
+ */
+export function addMedia(project: Project, newId: string, start: Micros, assetId: string, pos = { x: 0.5, y: 0.5 }): Project {
+  if (!validId(project, newId) || !Number.isFinite(start)) return project
+  const asset = project.assets.find((a) => a.id === assetId)
+  if (!asset || asset.kind === 'audio') return project
+  const aspect = asset.width && asset.height ? asset.width / asset.height : 16 / 9
+  const height = DEFAULT_MEDIA_HEIGHT
+  const item: MediaOverlay = {
+    id: newId,
+    kind: 'media',
+    start: Math.max(0, Math.round(start)),
+    duration: DEFAULT_OVERLAY_DURATION,
+    pos: clampPos(pos),
+    scale: 1,
+    rotation: 0,
+    assetId,
+    width: clamp(height * aspect, MIN_SHAPE_SIDE, MAX_SHAPE_SIDE),
+    height,
+    radius: 0,
+    border: 0,
+    borderColor: DEFAULT_MEDIA_BORDER_COLOR
+  }
+  return { ...project, overlays: [...project.overlays, item] }
+}
+
 /**
  * Patches one overlay item. Values are clamped to sensible ranges. A non-finite value, a colour that is
  * not #RRGGBB, or a field that does not apply to the item's kind rejects the whole patch.
@@ -184,6 +279,10 @@ export function removeLastStroke(project: Project): Project {
 }
 
 function applyPatch(item: OverlayItem, patch: OverlayPatch): OverlayItem | null {
+  const allowed = new Set<keyof OverlayPatch>([...COMMON_FIELDS, ...KIND_FIELDS[item.kind]])
+  for (const key of Object.keys(patch) as (keyof OverlayPatch)[]) {
+    if (patch[key] !== undefined && !allowed.has(key)) return null
+  }
   const next = { ...item, pos: { ...item.pos } } as OverlayItem
   if (patch.start !== undefined) {
     if (!Number.isFinite(patch.start)) return null
@@ -207,23 +306,65 @@ function applyPatch(item: OverlayItem, patch: OverlayPatch): OverlayItem | null 
     if (!Number.isFinite(patch.rotation)) return null
     next.rotation = ((patch.rotation % 360) + 360) % 360
   }
+  if (patch.opacity !== undefined) {
+    if (!Number.isFinite(patch.opacity)) return null
+    next.opacity = clamp(patch.opacity, 0, 1)
+  }
+  if (patch.animIn !== undefined) {
+    if (patch.animIn !== null && !OVERLAY_ANIMATIONS.includes(patch.animIn)) return null
+    next.animIn = patch.animIn
+  }
+  if (patch.animOut !== undefined) {
+    if (patch.animOut !== null && !OVERLAY_ANIMATIONS.includes(patch.animOut)) return null
+    next.animOut = patch.animOut
+  }
+  if (patch.loop !== undefined) {
+    if (patch.loop !== null && !OVERLAY_LOOPS.includes(patch.loop)) return null
+    next.loop = patch.loop
+  }
   if (patch.size !== undefined) {
     if (next.kind !== 'sticker' || !Number.isFinite(patch.size)) return null
     next.size = clamp(patch.size, MIN_STICKER_SIZE, MAX_STICKER_SIZE)
   }
+  if (patch.shape !== undefined) {
+    const shapes: readonly string[] = next.kind === 'region' ? REGION_SHAPES : next.kind === 'shape' ? SHAPE_KINDS : []
+    if (!shapes.includes(patch.shape)) return null
+    if (next.kind === 'region') next.shape = patch.shape as RegionOverlay['shape']
+    else if (next.kind === 'shape') next.shape = patch.shape as ShapeOverlay['shape']
+  }
+  if (patch.effect !== undefined) {
+    if (next.kind !== 'region' || !REGION_EFFECTS.includes(patch.effect)) return null
+    next.effect = patch.effect
+  }
+  if (patch.strength !== undefined) {
+    if (next.kind !== 'region' || !Number.isFinite(patch.strength)) return null
+    next.strength = clamp(patch.strength, 0, 1)
+  }
   if (patch.width !== undefined || patch.height !== undefined) {
-    if (next.kind !== 'shape') return null
+    if (next.kind !== 'shape' && next.kind !== 'region' && next.kind !== 'media') return null
     if ((patch.width !== undefined && !Number.isFinite(patch.width)) || (patch.height !== undefined && !Number.isFinite(patch.height))) return null
     if (patch.width !== undefined) next.width = clamp(patch.width, MIN_SHAPE_SIDE, MAX_SHAPE_SIDE)
     if (patch.height !== undefined) next.height = clamp(patch.height, MIN_SHAPE_SIDE, MAX_SHAPE_SIDE)
   }
   if (patch.lineWidth !== undefined) {
-    if (next.kind === 'sticker' || !Number.isFinite(patch.lineWidth)) return null
+    if ((next.kind !== 'shape' && next.kind !== 'stroke') || !Number.isFinite(patch.lineWidth)) return null
     next.lineWidth = clamp(patch.lineWidth, MIN_LINE_WIDTH, MAX_LINE_WIDTH)
   }
   if (patch.color !== undefined) {
-    if (next.kind === 'sticker' || !HEX_COLOR.test(patch.color)) return null
+    if ((next.kind !== 'shape' && next.kind !== 'stroke') || !HEX_COLOR.test(patch.color)) return null
     next.color = patch.color.toLowerCase()
+  }
+  if (patch.radius !== undefined) {
+    if (next.kind !== 'media' || !Number.isFinite(patch.radius)) return null
+    next.radius = clamp(patch.radius, 0, MAX_RADIUS)
+  }
+  if (patch.border !== undefined) {
+    if (next.kind !== 'media' || !Number.isFinite(patch.border)) return null
+    next.border = clamp(patch.border, 0, MAX_BORDER)
+  }
+  if (patch.borderColor !== undefined) {
+    if (next.kind !== 'media' || !HEX_COLOR.test(patch.borderColor)) return null
+    next.borderColor = patch.borderColor.toLowerCase()
   }
   return next
 }

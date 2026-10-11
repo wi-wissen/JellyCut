@@ -6,7 +6,7 @@ import { createServer } from 'vite'
 import { existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
-const PORT = 5196
+const PORT = Number(process.env.E2E_PORT ?? 5196)
 // ?demo=1: the built-in demo project (three clips, 30 s) that these checks are written for.
 const APP_URL = `http://localhost:${PORT}/app/?demo=1`
 const SHOT_DIR =
@@ -253,6 +253,21 @@ await check('dragging a video clip body to another position reorders the track; 
   assertNoGaps(after)
   await page.keyboard.press('Control+z')
   assert((await videoClips(page))[0].label.includes('Intro'), 'undo did not restore the order')
+})
+
+await check('mouse drag starts at once: drop marker shows, no touch lift', async () => {
+  // Short drag that does not pass another clip, so nothing changes and nothing needs undoing.
+  const box = await clipButton(page, 'Intro.mp4').boundingBox()
+  const y = box.y + box.height / 2
+  await page.mouse.move(box.x + box.width / 2, y)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width / 2 + 40, y, { steps: 8 })
+  const marker = await page.locator('[data-role="drop-indicator"]').count()
+  const lifted = await page.locator('[data-lifted="true"]').count()
+  await page.mouse.up()
+  assert(marker === 1, 'no drop marker during the mouse drag')
+  assert(lifted === 0, 'mouse drag showed the touch lift')
+  assert((await videoClips(page))[0].label.includes('Intro'), 'short drag changed the order')
 })
 
 await check('Left and Right step one frame, Shift+arrows step ten', async () => {

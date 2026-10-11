@@ -31,13 +31,20 @@ const ids = (p: Project) => p.clips.map((c) => c.id)
 const valid = (p: Project) => validateProject(JSON.parse(JSON.stringify(p))).ok
 
 describe('assetUsage', () => {
+  it('lists picture-in-picture overlays that show the asset', () => {
+    const p: Project = {
+      ...sample(),
+      overlays: [{ id: 'overlay-1', kind: 'media', assetId: 'a', start: 0, duration: SEC, pos: { x: 0.5, y: 0.5 }, scale: 1, rotation: 0, width: 0.5, height: 0.3, radius: 0, border: 0, borderColor: '#ffffff' }]
+    }
+    expect(assetUsage(p, 'a').overlayIds).toEqual(['overlay-1'])
+  })
   it('lists the clips and music items that use an asset', () => {
     const p = sample()
-    expect(assetUsage(p, 'a')).toEqual({ clipIds: ['clip-1', 'clip-4'], musicIds: [] })
-    expect(assetUsage(p, 'm')).toEqual({ clipIds: [], musicIds: ['music-1', 'music-2'] })
+    expect(assetUsage(p, 'a')).toEqual({ clipIds: ['clip-1', 'clip-4'], musicIds: [], overlayIds: [] })
+    expect(assetUsage(p, 'm')).toEqual({ clipIds: [], musicIds: ['music-1', 'music-2'], overlayIds: [] })
   })
   it('is empty for an unused or unknown asset', () => {
-    expect(assetUsage(sample(), 'nope')).toEqual({ clipIds: [], musicIds: [] })
+    expect(assetUsage(sample(), 'nope')).toEqual({ clipIds: [], musicIds: [], overlayIds: [] })
   })
 })
 
@@ -125,5 +132,25 @@ describe('removeUnusedAssets', () => {
     const after = removeUnusedAssets(p)
     expect(after.clips).toEqual(p.clips)
     expect(after.music).toEqual(p.music)
+  })
+})
+
+describe('picture-in-picture overlays and assets', () => {
+  const pip = (id: string, assetId: string): Project['overlays'][number] => ({
+    id, kind: 'media', assetId, start: 0, duration: SEC, pos: { x: 0.5, y: 0.5 }, scale: 1, rotation: 0, width: 0.5, height: 0.3, radius: 0, border: 0, borderColor: '#ffffff'
+  })
+
+  it('removing the asset also removes the pictures that show it, and nothing else', () => {
+    const p: Project = { ...sample(), overlays: [pip('pip-a', 'c'), pip('pip-b', 'b')] }
+    const after = removeAsset(p, 'c')
+    expect(after.assets.some((a) => a.id === 'c')).toBe(false)
+    expect(after.overlays.map((o) => o.id)).toEqual(['pip-b'])
+    expect(valid(after)).toBe(true)
+  })
+
+  it('an asset that only a picture uses is not unused', () => {
+    const p: Project = { ...sample(), overlays: [pip('pip-c', 'c')] }
+    const after = removeUnusedAssets(p)
+    expect(after.assets.map((a) => a.id)).toContain('c')
   })
 })

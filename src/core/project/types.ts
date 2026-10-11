@@ -108,7 +108,12 @@ export interface MusicItem {
   fadeOut: Micros
 }
 
-/** Placement and timing shared by all overlay items (stickers, shapes, strokes). */
+/** Entrance and exit animations of overlays (the text set without the text-only names). */
+export type OverlayAnimation = 'fade' | 'pop' | 'slideUp'
+/** Animation that runs for the whole time the overlay is on screen. */
+export type OverlayLoop = 'wiggle'
+
+/** Placement, timing and appearance shared by all overlay items. */
 export interface OverlayBase {
   id: string
   start: Micros
@@ -119,6 +124,13 @@ export interface OverlayBase {
   scale: number
   /** Clockwise degrees. */
   rotation: number
+  /** 0..1. Absent means fully opaque. */
+  opacity?: number
+  /** Absent or null means no entrance / exit animation. */
+  animIn?: OverlayAnimation | null
+  animOut?: OverlayAnimation | null
+  /** Absent or null means no looping animation. */
+  loop?: OverlayLoop | null
 }
 
 export interface StickerOverlay extends OverlayBase {
@@ -148,7 +160,36 @@ export interface StrokeOverlay extends OverlayBase {
   color: string
 }
 
-export type OverlayItem = StickerOverlay | ShapeOverlay | StrokeOverlay
+/** Blurs or pixelates the picture below it (video and background), inside a rectangle or an ellipse. */
+export interface RegionOverlay extends OverlayBase {
+  kind: 'region'
+  shape: 'rect' | 'ellipse'
+  effect: 'blur' | 'pixelate'
+  /** 0..1: blur amount or mosaic cell size. */
+  strength: number
+  /** Width and height as fractions of the output height. */
+  width: number
+  height: number
+}
+
+/**
+ * An image or video of the project's library, shown as a picture in the picture. Video overlays play
+ * from their first frame and their sound is never mixed in (see docs/decisions.md).
+ */
+export interface MediaOverlay extends OverlayBase {
+  kind: 'media'
+  assetId: string
+  /** Box size as fractions of the output height. The picture is cropped to fill the box. */
+  width: number
+  height: number
+  /** Corner radius as a fraction of the output height. */
+  radius: number
+  /** Border width as a fraction of the output height; 0 means no border. */
+  border: number
+  borderColor: string
+}
+
+export type OverlayItem = StickerOverlay | ShapeOverlay | StrokeOverlay | RegionOverlay | MediaOverlay
 
 export interface ProjectFormat {
   ratio: FormatRatio

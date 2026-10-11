@@ -146,3 +146,81 @@ void main() {
   }
   o = vec4(c.rgb, 1.0);
 }`
+
+/**
+ * Picture-in-picture box: a texture cropped to fill the box, with rounded corners and an optional border
+ * inside the edge. Output is premultiplied, like the other overlay programs.
+ */
+export const FRAGMENT_MEDIA = `#version 300 es
+precision highp float;
+uniform sampler2D u_tex;
+uniform float u_alpha;
+uniform vec2 u_size;
+uniform float u_radius;
+uniform float u_border;
+uniform vec3 u_border_color;
+uniform vec4 u_crop;
+in vec2 v_uv;
+out vec4 o;
+void main() {
+  vec2 p = (v_uv - 0.5) * u_size;
+  vec2 hb = u_size * 0.5;
+  vec2 q = abs(p) - (hb - u_radius);
+  float d = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - u_radius;
+  float edge = 1.0 - smoothstep(-0.5, 0.5, d);
+  float inner = 1.0 - smoothstep(-0.5, 0.5, d + u_border);
+  vec4 c = texture(u_tex, mix(u_crop.xy, u_crop.zw, v_uv));
+  vec3 rgb = mix(u_border_color, c.rgb, inner);
+  float a = edge * mix(1.0, c.a, inner) * u_alpha;
+  o = vec4(rgb * a, a);
+}`
+
+/**
+ * Blur or pixelate area. Works on the composed picture below it: inside the mask (rectangle or ellipse,
+ * rotated like the item) the picture is replaced by its blurred copy or by mosaic cells; outside it is unchanged.
+ * Output is opaque, because the picture it reads is opaque.
+ */
+export const FRAGMENT_REGION = `#version 300 es
+precision highp float;
+uniform sampler2D u_src;
+uniform sampler2D u_blur;
+uniform vec2 u_res;
+uniform vec2 u_center;
+uniform vec2 u_half;
+uniform vec2 u_rot;
+uniform int u_ellipse;
+uniform int u_pixelate;
+uniform float u_cell;
+uniform float u_alpha;
+in vec2 v_uv;
+out vec4 o;
+void main() {
+  vec2 frag = vec2(gl_FragCoord.x, u_res.y - gl_FragCoord.y);
+  vec2 d = frag - u_center;
+  vec2 l = vec2(u_rot.x * d.x + u_rot.y * d.y, -u_rot.y * d.x + u_rot.x * d.y);
+  float sd;
+  if (u_ellipse == 1) {
+    sd = (length(l / u_half) - 1.0) * min(u_half.x, u_half.y);
+  } else {
+    vec2 q = abs(l) - u_half;
+    sd = max(q.x, q.y);
+  }
+  float m = (1.0 - smoothstep(-0.5, 0.5, sd)) * u_alpha;
+  vec4 src = texture(u_src, v_uv);
+  vec3 fx;
+  if (u_pixelate == 1) {
+    // Each mosaic cell shows the mean of a 4 x 4 grid of samples inside it, so fine detail does not leak through.
+    vec2 origin = floor(frag / u_cell) * u_cell;
+    vec3 acc = vec3(0.0);
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 4; j++) {
+        vec2 p = origin + (vec2(float(i), float(j)) + 0.5) * (u_cell / 4.0);
+        acc += texture(u_src, vec2(p.x / u_res.x, 1.0 - p.y / u_res.y)).rgb;
+      }
+    }
+    fx = acc / 16.0;
+  } else {
+    fx = texture(u_blur, v_uv).rgb;
+  }
+  o = vec4(mix(src.rgb, fx, m), 1.0);
+}`

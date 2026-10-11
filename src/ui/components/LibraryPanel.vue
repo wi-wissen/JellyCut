@@ -318,7 +318,7 @@ export default defineComponent({
             </span>
             <span
               v-if="isReady(asset)"
-              class="absolute inset-0 flex items-center justify-center bg-black/35 text-sm font-bold text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+              class="jc-tile__add absolute inset-0 flex items-center justify-center bg-black/35 text-sm font-bold text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
               aria-hidden="true"
             >
               {{ $t('library.add') }}
@@ -399,7 +399,7 @@ export default defineComponent({
       :href="sourcesHref"
       target="_blank"
       rel="noopener"
-      class="shrink-0 self-start text-xs font-semibold text-txt underline underline-offset-2"
+      class="relative shrink-0 self-start text-xs font-semibold text-txt underline underline-offset-2 before:absolute before:-inset-y-3.5 before:inset-x-0 before:content-['']"
     >
       {{ $t('library.freeSources') }}
     </a>

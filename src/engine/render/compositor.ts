@@ -1,13 +1,13 @@
 import { TRANSITION_TYPES } from '../../core/render/types'
-import type { LayerTransition, Scene, TextLayer, VideoLayer } from '../../core/render/types'
-import type { OverlayItem, ProjectFormat, TextStyle, Transform } from '../../core/project/types'
+import type { LayerTransition, OverlayLayer, Scene, TextLayer, VideoLayer } from '../../core/render/types'
+import type { MediaOverlay, ProjectFormat, RegionOverlay, TextStyle, Transform } from '../../core/project/types'
 import { rectCorners } from '../../core/render/layout'
-import { overlayBox } from '../../core/render/overlayLayout'
+import { isDrawnOverlay, overlayBox, regionBlurSigma, regionCellSize } from '../../core/render/overlayLayout'
 import { isIdentity, type Grade } from '../../core/filters/filters'
-import { FRAGMENT_BLUR, FRAGMENT_COPY, FRAGMENT_FRAME, FRAGMENT_GRADED_FRAME, FRAGMENT_MIX, FRAGMENT_TEXT } from './shaders'
+import { FRAGMENT_BLUR, FRAGMENT_COPY, FRAGMENT_FRAME, FRAGMENT_GRADED_FRAME, FRAGMENT_MEDIA, FRAGMENT_MIX, FRAGMENT_REGION, FRAGMENT_TEXT } from './shaders'
 import { Program, createTarget, createTexture, type Target } from './gl'
 import { parseCssColor, rasterizeText, textPixelSize, type Rgb } from './text'
-import { overlayRasterKey, rasterizeOverlay } from './overlays'
+import { overlayRasterKey, rasterizeOverlay, type DrawnOverlay } from './overlays'
 
 /** Anything texImage2D accepts that also reports its size. */
 export type FrameSource = CanvasImageSource & { width?: number; height?: number }
@@ -46,6 +46,8 @@ interface Programs {
   text: Program
   blur: Program
   mix: Program
+  region: Program
+  media: Program
 }
 
 interface BlurTargets {
@@ -139,7 +141,8 @@ export class Compositor {
   private programs: Programs | null = null
   private vao: WebGLVertexArrayObject | null = null
   private vbo: WebGLBuffer | null = null
-  private pages: [Target | null, Target | null] = [null, null]
+  /** 0 and 1: the two sides of a transition. 2 and 3: the picture while blur / pixelate regions are applied. */
+  private pages: (Target | null)[] = [null, null, null, null]
   private blurTargets: BlurTargets | null = null
   private readonly frameTextures = new Map<string, FrameTexture>()
   /** Insertion order doubles as LRU order. */
@@ -165,7 +168,7 @@ export class Compositor {
     this.textTextures.clear()
     this.overlayTextures.clear()
     this.overlayPixels = 0
-    this.pages = [null, null]
+    this.pages = [null, null, null, null]
     this.blurTargets = null
     this.lost = false
     this.initGl()
@@ -205,8 +208,12 @@ export class Compositor {
     const h = this.explicitSize?.h ?? sanitizeSide(format.height, 1080)
     this.setOutputSize(w, h)
 
-    this.pruneFrameTextures(new Set(scene.videos.map((v) => v.clipId)))
+    const pictures = scene.overlays.filter((l) => l.item.kind === 'media').map((l) => l.item.id)
+    this.pruneFrameTextures(new Set([...scene.videos.map((v) => v.clipId), ...pictures]))
     const screen: Target = { fbo: null, tex: null, w, h }
+    const regions = scene.overlays.filter((l) => l.item.kind === 'region')
+    // Regions read the composed picture, so with any region the picture is built off screen first.
+    const picture = regions.length > 0 ? this.pageTarget(2) : screen
     const layers = scene.videos.slice(-2)
     const top = layers.at(-1)
 
@@ -220,15 +227,16 @@ export class Compositor {
       const pageB = this.pageTarget(1)
       this.drawPage(pageA, from, format, frames.get(from.clipId))
       this.drawPage(pageB, to, format, frames.get(to.clipId))
-      this.mix(screen, pageA, pageB, transitionIndex(transition.type), clamp01(finiteOr(transition.progress, 0)))
+      this.mix(picture, pageA, pageB, transitionIndex(transition.type), clamp01(finiteOr(transition.progress, 0)))
     } else if (top) {
       // A single layer, or two layers without a transition: the top layer alone.
-      this.drawPage(screen, top, format, frames.get(top.clipId))
+      this.drawPage(picture, top, format, frames.get(top.clipId))
     } else {
-      this.clear(screen, this.backgroundRgb(format))
+      this.clear(picture, this.backgroundRgb(format))
     }
 
-    this.drawOverlays(scene.overlays, screen)
+    if (regions.length > 0) this.drawRegions(regions, picture, screen)
+    this.drawOverlays(scene.overlays, screen, frames)
     this.drawTexts(scene.texts, screen)
     this.lastError = this.readGlError()
   }
@@ -287,7 +295,9 @@ export class Compositor {
       copy: new Program(gl, FRAGMENT_COPY),
       text: new Program(gl, FRAGMENT_TEXT),
       blur: new Program(gl, FRAGMENT_BLUR),
-      mix: new Program(gl, FRAGMENT_MIX)
+      mix: new Program(gl, FRAGMENT_MIX),
+      region: new Program(gl, FRAGMENT_REGION),
+      media: new Program(gl, FRAGMENT_MEDIA)
     }
     this.vao = gl.createVertexArray()
     gl.bindVertexArray(this.vao)
@@ -322,7 +332,7 @@ export class Compositor {
         this.deleteTarget(this.blurTargets.out)
       }
     }
-    this.pages = [null, null]
+    this.pages = [null, null, null, null]
     this.blurTargets = null
   }
 
@@ -340,7 +350,7 @@ export class Compositor {
     }
   }
 
-  private pageTarget(index: 0 | 1): Target {
+  private pageTarget(index: 0 | 1 | 2 | 3): Target {
     let page = this.pages[index]
     if (!page) {
       page = createTarget(this.gl, this.outW, this.outH)
@@ -559,28 +569,114 @@ export class Compositor {
     gl.activeTexture(gl.TEXTURE0)
   }
 
-  // --- overlays (stickers, shapes, strokes) ---
+  // --- overlays (stickers, shapes, strokes, pictures) and regions ---
 
-  private drawOverlays(items: readonly OverlayItem[], target: Target): void {
+  private drawOverlays(layers: readonly OverlayLayer[], target: Target, frames: ReadonlyMap<string, FrameSource>): void {
     const p = this.programs?.text
-    if (!p || items.length === 0) return
+    if (!p || layers.length === 0) return
     const gl = this.gl
     this.bindTarget(target)
     this.setBlend(true)
-    p.use()
-    gl.uniform1f(p.uniform('u_alpha'), 1)
-    for (const item of items) {
+    for (const layer of layers) {
+      const item = layer.item
+      if (item.kind === 'media') {
+        this.drawMedia(layer, item, frames.get(item.id), target)
+        continue
+      }
+      if (!isDrawnOverlay(item)) continue
       const texture = this.overlayTexture(item, target.h)
       if (!texture) continue
-      const box = overlayBox(item, target.w, target.h)
+      const box = overlayBox(item, target.w, target.h, layer)
       const [a, b, c, d] = rectCorners(box)
       const corners: Quad = [this.toClip(a.x, a.y, target), this.toClip(b.x, b.y, target), this.toClip(c.x, c.y, target), this.toClip(d.x, d.y, target)]
+      p.use()
+      gl.uniform1f(p.uniform('u_alpha'), layer.alpha)
       this.bindTexture(texture.tex)
       this.drawQuad(corners, UV_UPRIGHT)
     }
   }
 
-  private overlayTexture(item: OverlayItem, outH: number): FrameTexture | null {
+  /** Picture-in-picture: the frame cropped to the box, with rounded corners and a border. */
+  private drawMedia(layer: OverlayLayer, item: MediaOverlay, source: FrameSource | undefined, target: Target): void {
+    const p = this.programs?.media
+    if (!p || !source) return
+    const frame = this.uploadFrame(item.id, source)
+    if (!frame) return
+    const gl = this.gl
+    const box = overlayBox(item, target.w, target.h, layer)
+    const [a, b, c, d] = rectCorners(box)
+    const corners: Quad = [this.toClip(a.x, a.y, target), this.toClip(b.x, b.y, target), this.toClip(c.x, c.y, target), this.toClip(d.x, d.y, target)]
+    const [u0, u1, v0, v1] = coverUv(frame.w, frame.h, box.w, box.h)
+    const [r, g, bl] = parseCssColor(item.borderColor)
+    p.use()
+    gl.uniform1f(p.uniform('u_alpha'), layer.alpha)
+    gl.uniform2f(p.uniform('u_size'), box.w, box.h)
+    gl.uniform1f(p.uniform('u_radius'), Math.min(Math.max(0, item.radius) * target.h, box.w / 2, box.h / 2))
+    gl.uniform1f(p.uniform('u_border'), Math.max(0, item.border) * target.h)
+    gl.uniform3f(p.uniform('u_border_color'), r, g, bl)
+    gl.uniform4f(p.uniform('u_crop'), u0, v0, u1, v1)
+    this.bindTexture(frame.tex)
+    this.drawQuad(corners, UV_UPRIGHT)
+  }
+
+  /** Applies the blur / pixelate regions in list order, each to the picture the previous ones left. */
+  private drawRegions(layers: readonly OverlayLayer[], start: Target, screen: Target): void {
+    let current = start
+    layers.forEach((layer, i) => {
+      const last = i === layers.length - 1
+      const next = last ? screen : current === this.pageTarget(2) ? this.pageTarget(3) : this.pageTarget(2)
+      this.regionPass(next, current, layer)
+      current = next
+    })
+  }
+
+  private regionPass(target: Target, src: Target, layer: OverlayLayer): void {
+    const p = this.programs?.region
+    if (!p) return
+    const gl = this.gl
+    const item = layer.item as RegionOverlay
+    const pixelate = item.effect === 'pixelate'
+    const blurred = pixelate ? src : this.blurCopy(src, regionBlurSigma(item.strength, target.h))
+    const box = overlayBox(item, target.w, target.h, layer)
+    const rad = (box.rotationDeg * Math.PI) / 180
+
+    this.bindTarget(target)
+    this.setBlend(false)
+    p.use()
+    gl.activeTexture(gl.TEXTURE0)
+    gl.bindTexture(gl.TEXTURE_2D, src.tex)
+    gl.activeTexture(gl.TEXTURE1)
+    gl.bindTexture(gl.TEXTURE_2D, blurred.tex)
+    gl.uniform1i(p.uniform('u_src'), 0)
+    gl.uniform1i(p.uniform('u_blur'), 1)
+    gl.uniform2f(p.uniform('u_res'), target.w, target.h)
+    gl.uniform2f(p.uniform('u_center'), box.cx, box.cy)
+    gl.uniform2f(p.uniform('u_half'), box.w / 2, box.h / 2)
+    gl.uniform2f(p.uniform('u_rot'), Math.cos(rad), Math.sin(rad))
+    gl.uniform1i(p.uniform('u_ellipse'), item.shape === 'ellipse' ? 1 : 0)
+    gl.uniform1i(p.uniform('u_pixelate'), pixelate ? 1 : 0)
+    gl.uniform1f(p.uniform('u_cell'), Math.max(2, regionCellSize(item.strength, target.h)))
+    gl.uniform1f(p.uniform('u_alpha'), layer.alpha)
+    this.drawQuad(FULL_QUAD, UV_UPRIGHT)
+    gl.activeTexture(gl.TEXTURE0)
+  }
+
+  /** Blurred copy of a full-size picture, computed at 1/8 size like the background. */
+  private blurCopy(src: Target, sigmaPx: number): Target {
+    const blur = this.ensureBlurTargets()
+    const p = this.programs?.copy
+    if (!p) return blur.out
+    this.bindTarget(blur.cover)
+    this.setBlend(false)
+    p.use()
+    this.bindTexture(src.tex!)
+    this.drawQuad(FULL_QUAD, UV_UPRIGHT)
+    this.blurPass(blur.cover, blur.tmp, [1 / blur.cover.w, 0], (sigmaPx * blur.cover.w) / src.w, 1)
+    this.blurPass(blur.tmp, blur.out, [0, 1 / blur.tmp.h], (sigmaPx * blur.tmp.h) / src.h, 1)
+    return blur.out
+  }
+
+  private overlayTexture(item: DrawnOverlay, outH: number): FrameTexture | null {
     const key = overlayRasterKey(item, outH)
     const hit = this.overlayTextures.get(key)
     if (hit) {

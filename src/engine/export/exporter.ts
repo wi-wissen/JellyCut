@@ -19,7 +19,8 @@ import type { Project } from '../../core/project/types'
 import { buildScene, planTimeline, type PlannedTimeline } from '../../core/render/scene'
 import { frameStart, type Micros } from '../../core/time'
 import { ExactFrameProvider } from '../media/frames'
-import { Compositor, type FrameSource } from '../render/compositor'
+import { Compositor } from '../render/compositor'
+import { sceneFrames } from '../render/sceneFrames'
 
 export interface ExportRequest {
   project: Project
@@ -202,12 +203,7 @@ export async function drawFrame(
   t: Micros
 ): Promise<void> {
   const scene = buildScene(project, planned, t)
-  const layerFrames = new Map<string, FrameSource>()
-  for (const [lane, layer] of scene.videos.entries()) {
-    const frame = await provider.getFrame(layer.assetId, layer.srcTime, String(lane))
-    if (frame) layerFrames.set(layer.clipId, frame)
-  }
-  compositor.draw(scene, layerFrames)
+  compositor.draw(scene, await sceneFrames(scene, provider))
 }
 
 async function writeAudioChunk(

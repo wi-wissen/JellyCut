@@ -5,6 +5,7 @@ import { buildScene, planTimeline, type PlannedTimeline } from '../../core/rende
 import type { Micros } from '../../core/time'
 import { ExactFrameProvider } from '../media/frames'
 import { Compositor, type FrameSource } from '../render/compositor'
+import { sceneFrames } from '../render/sceneFrames'
 
 export interface PreviewCallbacks {
   /** Called on every played frame and after every seek with the current time. */
@@ -45,6 +46,8 @@ export class PreviewEngine {
   private planned: PlannedTimeline = { clips: [], transitions: [], duration: 0, shortenedBy: 0 }
   private assets = new Map<string, AssetEntry>()
   private videoEls = new Map<string, HTMLVideoElement>()
+  /** Picture-in-picture videos, by overlay id. Always muted: overlay sound is not mixed in. */
+  private overlayEls = new Map<string, HTMLVideoElement>()
   private audioEls = new Map<string, HTMLAudioElement>()
   private time: Micros = 0
   private isPlaying = false
@@ -97,6 +100,10 @@ export class PreviewEngine {
     for (const [id, el] of this.audioEls) {
       if (!musicIds.has(id)) this.releaseElement(el, this.audioEls, id)
     }
+    const pictureIds = new Set(project.overlays.filter((o) => o.kind === 'media').map((o) => o.id))
+    for (const [id, el] of this.overlayEls) {
+      if (!pictureIds.has(id)) this.releaseElement(el, this.overlayEls, id)
+    }
     if (this.time > this.duration) this.time = this.duration
     if (this.isPlaying) this.resync()
     else void this.renderPaused()
@@ -122,6 +129,9 @@ export class PreviewEngine {
     }
     for (const m of this.project?.music ?? []) {
       if (m.assetId === assetId) this.dropMusicElement(m.id)
+    }
+    for (const o of this.project?.overlays ?? []) {
+      if (o.kind === 'media' && o.assetId === assetId) this.dropOverlayElement(o.id)
     }
     URL.revokeObjectURL(entry.url)
     entry.bitmap?.close()
@@ -160,6 +170,7 @@ export class PreviewEngine {
     this.isPlaying = false
     cancelAnimationFrame(this.raf)
     for (const el of this.videoEls.values()) el.pause()
+    for (const el of this.overlayEls.values()) el.pause()
     for (const el of this.audioEls.values()) el.pause()
     void this.renderPaused()
   }
@@ -170,6 +181,7 @@ export class PreviewEngine {
     cancelAnimationFrame(this.raf)
     this.renderToken++
     for (const [id, el] of this.videoEls) this.releaseElement(el, this.videoEls, id)
+    for (const [id, el] of this.overlayEls) this.releaseElement(el, this.overlayEls, id)
     for (const [id, el] of this.audioEls) this.releaseElement(el, this.audioEls, id)
     for (const id of [...this.assets.keys()]) this.removeAsset(id)
     this.compositor.dispose()
@@ -202,6 +214,17 @@ export class PreviewEngine {
       const source = clip ? this.playbackFrame(clip, layer.srcTime, now) : null
       if (source) frames.set(layer.clipId, source)
       else complete = false
+    }
+    // A picture-in-picture that is not ready yet is simply left out for this frame.
+    const activePictures = new Set<string>()
+    for (const layer of scene.overlays) {
+      if (layer.item.kind !== 'media') continue
+      activePictures.add(layer.item.id)
+      const source = this.pictureFrame(layer.item.id, layer.item.assetId, layer.srcTime, now)
+      if (source) frames.set(layer.item.id, source)
+    }
+    for (const [id, el] of this.overlayEls) {
+      if (!activePictures.has(id) && !el.paused) el.pause()
     }
     this.pauseInactive(activeClips)
     this.preloadUpcoming(t)
@@ -261,12 +284,35 @@ export class PreviewEngine {
     return el.readyState >= 2 && !el.seeking ? el : null
   }
 
+  /** Frame of a picture-in-picture item while playing: an image bitmap, or its muted video element when ready. */
+  private pictureFrame(id: string, assetId: string, srcTime: Micros, now: number): FrameSource | null {
+    const asset = this.assets.get(assetId)
+    if (!asset) return null
+    if (asset.kind === 'image') return asset.bitmap
+    if (asset.kind !== 'video') return null
+    let el = this.overlayEls.get(id)
+    if (!el) {
+      el = document.createElement('video')
+      el.playsInline = true
+      el.preload = 'auto'
+      el.muted = true
+      el.src = asset.url
+      this.overlayEls.set(id, el)
+    }
+    this.driveMedia(el, srcTime, now, 1, true, 0)
+    return el.readyState >= 2 && !el.seeking ? el : null
+  }
+
   /** Makes a clip's element play at the right position and settings. Safe to call every frame. */
   private driveElement(el: HTMLVideoElement, clip: Clip, srcTime: Micros, now: number): void {
+    this.driveMedia(el, srcTime, now, clip.speed, clip.muted, clamp01(clip.volume))
+  }
+
+  private driveMedia(el: HTMLVideoElement, srcTime: Micros, now: number, speed: number, muted: boolean, volume: number): void {
     const wanted = srcTime / 1_000_000
-    if (el.playbackRate !== clip.speed) el.playbackRate = clip.speed
-    el.muted = clip.muted
-    el.volume = clamp01(clip.volume)
+    if (el.playbackRate !== speed) el.playbackRate = speed
+    el.muted = muted
+    el.volume = volume
     const seekAllowed = now - (this.lastSeek.get(el) ?? -Infinity) > SEEK_COOLDOWN_MS
     if (el.paused) {
       if (Math.abs(el.currentTime - wanted) > 0.05) this.seekTo(el, wanted, now)
@@ -291,6 +337,11 @@ export class PreviewEngine {
       this.videoEls.set(clip.id, el)
     }
     return el
+  }
+
+  private dropOverlayElement(id: string): void {
+    const el = this.overlayEls.get(id)
+    if (el) this.releaseElement(el, this.overlayEls, id)
   }
 
   private pauseInactive(active: Set<string>): void {
@@ -344,6 +395,7 @@ export class PreviewEngine {
     this.stallSince = 0
     this.startWall = performance.now()
     this.startTime = this.time
+    for (const el of this.overlayEls.values()) el.pause()
     for (const el of this.videoEls.values()) el.pause()
     for (const el of this.audioEls.values()) el.pause()
   }
@@ -356,12 +408,8 @@ export class PreviewEngine {
     await this.fontsReady
     const project = this.project
     const scene = buildScene(project, this.planned, this.time)
-    const frames = new Map<string, FrameSource>()
-    for (const [lane, layer] of scene.videos.entries()) {
-      const frame = await this.getProvider().getFrame(layer.assetId, layer.srcTime, String(lane))
-      if (token !== this.renderToken || this.disposed) return
-      if (frame) frames.set(layer.clipId, frame)
-    }
+    const frames = await sceneFrames(scene, this.getProvider())
+    if (token !== this.renderToken || this.disposed) return
     this.compositor.draw(scene, frames)
   }
 

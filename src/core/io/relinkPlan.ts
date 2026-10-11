@@ -7,6 +7,7 @@ export function usedAssetIds(project: Project): Set<string> {
   const used = new Set<string>()
   for (const clip of project.clips) used.add(clip.assetId)
   for (const item of project.music) used.add(item.assetId)
+  for (const item of project.overlays) if (item.kind === 'media') used.add(item.assetId)
   return used
 }
 

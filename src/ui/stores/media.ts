@@ -190,6 +190,12 @@ function candidateLabels(): Record<string, string> {
   return labels
 }
 
+/** How many clips, music items and pictures use an asset. */
+function usageCount(project: Project, assetId: string): number {
+  const usage = assetUsage(project, assetId)
+  return usage.clipIds.length + usage.musicIds.length + usage.overlayIds.length
+}
+
 export const useMediaStore = defineStore('media', {
   state: () => ({
     status: {} as Record<string, MediaStatus>,
@@ -219,7 +225,7 @@ export const useMediaStore = defineStore('media', {
     folder: null as { name: string; permission: FolderPermission } | null,
 
     /** A removal waiting for the user's confirmation because the asset is used on the timeline. */
-    pendingRemoval: null as null | { assetId: string; name: string; clips: number; music: number },
+    pendingRemoval: null as null | { assetId: string; name: string; clips: number; music: number; pictures: number },
     /** The last removal, offered with an Undo button until the next action. */
     removalNote: null as null | { key: string; params: Record<string, string | number> }
   }),
@@ -229,10 +235,10 @@ export const useMediaStore = defineStore('media', {
     missingCount(state): number {
       return missingUsedAssets(useEditorStore().project, state.status).length
     },
-    /** User assets that no clip or music item uses. */
+    /** User assets that no clip, music item or picture-in-picture uses. */
     unusedCount(): number {
       const project = useEditorStore().project
-      return project.assets.filter((a) => isUserAsset(a) && assetUsage(project, a.id).clipIds.length + assetUsage(project, a.id).musicIds.length === 0).length
+      return project.assets.filter((a) => isUserAsset(a) && usageCount(project, a.id) === 0).length
     }
   },
   actions: {
@@ -388,11 +394,11 @@ export const useMediaStore = defineStore('media', {
       const asset = project.assets.find((a) => a.id === assetId)
       if (!asset) return
       const usage = assetUsage(project, assetId)
-      if (usage.clipIds.length + usage.musicIds.length === 0) {
+      if (usageCount(project, assetId) === 0) {
         this.removeAsset(assetId)
         return
       }
-      this.pendingRemoval = { assetId, name: asset.name, clips: usage.clipIds.length, music: usage.musicIds.length }
+      this.pendingRemoval = { assetId, name: asset.name, clips: usage.clipIds.length, music: usage.musicIds.length, pictures: usage.overlayIds.length }
     },
 
     confirmRemoval(): void {

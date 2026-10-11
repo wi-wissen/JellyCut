@@ -9,28 +9,53 @@
   display: none;
 }
 
+/* Desktop: the tool sheet sits left of the player, the timeline spans the full width below both, and the tab bar is on top of the sheet. */
+@media (min-width: 1100px) {
+  .jc-editor {
+    display: grid;
+    grid-template-columns: 350px minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'top top'
+      'sheet main'
+      'timeline timeline';
+  }
+  .jc-topbar {
+    grid-area: top;
+  }
+  .jc-main {
+    grid-area: main;
+    min-width: 0;
+    min-height: 0;
+  }
+  .jc-sheet {
+    grid-area: sheet;
+    min-height: 0;
+  }
+  .jc-timeline {
+    grid-area: timeline;
+  }
+  .jc-left {
+    flex-direction: column-reverse;
+  }
+}
+
 /* Compact: player on top, timeline below, the left column becomes a bottom sheet with the tab bar at its edge. */
 @media (max-width: 1099px) {
   .jc-editor {
     height: 100dvh;
   }
-  /* The row wrapper disappears so its children can be ordered in the editor's column. */
-  .jc-workspace {
-    display: contents;
-  }
+  /* DOM order is the visual order here: player, timeline, tool sheet (see EditorView.vue). */
   .jc-main {
-    order: 1;
     flex: 1 1 0;
     min-height: 0;
   }
   .jc-timeline {
-    order: 2;
     flex: 0 0 auto;
     max-height: 34dvh;
     overflow-y: auto;
   }
   .jc-sheet {
-    order: 3;
     flex: 0 0 auto;
     width: auto;
     height: min(36dvh, 340px);
@@ -41,10 +66,7 @@
   .jc-sheet:has(.jc-left--collapsed) {
     height: auto;
   }
-  /* Tab bar at the bottom edge. It stays first in the DOM, so keyboard focus reaches the tabs before the panel content, the reverse of the visual order. */
-  .jc-left {
-    flex-direction: column-reverse;
-  }
+  /* Tab bar at the bottom edge, after the panel content in the DOM as well. */
   .jc-left__content {
     overflow-y: auto;
   }
@@ -99,6 +121,11 @@
     width: 88px;
   }
 
+  /* Export: 36 px on desktop, 44 px for the thumb on phones and tablets. */
+  #export-button {
+    height: var(--jc-touch);
+  }
+
   /* Top bar: the name and the secondary controls move into the overflow menu on phones. */
   .jc-topbar__more-wrap {
     display: none;
@@ -108,17 +135,31 @@
   }
 }
 
-/* Touch screens: the timeline pans with a finger; clip bodies and the track scroll instead of dragging. */
-@media (max-width: 1099px) and (pointer: coarse) {
+/* Touch screens (any width): the timeline pans with a finger; clip bodies and the track scroll instead of dragging. */
+@media (pointer: coarse) {
   .jc-timeline__track,
   .jc-timeline [data-kind] > button {
     touch-action: pan-x pan-y;
   }
-  /* The trim handles are 7px wide; the invisible extension keeps them easy to hit. */
+  /* The trim handles are 7px wide; the invisible extension gives a 45px hit area. */
   .jc-timeline [data-handle]::before {
     content: '';
     position: absolute;
-    inset: 0 -12px;
+    inset: 0 -19px;
+  }
+  .jc-timeline__toolbar input[type='range'] {
+    height: var(--jc-touch);
+  }
+  /* The player's handles are small (14-16 px); their invisible extension reaches 44 px. Set in PlayerOverlay, widened here. */
+  main.jc-main button[class*='size-3.5'][class*='touch-none']::before {
+    inset: -15px;
+  }
+  main.jc-main button[class*='size-4'][class*='touch-none']::before {
+    inset: -14px;
+  }
+  /* The library's add overlay is always shown, since there is no hover. Keyboard focus shows it too (Tailwind). */
+  .jc-tile__add {
+    opacity: 1;
   }
 }
 

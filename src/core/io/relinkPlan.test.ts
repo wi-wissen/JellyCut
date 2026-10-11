@@ -26,6 +26,12 @@ describe('usedAssetIds', () => {
     const p = projectWith([asset('a', 'A.mp4', 1), asset('b', 'B.mp3', 2, 0, 'audio'), asset('c', 'C.mp4', 3)], [clip('c1', 'a')], [music('m1', 'b')])
     expect([...usedAssetIds(p)].sort()).toEqual(['a', 'b'])
   })
+
+  it('counts pictures in the picture-in-picture as used', () => {
+    const picture = { id: 'overlay-1', kind: 'media' as const, assetId: 'c', start: 0, duration: 1, pos: { x: 0.5, y: 0.5 }, scale: 1, rotation: 0, width: 0.5, height: 0.3, radius: 0, border: 0, borderColor: '#ffffff' }
+    const p = { ...projectWith([asset('c', 'C.png', 3)]), overlays: [picture] }
+    expect([...usedAssetIds(p)]).toEqual(['c'])
+  })
 })
 
 describe('planRelink', () => {

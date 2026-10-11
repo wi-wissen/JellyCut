@@ -1,8 +1,10 @@
 import { defineStore } from 'pinia'
 import { createProject, parseProjectJson, serializeProject } from '../../core/project/schema'
-import type { Asset, Clip, FitMode, FormatRatio, MusicItem, OverlayItem, Project, ShapeOverlay, TextItem } from '../../core/project/types'
+import type { Asset, Clip, FitMode, FormatRatio, MusicItem, OverlayItem, Project, RegionOverlay, ShapeOverlay, TextItem } from '../../core/project/types'
 import { DEFAULT_OVERLAY_COLOR, type LineWidthId } from '../../core/timeline/overlayCatalog'
 import {
+  addMedia,
+  addRegion,
   addShape,
   addSticker,
   addStroke,
@@ -798,6 +800,24 @@ export const useEditorStore = defineStore('editor', {
       const id = freshId(project, ID_PREFIX.overlay)
       const next = addStroke(project, id, this.playheadMicros, points, this.overlayColor, this.penWidth)
       if (next !== project) this.commitProject(next)
+    },
+    /** Adds a blur or pixelate area at the playhead and selects it. */
+    addRegionAtPlayhead(effect: RegionOverlay['effect']) {
+      const project = this.project
+      const id = freshId(project, ID_PREFIX.overlay)
+      const next = addRegion(project, id, this.playheadMicros, effect)
+      if (next === project) return
+      this.commitProject(next)
+      this.selection = { kind: 'overlay', id }
+    },
+    /** Adds a library image or video as a picture in the picture at the playhead and selects it. */
+    addMediaAtPlayhead(assetId: string) {
+      const project = this.project
+      const id = freshId(project, ID_PREFIX.overlay)
+      const next = addMedia(project, id, this.playheadMicros, assetId)
+      if (next === project) return
+      this.commitProject(next)
+      this.selection = { kind: 'overlay', id }
     },
     /** Removes the most recently drawn stroke. */
     undoLastStroke() {

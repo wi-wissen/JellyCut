@@ -32,7 +32,7 @@ describe('overlay schema', () => {
 
   it('reports the path of each broken field', () => {
     const errors = errorsFor([{ ...item, kind: 'hologram', duration: 0 }])
-    expect(errors).toContain('overlays[0].kind must be one of sticker, shape, stroke')
+    expect(errors).toContain('overlays[0].kind must be one of sticker, shape, stroke, region, media')
     expect(errors).toContain('overlays[0].duration must be a positive integer (microseconds)')
   })
 
@@ -47,6 +47,33 @@ describe('overlay schema', () => {
     expect(errorsFor([stroke])).toContain('overlays[0].points must be a list of at least two [x, y] pairs')
     const badPoint = { ...stroke, points: [[0, 0], [1, Number.NaN]] }
     expect(errorsFor([badPoint])).toContain('overlays[0].points[1] must be a [x, y] pair of finite numbers')
+  })
+
+  it('accepts region and picture-in-picture items', () => {
+    const region = { ...item, id: 'r', kind: 'region', shape: 'ellipse', effect: 'pixelate', strength: 0.5, width: 0.3, height: 0.2 }
+    const media = { ...item, id: 'm', kind: 'media', assetId: 'clip-a', width: 0.5, height: 0.3, radius: 0.02, border: 0.004, borderColor: '#ffffff' }
+    expect(errorsFor([region, media])).toEqual([])
+  })
+
+  it('checks the fields of regions and pictures', () => {
+    const region = { ...item, id: 'r', kind: 'region', shape: 'arrow', effect: 'wobble', strength: 2, width: 0.3, height: 0.2 }
+    const errors = errorsFor([region])
+    expect(errors).toContain('overlays[0].shape must be one of rect, ellipse')
+    expect(errors).toContain('overlays[0].effect must be one of blur, pixelate')
+    expect(errors).toContain('overlays[0].strength must be a number from 0 to 1')
+    const media = { ...item, id: 'm', kind: 'media', assetId: '', width: 0.5, height: 0.3, radius: -1, border: 0, borderColor: 'white' }
+    const mediaErrors = errorsFor([media])
+    expect(mediaErrors).toContain('overlays[0].assetId must be the id of an asset')
+    expect(mediaErrors).toContain('overlays[0].radius must be a number of 0 or more')
+    expect(mediaErrors).toContain('overlays[0].borderColor must be #RRGGBB')
+  })
+
+  it('checks opacity, entrance / exit animations and the loop of every kind', () => {
+    expect(errorsFor([{ ...item, opacity: 0.5, animIn: 'pop', animOut: null, loop: 'wiggle' }])).toEqual([])
+    expect(errorsFor([{ ...item, opacity: 1.5 }])).toContain('overlays[0].opacity must be a number from 0 to 1')
+    expect(errorsFor([{ ...item, animIn: 'spin' }])).toContain('overlays[0].animIn must be one of fade, pop, slideUp')
+    expect(errorsFor([{ ...item, animOut: 'slideDown' }])).toContain('overlays[0].animOut must be one of fade, pop, slideUp')
+    expect(errorsFor([{ ...item, loop: 'bounce' }])).toContain('overlays[0].loop must be one of wiggle')
   })
 
   it('refuses duplicate overlay ids', () => {

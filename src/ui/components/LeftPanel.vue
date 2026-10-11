@@ -71,13 +71,8 @@ export default defineComponent({
 </script>
 
 <template>
+  <!-- Content comes before the tab bar in the DOM: on phones the tab bar sits below the content. Desktop puts it on top via CSS. -->
   <div class="jc-left flex min-h-0 flex-1 flex-col" :class="{ 'jc-left--collapsed': !sheetOpen }">
-    <TabBar
-      :sheet-open="sheetOpen"
-      @toggle-sheet="sheetOpen = !sheetOpen"
-      @tab-picked="sheetOpen = true"
-    />
-
     <div class="jc-left__content flex min-h-0 flex-1 flex-col">
       <ClipPanel v-if="view === 'clip'" />
       <TextProperties v-else-if="view === 'text-item' && selectedTextItem" :item="selectedTextItem" />
@@ -96,5 +91,11 @@ export default defineComponent({
       />
       <LibraryPanel v-else :kinds="['video', 'image']" />
     </div>
+
+    <TabBar
+      :sheet-open="sheetOpen"
+      @toggle-sheet="sheetOpen = !sheetOpen"
+      @tab-picked="sheetOpen = true"
+    />
   </div>
 </template>

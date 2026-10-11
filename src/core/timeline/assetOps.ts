@@ -7,12 +7,15 @@ import { canHaveTransition } from './transitionOps'
 export interface AssetUsage {
   clipIds: string[]
   musicIds: string[]
+  /** Picture-in-picture overlays showing this asset. */
+  overlayIds: string[]
 }
 
 export function assetUsage(project: Project, assetId: string): AssetUsage {
   return {
     clipIds: project.clips.filter((c) => c.assetId === assetId).map((c) => c.id),
-    musicIds: project.music.filter((m) => m.assetId === assetId).map((m) => m.id)
+    musicIds: project.music.filter((m) => m.assetId === assetId).map((m) => m.id),
+    overlayIds: project.overlays.filter((o) => o.kind === 'media' && o.assetId === assetId).map((o) => o.id)
   }
 }
 
@@ -24,7 +27,11 @@ export function assetUsage(project: Project, assetId: string): AssetUsage {
 export function removeAsset(project: Project, assetId: string): Project {
   if (!project.assets.some((a) => a.id === assetId)) return project
   const usage = assetUsage(project, assetId)
-  let next: Project = { ...project, music: project.music.filter((m) => m.assetId !== assetId) }
+  let next: Project = {
+    ...project,
+    music: project.music.filter((m) => m.assetId !== assetId),
+    overlays: project.overlays.filter((o) => !(o.kind === 'media' && o.assetId === assetId))
+  }
   for (const id of usage.clipIds) next = deleteItem(next, { kind: 'clip', id })
   next = { ...next, assets: next.assets.filter((a) => a.id !== assetId) }
   return dropInvalidTransitions(next)
@@ -32,7 +39,11 @@ export function removeAsset(project: Project, assetId: string): Project {
 
 /** Removes every asset that no clip or music item uses. Returns the project unchanged when there are none. */
 export function removeUnusedAssets(project: Project): Project {
-  const used = new Set<string>([...project.clips.map((c) => c.assetId), ...project.music.map((m) => m.assetId)])
+  const used = new Set<string>([
+    ...project.clips.map((c) => c.assetId),
+    ...project.music.map((m) => m.assetId),
+    ...project.overlays.flatMap((o) => (o.kind === 'media' ? [o.assetId] : []))
+  ])
   const assets = project.assets.filter((a) => used.has(a.id))
   return assets.length === project.assets.length ? project : { ...project, assets }
 }

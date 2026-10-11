@@ -26,6 +26,10 @@ import {
 
 const RULER_HEIGHT_PX = 22
 const LANE_HEIGHT_PX = 38
+/** Coarse pointers (touch): lanes and bars grow so every bar is at least 44 px tall. */
+const COARSE_LANE_HEIGHT_PX = 48
+const BAR_INSET_PX = 4
+const COARSE_BAR_INSET_PX = 2
 /** Room after the last item, so the end of the track can be reached by scrolling. */
 const CONTENT_MARGIN_PX = 24
 /** Keeps the fitted track clear of the scroll container edge. */
@@ -98,6 +102,7 @@ function isTextEntry(target: EventTarget | null): boolean {
 
 // Kept outside the component data: Vue must not wrap a ResizeObserver in a proxy.
 const observers = new WeakMap<object, ResizeObserver>()
+const pointerQueries = new WeakMap<object, MediaQueryList>()
 /** performance.now() until which playback does not move the view (set by manual scrolling). Not reactive. */
 let followPausedUntil = 0
 
@@ -107,7 +112,8 @@ export default defineComponent({
   data() {
     return {
       rulerHeight: RULER_HEIGHT_PX,
-      laneHeight: LANE_HEIGHT_PX,
+      /** Primary pointer is coarse (touch); follows the media query, so a change at runtime is picked up. */
+      coarse: false,
       pxPerSecond: DEFAULT_PX_PER_SECOND,
       /** True until the user zooms by hand; then resizing keeps the zoom. */
       fitted: true,
@@ -124,6 +130,12 @@ export default defineComponent({
     ...mapState(useFineCutStore, { fineCutOpen: 'isOpen' }),
     fps(): number {
       return this.project.format.fps
+    },
+    laneHeight(): number {
+      return this.coarse ? COARSE_LANE_HEIGHT_PX : LANE_HEIGHT_PX
+    },
+    barInset(): number {
+      return this.coarse ? COARSE_BAR_INSET_PX : BAR_INSET_PX
     },
     contentWidth(): number {
       return Math.max(this.viewportWidth, Math.ceil(microsToPx(this.totalDuration, this.pxPerSecond)) + CONTENT_MARGIN_PX)
@@ -246,7 +258,7 @@ export default defineComponent({
     dropTop(): number {
       const index = this.lanes.findIndex((lane) => lane.id === 'video')
       const above = this.lanes.slice(0, Math.max(0, index))
-      return RULER_HEIGHT_PX + above.reduce((sum, lane) => sum + this.laneHeightPx(lane), 0) + 4
+      return RULER_HEIGHT_PX + above.reduce((sum, lane) => sum + this.laneHeightPx(lane), 0) + this.barInset
     }
   },
   watch: {
@@ -265,6 +277,12 @@ export default defineComponent({
     const el = this.$refs.scroller as HTMLElement
     this.viewportWidth = el.clientWidth
     this.fitToWidth()
+    if (typeof window.matchMedia === 'function') {
+      const query = window.matchMedia('(pointer: coarse)')
+      this.coarse = query.matches
+      query.addEventListener('change', this.onPointerKindChange)
+      pointerQueries.set(this, query)
+    }
     if (typeof ResizeObserver === 'undefined') return
     const observer = new ResizeObserver(() => {
       this.viewportWidth = el.clientWidth
@@ -277,6 +295,8 @@ export default defineComponent({
     el.addEventListener('pointerdown', this.onScrollerPointerdown)
   },
   beforeUnmount() {
+    pointerQueries.get(this)?.removeEventListener('change', this.onPointerKindChange)
+    pointerQueries.delete(this)
     observers.get(this)?.disconnect()
     observers.delete(this)
     const el = this.$refs.scroller as HTMLElement | undefined
@@ -304,13 +324,18 @@ export default defineComponent({
       'endGesture'
     ]),
 
+    onPointerKindChange(event: MediaQueryListEvent) {
+      this.coarse = event.matches
+    },
     laneHeightPx(lane: Lane): number {
-      return (lane.rows ?? 1) * LANE_HEIGHT_PX
+      return (lane.rows ?? 1) * this.laneHeight
     },
     /** Short label of an overlay bar: the emoji for stickers, the kind for shapes and strokes. */
     overlayName(item: OverlayItem): string {
       if (item.kind === 'sticker') return item.emoji
       if (item.kind === 'shape') return this.$t(`overlays.shape.${item.shape}`)
+      if (item.kind === 'region') return this.$t(`overlays2.effects.${item.effect}`)
+      if (item.kind === 'media') return this.project.assets.find((a) => a.id === item.assetId)?.name ?? ''
       return this.$t('overlays.header.stroke')
     },
     isSelected(item: LaneItem): boolean {
@@ -653,6 +678,7 @@ export default defineComponent({
               :variant="item.variant"
               :row="item.row ?? 0"
               :lane-height="laneHeight"
+              :inset="barInset"
               :tone="item.tone"
               :left="item.leftPx"
               :width="item.widthPx"
@@ -671,7 +697,7 @@ export default defineComponent({
           <div
             v-if="dropPx !== null"
             class="pointer-events-none absolute z-20 w-[3px] -translate-x-px rounded-full bg-signal shadow-[0_0_0_1px_var(--jc-signal-fg)]"
-            :style="{ left: dropPx + 'px', top: dropTop + 'px', height: (laneHeight - 8) + 'px' }"
+            :style="{ left: dropPx + 'px', top: dropTop + 'px', height: (laneHeight - 2 * barInset) + 'px' }"
             data-role="drop-indicator"
             aria-hidden="true"
           />

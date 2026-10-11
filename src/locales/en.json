@@ -797,6 +797,7 @@
     "pictureSound": "The sound of a video is not played.",
     "radius": "Corners",
     "border": "Border",
-    "borderColor": "Border colour"
+    "borderColor": "Border colour",
+    "confirmPictures": "{count} picture over the video also uses this file. It is removed too. | {count} pictures over the video also use this file. They are removed too."
   }
 }

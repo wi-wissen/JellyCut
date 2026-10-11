@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { createProject, validateProject } from '../project/schema'
 import type { Project } from '../project/types'
 import { secondsToMicros } from '../time'
-import { DEFAULT_OVERLAY_DURATION, LINE_WIDTHS } from './overlayCatalog'
+import { DEFAULT_OVERLAY_DURATION, DEFAULT_REGION_STRENGTH, LINE_WIDTHS } from './overlayCatalog'
 import {
   MIN_OVERLAY_DURATION,
+  addMedia,
+  addRegion,
   addShape,
   addSticker,
   addStroke,
@@ -185,5 +187,86 @@ describe('duplicate, delete and undo of strokes', () => {
     const twice = removeLastStroke(once)
     expect(twice.overlays.map((o) => o.id)).toEqual(['overlay-1'])
     expect(removeLastStroke(twice)).toBe(twice)
+  })
+})
+
+describe('opacity and animations (any kind)', () => {
+  it('sets opacity clamped to 0..1 and the animations, and clears them with null', () => {
+    const p = withSticker()
+    const next = updateOverlay(p, 'overlay-1', { opacity: 1.4, animIn: 'pop', animOut: 'fade', loop: 'wiggle' })
+    expect(next.overlays[0]).toMatchObject({ opacity: 1, animIn: 'pop', animOut: 'fade', loop: 'wiggle' })
+    const cleared = updateOverlay(next, 'overlay-1', { opacity: 0.25, animIn: null, animOut: null, loop: null })
+    expect(cleared.overlays[0]).toMatchObject({ opacity: 0.25, animIn: null, animOut: null, loop: null })
+  })
+
+  it('rejects unknown animations and non-finite opacity for every kind', () => {
+    const p = withSticker()
+    expect(updateOverlay(p, 'overlay-1', { animIn: 'spin' as never })).toBe(p)
+    expect(updateOverlay(p, 'overlay-1', { loop: 'bounce' as never })).toBe(p)
+    expect(updateOverlay(p, 'overlay-1', { opacity: Number.NaN })).toBe(p)
+    const stroke = addStroke(base(), 'st', 0, [{ x: 0.1, y: 0.1 }, { x: 0.2, y: 0.2 }], RED)
+    expect(updateOverlay(stroke, 'st', { opacity: 0.5 }).overlays[0]).toMatchObject({ opacity: 0.5 })
+  })
+})
+
+describe('addRegion', () => {
+  it('adds a blur or pixelate rectangle centred on the picture, with the default strength and size', () => {
+    const p = addRegion(base(), 'r1', s(2), 'blur')
+    expect(p.overlays[0]).toMatchObject({ kind: 'region', shape: 'rect', effect: 'blur', start: s(2), duration: DEFAULT_OVERLAY_DURATION, pos: { x: 0.5, y: 0.5 }, strength: DEFAULT_REGION_STRENGTH })
+  })
+
+  it('refuses unknown effects and reused ids', () => {
+    const p = base()
+    expect(addRegion(p, 'r1', 0, 'sparkle' as never)).toBe(p)
+    expect(addRegion(addRegion(p, 'r1', 0, 'blur'), 'r1', 0, 'pixelate').overlays).toHaveLength(1)
+  })
+
+  it('changes effect, shape and strength (clamped) but not colour or the picture fields', () => {
+    const p = addRegion(base(), 'r1', 0, 'blur')
+    const next = updateOverlay(p, 'r1', { effect: 'pixelate', shape: 'ellipse', strength: 3, width: 0.5, height: 0.4 })
+    expect(next.overlays[0]).toMatchObject({ effect: 'pixelate', shape: 'ellipse', strength: 1, width: 0.5, height: 0.4 })
+    expect(updateOverlay(p, 'r1', { color: RED })).toBe(p)
+    expect(updateOverlay(p, 'r1', { radius: 0.1 })).toBe(p)
+    expect(updateOverlay(p, 'r1', { shape: 'arrow' as never })).toBe(p)
+    expect(updateOverlay(p, 'r1', { effect: 'wobble' as never })).toBe(p)
+  })
+})
+
+describe('addMedia', () => {
+  const withAssets = () => {
+    const p = base()
+    const image = { id: 'img', kind: 'image' as const, name: 'a.png', relPath: 'a.png', size: 1, duration: 0, width: 800, height: 400 }
+    const audio = { id: 'snd', kind: 'audio' as const, name: 'a.mp3', relPath: 'a.mp3', size: 1, duration: s(3) }
+    return { ...p, assets: [image, audio] }
+  }
+
+  it('adds a picture with the asset shape, the default height and no border', () => {
+    const p = addMedia(withAssets(), 'm1', s(1), 'img')
+    const item = p.overlays[0]
+    expect(item).toMatchObject({ kind: 'media', assetId: 'img', start: s(1), height: 0.3, radius: 0, border: 0, borderColor: '#ffffff' })
+    if (item?.kind !== 'media') throw new Error('expected a media overlay')
+    expect(item.width / item.height).toBeCloseTo(2, 6)
+  })
+
+  it('refuses audio assets, unknown assets and reused ids', () => {
+    const p = withAssets()
+    expect(addMedia(p, 'm1', 0, 'snd')).toBe(p)
+    expect(addMedia(p, 'm1', 0, 'missing')).toBe(p)
+    expect(addMedia(addMedia(p, 'm1', 0, 'img'), 'm1', 0, 'img').overlays).toHaveLength(1)
+  })
+
+  it('sets the box, corner radius, border and border colour', () => {
+    const p = addMedia(withAssets(), 'm1', 0, 'img')
+    const next = updateOverlay(p, 'm1', { width: 0.6, height: 0.2, radius: 0.9, border: 0.01, borderColor: '#00FF00' })
+    expect(next.overlays[0]).toMatchObject({ width: 0.6, height: 0.2, radius: 0.5, border: 0.01, borderColor: '#00ff00' })
+    expect(updateOverlay(p, 'm1', { border: Number.NaN })).toBe(p)
+    expect(updateOverlay(p, 'm1', { borderColor: 'green' })).toBe(p)
+    expect(updateOverlay(p, 'm1', { color: RED })).toBe(p)
+    expect(updateOverlay(p, 'm1', { lineWidth: 0.01 })).toBe(p)
+  })
+
+  it('stays valid as a project file', () => {
+    const p = addMedia(withAssets(), 'm1', s(1), 'img')
+    expect(validateProject(JSON.parse(JSON.stringify(p))).ok).toBe(true)
   })
 })
