@@ -187,7 +187,7 @@ export default defineComponent({
     }
   },
   computed: {
-    ...mapState(useEditorStore, ['project', 'totalDuration', 'playheadMicros', 'selection', 'isPlaying', 'canSplitAtPlayhead']),
+    ...mapState(useEditorStore, ['project', 'totalDuration', 'videoEndMicros', 'playheadMicros', 'selection', 'isPlaying', 'canSplitAtPlayhead']),
     ...mapState(useFineCutStore, { fineCutOpen: 'isOpen' }),
     fps(): number {
       return this.project.format.fps
@@ -200,6 +200,10 @@ export default defineComponent({
     },
     barInset(): number {
       return this.coarse ? COARSE_BAR_INSET_PX : BAR_INSET_PX
+    },
+    /** Where the video ends (a thin line over the lanes); null without clips. */
+    videoEndPx(): number | null {
+      return this.videoEndMicros > 0 ? microsToPx(this.videoEndMicros, this.pxPerSecond) : null
     },
     contentWidth(): number {
       return Math.max(this.viewportWidth, Math.ceil(microsToPx(this.totalDuration, this.pxPerSecond)) + CONTENT_MARGIN_PX)
@@ -1004,6 +1008,15 @@ export default defineComponent({
               :style="{ left: tick.px + 'px' }"
             >{{ tick.label }}</span>
           </div>
+
+          <div
+            v-if="videoEndPx !== null"
+            class="pointer-events-none absolute bottom-0 top-0 border-l border-dashed border-muted"
+            :style="{ left: videoEndPx + 'px' }"
+            :title="$t('design.videoEnd')"
+            :aria-label="$t('design.videoEnd')"
+            data-role="video-end"
+          />
 
           <div
             v-for="lane in lanes"

@@ -214,11 +214,13 @@ export async function runExport(
   }
 }
 
-/** Length of the export in microseconds: the timeline, the texts or the music, whichever ends last. */
+/**
+ * Length of the export in microseconds: the video clips or the music, whichever ends last. Texts and
+ * overlays never set the length; they stay on the video (core/timeline/fit).
+ */
 export function projectDuration(project: Project, planned: PlannedTimeline = planTimeline(project)): Micros {
-  const textEnd = project.texts.reduce((end, t) => Math.max(end, t.start + t.duration), 0)
   const musicEnd = project.music.reduce((end, m) => Math.max(end, m.start + (m.srcOut - m.srcIn)), 0)
-  return Math.max(planned.duration, textEnd, musicEnd)
+  return Math.max(planned.duration, musicEnd)
 }
 
 /** Frame source for every asset that has a file; assets without one render as background only. */

@@ -1,6 +1,6 @@
 # Checklist: review of the sources guide before a release
 
-The guide at `/help/sources/` (`src/ui/views/SourcesGuideView.vue`, texts in `src/locales/*.json` under `sources`) and the licence list in `src/core/credits/credits.ts` (`LICENSES`) must be re-checked before every release. Terms change; this list is the maintainer's record that the check happened.
+The guide at `/help/sources/` (`src/ui/views/SourcesGuideView.vue`, texts in `src/locales/pages/help-sources.de.json` and `help-sources.en.json` under `help.sources`) and the licence list in `src/core/credits/credits.ts` (`LICENSES`) must be re-checked before every release. Terms change; this list is the maintainer's record that the check happened.
 
 Reviewed on: ____________  by: ____________  release: ____________
 

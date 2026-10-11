@@ -35,6 +35,7 @@ import { applyGradeToAll, setClipGrade as setGrade, type GradePatch } from '../.
 import { nextId } from '../../core/timeline/ids'
 import { freezeFrameAt } from '../../core/timeline/freezeOps'
 import { timelineLength } from '../../core/timeline/speed'
+import { fitToVideo, videoEnd } from '../../core/timeline/fit'
 import {
   moveMusic as moveMusicInTime,
   splitMusicAt,
@@ -445,6 +446,10 @@ export const useEditorStore = defineStore('editor', {
         widthPct: toPct(m.srcOut - m.srcIn, total)
       }))
     },
+    /** End of the video (clips and transitions); zero without clips. Overlays and texts never pass it. */
+    videoEndMicros(state): Micros {
+      return videoEnd(state.history.present)
+    },
     rulerTicks(state): RulerTick[] {
       const total = projectDuration(state.history.present)
       const ticks: RulerTick[] = []
@@ -533,8 +538,9 @@ export const useEditorStore = defineStore('editor', {
       this.dirtySinceFileSave = true
       this.scheduleAutosave()
     },
+    /** The one way a project edit enters the history. Items that hang over the end of the video are kept on it. */
     commitProject(next: Project, key?: string) {
-      this.moveHistory(commit(this.history, next, { key }))
+      this.moveHistory(commit(this.history, fitToVideo(next), { key }))
     },
     undo() {
       this.moveHistory(undoHistory(this.history))
@@ -552,7 +558,8 @@ export const useEditorStore = defineStore('editor', {
 
     /** Replaces the whole document. The history starts over, so undo never mixes two files. */
     replaceDocument(project: Project, file: { handle: FsFileHandle | null; name: string | null }) {
-      this.history = createHistory(project)
+      // Quietly: a loaded project that hangs over its video is fitted, but not marked dirty.
+      this.history = createHistory(fitToVideo(project))
       useMediaStore().markMissingFor(project)
       this.fileHandle = file.handle
       this.fileName = file.name
@@ -644,7 +651,7 @@ export const useEditorStore = defineStore('editor', {
       if (!record || typeof record.text !== 'string') return
       const result = parseProjectJson(record.text)
       if (result.ok) {
-        this.history = createHistory(result.project)
+        this.history = createHistory(fitToVideo(result.project))
         useMediaStore().markMissingFor(result.project)
       }
     },

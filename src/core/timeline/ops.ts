@@ -3,6 +3,7 @@ import { frameDuration, type Micros } from '../time'
 import { clipEnd, findClipAt, rippleClose, splitClip, trimClipEnd, trimClipStart } from './edit'
 import { IMAGE_MAX_DURATION } from './insert'
 import { duplicateOverlay } from './overlayOps'
+import { fitSpan, moveSpan, videoEnd } from './fit'
 import { isSpeedInRange, timelineLength } from './speed'
 
 export type ItemKind = 'clip' | 'text' | 'music' | 'overlay'
@@ -98,10 +99,11 @@ export function duplicateItem(project: Project, ref: ItemRef, newId: string): Pr
     const index = project.texts.findIndex((t) => t.id === ref.id)
     const original = project.texts[index]
     if (!original) return project
+    const span = fitSpan(original.start + original.duration, original.duration, videoEnd(project))
     const copy: TextItem = {
       ...original,
       id: newId,
-      start: original.start + original.duration,
+      ...span,
       style: { ...original.style },
       pos: { ...original.pos }
     }
@@ -203,7 +205,8 @@ function updateText(project: Project, id: string, update: (text: TextItem, minDu
   if (!target) return project
   const next = update(target, frameDuration(project.format.fps))
   if (!next) return project
-  const texts = project.texts.map((t) => (t.id === id ? next : t))
+  const fitted = { ...next, ...fitSpan(next.start, next.duration, videoEnd(project)) }
+  const texts = project.texts.map((t) => (t.id === id ? fitted : t))
   return sameJson(texts, project.texts) ? project : { ...project, texts }
 }
 
@@ -228,9 +231,10 @@ export function trimTextEnd(project: Project, id: string, newEnd: Micros): Proje
 
 /** Moves a text item in time; its duration is kept. */
 export function moveText(project: Project, id: string, newStart: Micros): Project {
+  const end = videoEnd(project)
   return updateText(project, id, (text) => {
     if (!Number.isFinite(newStart)) return null
-    return { ...text, start: Math.max(0, Math.round(newStart)) }
+    return { ...text, ...moveSpan(newStart, text.duration, end) }
   })
 }
 

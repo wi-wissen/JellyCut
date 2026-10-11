@@ -270,3 +270,64 @@ describe('addMedia', () => {
     expect(validateProject(JSON.parse(JSON.stringify(p))).ok).toBe(true)
   })
 })
+
+describe('overlays and the video end', () => {
+  /** A video of the given length: one clip from a 120 s asset. */
+  function videoOf(seconds: number): Project {
+    return {
+      ...base(),
+      assets: [{ id: 'a1', kind: 'video', name: 'a.mp4', relPath: 'media/a.mp4', size: 1, duration: s(120), width: 1920, height: 1080, fps: 30 }],
+      clips: [
+        {
+          id: 'clip-1',
+          track: 'video',
+          assetId: 'a1',
+          srcIn: 0,
+          srcOut: s(seconds),
+          start: 0,
+          speed: 1,
+          transform: { fit: 'fit', scale: 1, x: 0, y: 0, rotation: 0, flipX: false },
+          volume: 1,
+          muted: false,
+          filter: null,
+          transitionIn: null
+        }
+      ]
+    }
+  }
+
+  it('a new item at the playhead near the end ends at the end', () => {
+    const item = addSticker(videoOf(30), 'overlay-1', s(29.8), '⭐').overlays[0]!
+    expect(item).toMatchObject({ start: s(29.5), duration: s(0.5) })
+  })
+
+  it('a new item at the end keeps its default length and ends at the end', () => {
+    const item = addSticker(videoOf(30), 'overlay-1', s(40), '⭐').overlays[0]!
+    expect(item).toMatchObject({ start: s(27), duration: DEFAULT_OVERLAY_DURATION })
+  })
+
+  it('without clips a new item keeps the playhead and the default length', () => {
+    const item = addSticker(base(), 'overlay-1', s(29.8), '⭐').overlays[0]!
+    expect(item).toMatchObject({ start: s(29.8), duration: DEFAULT_OVERLAY_DURATION })
+  })
+
+  it('moving past the end stops flush and keeps the length', () => {
+    const p = moveOverlay(addSticker(videoOf(30), 'overlay-1', s(1), '⭐'), 'overlay-1', s(40))
+    expect(p.overlays[0]).toMatchObject({ start: s(27), duration: DEFAULT_OVERLAY_DURATION })
+  })
+
+  it('trimming the end past the end stops at the end', () => {
+    const p = trimOverlayEnd(addSticker(videoOf(30), 'overlay-1', s(1), '⭐'), 'overlay-1', s(45))
+    expect(p.overlays[0]).toMatchObject({ start: s(1), duration: s(29) })
+  })
+
+  it('a duration edit past the end stops at the end', () => {
+    const p = updateOverlay(addSticker(videoOf(30), 'overlay-1', s(1), '⭐'), 'overlay-1', { duration: s(40) })
+    expect(p.overlays[0]).toMatchObject({ start: s(1), duration: s(29) })
+  })
+
+  it('a copy at the end is placed flush with the end', () => {
+    const p = duplicateOverlay(addSticker(videoOf(30), 'overlay-1', s(28), '⭐'), 'overlay-1', 'overlay-2')
+    expect(p.overlays[1]).toMatchObject({ id: 'overlay-2', start: s(28), duration: s(2) })
+  })
+})

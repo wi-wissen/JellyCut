@@ -539,3 +539,19 @@ describe('text operations', () => {
     expect(moveText(project, 't1', s(2))).toBe(project)
   })
 })
+
+describe('texts and the video end', () => {
+  it('moveText past the end stops flush and keeps the length', () => {
+    expect(moveText(fixture(), 't1', s(29)).texts[0]).toMatchObject({ start: s(26), duration: s(4) })
+  })
+
+  it('trimTextEnd past the end stops at the end of the video', () => {
+    expect(trimTextEnd(fixture(), 't1', s(45)).texts[0]).toMatchObject({ start: s(2), duration: s(28) })
+  })
+
+  it('a copy of a text at the end is placed flush with the end', () => {
+    const at = moveText(fixture(), 't1', s(26))
+    const copy = duplicateItem(at, { kind: 'text', id: 't1' }, 'text-2')
+    expect(copy.texts.find((t) => t.id === 'text-2')).toMatchObject({ id: 'text-2', start: s(26), duration: s(4) })
+  })
+})

@@ -200,3 +200,20 @@ describe('updateText', () => {
     expect(JSON.stringify(p)).toBe(before)
   })
 })
+
+describe('texts and the video end', () => {
+  it('a new text near the end ends at the end', () => {
+    const text = addText(fixture(), 'text-new', s(9.8)).texts.find((t) => t.id === 'text-new')!
+    expect(text).toMatchObject({ start: s(9.5), duration: s(0.5) })
+  })
+
+  it('a duration edit past the end stops at the end', () => {
+    const p = updateText(addText(fixture(), 'text-new', s(1)), 'text-new', { duration: s(20) })
+    expect(p.texts.find((t) => t.id === 'text-new')).toMatchObject({ start: s(1), duration: s(9) })
+  })
+
+  it('a move past the end stops flush and keeps the length', () => {
+    const p = updateText(addText(fixture(), 'text-new', s(1)), 'text-new', { start: s(20) })
+    expect(p.texts.find((t) => t.id === 'text-new')).toMatchObject({ start: s(7), duration: DEFAULT_TEXT_DURATION })
+  })
+})

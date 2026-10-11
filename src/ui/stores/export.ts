@@ -44,7 +44,7 @@ import {
 import type { Project } from '../../core/project/types'
 import { planTimeline } from '../../core/render/scene'
 import type { Micros } from '../../core/time'
-import { checkEncoders, ExportCancelled, ExportUnsupported, type ExportProgress, type ExportResult } from '../../engine/export/exporter'
+import { checkEncoders, ExportCancelled, ExportUnsupported, projectDuration, type ExportProgress, type ExportResult } from '../../engine/export/exporter'
 import { startExport, type RunningExport } from '../../engine/export/exportClient'
 import { GifTooLarge as GifTooLargeError, type GifResult } from '../../engine/export/gifExporter'
 import { FONT_SOURCES } from '../fontUrls'
@@ -496,7 +496,7 @@ export const useExportStore = defineStore('export', {
       if (!isGif && this.encoders?.video == null) return
       const editor = useEditorStore()
       const project = editor.project
-      if (editor.totalDuration <= 0) {
+      if (projectDuration(project) <= 0) {
         this.fail({ key: 'export.errors.empty', params: {} })
         return
       }

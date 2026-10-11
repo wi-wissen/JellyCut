@@ -3,6 +3,7 @@ import type { Project, TextItem, TextStyle } from '../project/types'
 import { canonicalAnimation, type InAnimation, type OutAnimation } from '../render/animations'
 import type { Micros } from '../time'
 import { projectIds } from './ops'
+import { editedSpan, placeSpan, videoEnd } from './fit'
 
 export type TextPresetId = 'title' | 'subtitle' | 'neon' | 'poster' | 'script' | 'note'
 
@@ -60,10 +61,10 @@ export function addText(project: Project, newId: string, start: Micros, init: Te
   if (!Number.isFinite(start) || newId.length === 0) return project
   if (projectIds(project).has(newId)) return project
   const preset = textPreset(init.preset ?? 'title')
+  const span = placeSpan(start, clampDuration(init.duration ?? DEFAULT_TEXT_DURATION), videoEnd(project))
   const item: TextItem = {
     id: newId,
-    start: Math.max(0, Math.round(start)),
-    duration: clampDuration(init.duration ?? DEFAULT_TEXT_DURATION),
+    ...span,
     text: init.text ?? 'Text',
     style: { ...preset.style },
     pos: { ...(init.pos ?? preset.pos) },
@@ -83,7 +84,8 @@ export function updateText(project: Project, id: string, patch: TextPatch): Proj
   if (!target) return project
   const next = applyTextPatch(target, patch)
   if (!next) return project
-  const texts = project.texts.map((t) => (t.id === id ? next : t))
+  const fitted = { ...next, ...editedSpan(next, patch, videoEnd(project)) }
+  const texts = project.texts.map((t) => (t.id === id ? fitted : t))
   return JSON.stringify(texts) === JSON.stringify(project.texts) ? project : { ...project, texts }
 }
 

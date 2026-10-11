@@ -370,7 +370,8 @@ check('export: the exported frame shows the sticker', exported.stickerNear > 15,
 check('export: every stroke is in the exported frame in its own colour', exported.strokes.length === 3 && exported.strokes.every((k) => k.near > 0), JSON.stringify(exported.strokes))
 
 // --- 12. screenshots, light and dark ---
-await page.getByRole('button', { name: 'Overlay: Star', exact: true }).click()
+// The lane button 'Star' is covered by 'Arrow' in the timeline, so the item is selected through the store.
+await st('(ed, id) => ed.select({ kind: "overlay", id })', starId)
 await settle()
 await page.screenshot({ path: `${SHOTS}/overlay-light.png` })
 await page.getByRole('tab', { name: 'Design' }).click()

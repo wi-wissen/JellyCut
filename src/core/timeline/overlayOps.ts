@@ -9,6 +9,7 @@ import type {
   StrokeOverlay
 } from '../project/types'
 import type { Micros } from '../time'
+import { editedSpan, fitSpan, placeSpan, videoEnd, type Span } from './fit'
 import { canonicalAnimation, type InAnimation, type OutAnimation } from '../render/animations'
 import { isStickerImageId } from '../render/stickerImages'
 import { stickerShape, type StickerShapeId } from '../render/stickerShapes'
@@ -107,8 +108,7 @@ export function addSticker(project: Project, newId: string, start: Micros, emoji
   const item: StickerOverlay = {
     id: newId,
     kind: 'sticker',
-    start: Math.max(0, Math.round(start)),
-    duration: DEFAULT_OVERLAY_DURATION,
+    ...placedAt(project, start),
     pos: clampPos(pos),
     scale: 1,
     rotation: 0,
@@ -136,8 +136,7 @@ export function addVectorSticker(
   const item: StickerOverlay = {
     id: newId,
     kind: 'sticker',
-    start: Math.max(0, Math.round(start)),
-    duration: DEFAULT_OVERLAY_DURATION,
+    ...placedAt(project, start),
     pos: clampPos(pos),
     scale: 1,
     rotation: 0,
@@ -155,8 +154,7 @@ export function addImageSticker(project: Project, newId: string, start: Micros, 
   const item: StickerOverlay = {
     id: newId,
     kind: 'sticker',
-    start: Math.max(0, Math.round(start)),
-    duration: DEFAULT_OVERLAY_DURATION,
+    ...placedAt(project, start),
     pos: clampPos(pos),
     scale: 1,
     rotation: 0,
@@ -178,8 +176,7 @@ export function addShape(
   const item: ShapeOverlay = {
     id: newId,
     kind: 'shape',
-    start: Math.max(0, Math.round(start)),
-    duration: DEFAULT_OVERLAY_DURATION,
+    ...placedAt(project, start),
     pos: clampPos(pos),
     scale: 1,
     rotation: 0,
@@ -230,8 +227,7 @@ export function addStroke(
   const item: StrokeOverlay = {
     id: newId,
     kind: 'stroke',
-    start: Math.max(0, Math.round(start)),
-    duration: DEFAULT_OVERLAY_DURATION,
+    ...placedAt(project, start),
     pos: clampPos({ x: cx / aspect, y: cy }),
     scale: 1,
     rotation: 0,
@@ -258,8 +254,7 @@ export function addRegion(
   const item: RegionOverlay = {
     id: newId,
     kind: 'region',
-    start: Math.max(0, Math.round(start)),
-    duration: DEFAULT_OVERLAY_DURATION,
+    ...placedAt(project, start),
     pos: clampPos(pos),
     scale: 1,
     rotation: 0,
@@ -286,8 +281,7 @@ export function addMedia(project: Project, newId: string, start: Micros, assetId
   const item: MediaOverlay = {
     id: newId,
     kind: 'media',
-    start: Math.max(0, Math.round(start)),
-    duration: DEFAULT_OVERLAY_DURATION,
+    ...placedAt(project, start),
     pos: clampPos(pos),
     scale: 1,
     rotation: 0,
@@ -310,7 +304,9 @@ export function updateOverlay(project: Project, id: string, patch: OverlayPatch)
   if (!target) return project
   const next = applyPatch(target, patch)
   if (!next) return project
-  const overlays = project.overlays.map((o) => (o.id === id ? next : o))
+  const span = editedSpan(next, patch, videoEnd(project))
+  const fitted = { ...next, ...span } as OverlayItem
+  const overlays = project.overlays.map((o) => (o.id === id ? fitted : o))
   return JSON.stringify(overlays) === JSON.stringify(project.overlays) ? project : { ...project, overlays }
 }
 
@@ -342,7 +338,8 @@ export function duplicateOverlay(project: Project, id: string, newId: string): P
   const original = project.overlays[index]
   if (!original) return project
   // Items are never mutated, so the copy may share the points array.
-  const copy: OverlayItem = { ...original, id: newId, start: original.start + original.duration, pos: { ...original.pos } }
+  const span = fitSpan(original.start + original.duration, original.duration, videoEnd(project))
+  const copy: OverlayItem = { ...original, id: newId, ...span, pos: { ...original.pos } }
   return { ...project, overlays: [...project.overlays.slice(0, index + 1), copy, ...project.overlays.slice(index + 1)] }
 }
 
@@ -500,6 +497,11 @@ function applyPatch(item: OverlayItem, patch: OverlayPatch): OverlayItem | null 
     next.borderColor = patch.borderColor.toLowerCase()
   }
   return next
+}
+
+/** A new item's start and default length: at the playhead, kept on the video (see fit.ts). */
+function placedAt(project: Project, start: Micros): Span {
+  return placeSpan(start, DEFAULT_OVERLAY_DURATION, videoEnd(project))
 }
 
 /** Local copy of ops.projectIds: importing it here would make a cycle, since ops.ts uses duplicateOverlay. */

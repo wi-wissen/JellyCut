@@ -1,6 +1,6 @@
 # Performance measurements
 
-Measured by the project owner with the first speed test page. They drive the default values of the export time estimate (`src/core/export/estimate.ts`).
+Measured by the project owner with the first speed test page. They drive the default values of the export time estimate (cost constants in `src/core/export/costs.ts`).
 
 **Test machine:** Windows, Firefox 157, 16 cores, AMD Radeon R9 200 (ANGLE/D3D11), tab in the foreground.
 **Reference:** Shotcut exports 3 min of video in about 15 min (factor 0.2). Goal for Jelly Cut: at least that fast, better real time or faster (factor >= 1).
@@ -43,9 +43,9 @@ Chrome/Edge, school PCs, full export with decoding + audio, 4K playback through 
 
 ## Note
 
-Firefox in a background tab is 15-30x slower (1-2 instead of 29-58 frames/s). The export therefore runs in a worker (`OffscreenCanvas`); users should still be warned until that is verified in the background.
+Firefox in a background tab is 15-30x slower (1-2 instead of 29-58 frames/s). The export runs in a worker where `OffscreenCanvas` exists (on the main thread otherwise, see `src/engine/export/exportClient.ts`). Whether a worker export is also slowed down in a background tab is not measured yet, so the dialog keeps warning.
 
-# Export time model (version 2)
+# Export time model
 
 Source files: `src/core/export/costs.ts` (every constant), `src/core/export/estimate.ts` (work per phase),
 `src/core/export/calibration.ts` (learning and range), `src/core/export/eta.ts` (progress ETA).
@@ -68,8 +68,8 @@ Rates are megapixels per second (MP/s), a full-frame pass costs the output pixel
 | Constant | Value | Basis |
 |---|---|---|
 | `DECODE_MP_PER_S` | 120 | measured above (1080p H.264, 58 frames/s) |
-| `DRAW_MP_PER_S` | 153 | derived: drawing is 36 % of the 55 MP/s measured for 1080p encoding |
-| `ENCODE_MP_PER_S` | 92 | derived: encoding is 60 % of the same 55 MP/s |
+| `DRAW_MP_PER_S` | 153 | derived: 55 MP/s divided by the 36 % share of drawing in the 1080p measurement |
+| `ENCODE_MP_PER_S` | 92 | derived: 55 MP/s divided by the 60 % share of encoding in the same measurement |
 | `CODEC_FACTOR` vp9, av1 | 2.5 | guess, applies to encoding only (AVC measured) |
 | `UPLOAD_MP_PER_S` | 400 | guess: texture upload of each decoded frame |
 | `RASTER_MP_PER_S` | 40 | guess: rasterising a sticker, shape or stroke once |
@@ -84,6 +84,7 @@ Rates are megapixels per second (MP/s), a full-frame pass costs the output pixel
 | `STARTUP_SECONDS` | 1.5 | guess (existing) |
 | `GIF_READBACK_MP_PER_S` | 25 | guess (existing GIF rate for drawing and reading back) |
 | `GIF_ENCODE_MP_PER_S` | 8 | guess (existing GIF quantising rate) |
+| `DEFAULT_WIDTH`, `DEFAULT_HEIGHT`, `DEFAULT_FPS` | 1920, 1080, 30 | used when an asset has no known size or frame rate |
 
 Only the first three rows (decode, and the derived draw and encode shares) come from measurements; everything else is a guess
 until the calibration of a real computer corrects it.
@@ -114,7 +115,7 @@ GIF: one speed factor (same rule with weight 0.5) and the size per pixel and fra
 
 ## Range (uncertainty)
 
-The dialog shows `[t / (1+u), t * (1+u)]` rounded outwards to whole steps (5 s below a minute, half minutes below ten minutes, whole minutes above). `u = max(0.1, 0.5 / sqrt(n+1))`: 50 % with no sample, about 35 % after one export, 25 % after three, 10 % from about 25 exports on. When both ends round to the same step a single value is shown.
+The dialog shows `[t / (1+u), t * (1+u)]` rounded outwards to whole steps (5 s below a minute, half minutes below ten minutes, whole minutes up to an hour, half hours above). `u = max(0.1, 0.5 / sqrt(n+1))`: 50 % with no sample, about 35 % after one export, 25 % after three, 10 % from about 25 exports on. When both ends round to the same step a single value is shown.
 
 ## Progress ETA
 
@@ -122,7 +123,7 @@ The work per output frame comes from the same model, so a slow section later on 
 
 ## Background tabs
 
-Browsers throttle hidden tabs, so an export in the background runs 2-3 times slower. The dialog shows a calm notice while the tab is hidden and a hint in the ready state. While hidden, progress does not change the throughput (the ETA restarts its measurement when the tab is visible again). A run whose tab was hidden for more than 10 % of its time does not change the calibration, and the details say so.
+Browsers throttle hidden tabs. Firefox was measured 15-30 times slower in a background tab (see Note above); other browsers are not measured yet. The dialog shows a calm notice while the tab is hidden and a hint in the ready state. While hidden, progress does not change the throughput (the ETA restarts its measurement when the tab is visible again). A run whose tab was hidden for more than 10 % of its time does not change the calibration, and the details say so.
 
 ## Validation status
 
