@@ -1,0 +1,63 @@
+import type { Micros } from '../time'
+import type { ProjectFormat, TextStyle, Transform } from '../project/types'
+
+/** Transitions the renderer implements. Anything else falls back to 'fade'. */
+export const TRANSITION_TYPES = [
+  'fade',
+  'wipeLeft',
+  'wipeRight',
+  'wipeUp',
+  'wipeDown',
+  'slideLeft',
+  'slideRight',
+  'zoomIn',
+  'zoomOut',
+  'blur'
+] as const
+export type TransitionType = (typeof TRANSITION_TYPES)[number]
+
+export const TEXT_ANIMATIONS = ['fade', 'pop', 'slideUp'] as const
+export type TextAnimation = (typeof TEXT_ANIMATIONS)[number]
+
+/** Default length of a text in/out animation, shortened to half the text duration when needed. */
+export const TEXT_ANIM_DURATION: Micros = 400_000
+
+export interface LayerTransition {
+  type: string
+  /** 0..1 progress of the transition at this time. */
+  progress: number
+  /** 'from' is the outgoing clip, 'to' the incoming one. */
+  role: 'from' | 'to'
+}
+
+export interface VideoLayer {
+  clipId: string
+  assetId: string
+  /** Time inside the source file (microseconds) that must be shown. */
+  srcTime: Micros
+  transform: Transform
+  transition: LayerTransition | null
+}
+
+export interface TextLayer {
+  id: string
+  text: string
+  style: TextStyle
+  /** Center position as a fraction of the output (0..1). */
+  pos: { x: number; y: number }
+  /** 0..1 */
+  alpha: number
+  /** Multiplier, 1 = normal. */
+  scale: number
+  /** Extra vertical offset as a fraction of the output height (slide animations). */
+  offsetY: number
+}
+
+/** Everything needed to draw one output frame. Pure data, identical for preview and export. */
+export interface Scene {
+  time: Micros
+  format: ProjectFormat
+  /** Back to front. At most two layers (the two sides of a transition). */
+  videos: VideoLayer[]
+  texts: TextLayer[]
+}
