@@ -7,6 +7,9 @@ import { useEditorStore } from '../stores/editor'
 export default defineComponent({
   name: 'TopBar',
   components: { Icon },
+  data() {
+    return { logoUrl: `${import.meta.env.BASE_URL}logo.svg` }
+  },
   computed: {
     ...mapState(useEditorStore, ['project', 'resolvedDark'])
   },
@@ -19,11 +22,7 @@ export default defineComponent({
 <template>
   <header class="flex h-[52px] shrink-0 items-center gap-2.5 border-b border-line bg-panel px-3">
     <div class="flex items-center gap-2 pr-1">
-      <span
-        class="size-7 rounded-lg"
-        style="background: linear-gradient(135deg, var(--jc-fill) 50%, var(--jc-signal) 50%)"
-        aria-hidden="true"
-      />
+      <img :src="logoUrl" alt="" class="h-8 w-auto" />
       <span class="text-[15px] font-bold tracking-tight">{{ $t('app.name') }}</span>
     </div>
 

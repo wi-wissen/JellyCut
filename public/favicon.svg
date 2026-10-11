@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#1E1650"/>
+<g transform="translate(35 28) scale(.88) rotate(40)">
+<g fill="none" stroke-linecap="round" stroke-width="2.4">
+<path d="M-9 4C-14 10-5 14-10 20S-12 29-14 33" stroke="#FF4FA3"/>
+<path d="M-3 5C-8 12 1 16-3 23S-3 33-6 38" stroke="#22D3C5"/>
+<path d="M4 5C0 11 9 15 5 21S7 28 4 31" stroke="#8FB51C" stroke-width="4.200"/>
+<path d="M4 5C0 11 9 15 5 21S7 28 4 31" stroke="#C6F432"/>
+<path d="M10 4C7 9 15 12 12 18S14 23 12 25" stroke="#FF4FA3"/>
+</g>
+<circle cx="-14" cy="33.500" r="2.200" fill="#FF4FA3"/>
+<circle cx="-6" cy="38.500" r="2.200" fill="#22D3C5"/>
+<circle cx="4" cy="31.500" r="3.100" fill="#8FB51C"/><circle cx="4" cy="31.500" r="2.200" fill="#C6F432"/>
+<path d="M-20 3C-22-14-10-23 0-23S22-14 20 3Q15 8 10 3Q5 8 0 3Q-5 8-10 3Q-15 8-20 3Z" fill="#22D3C5" transform="translate(-1.500 1.500)"/>
+<path d="M-18 2C-19-13-9-21 0-21S19-13 18 2Q13.500 7 9 2Q4.500 7 0 2Q-4.500 7-9 2Q-13.500 7-18 2Z" fill="#6D4CF5"/>
+<path d="M-18 2Q-13.500 7-9 2Q-4.500 7 0 2Q4.500 7 9 2Q13.500 7 18 2C18.300-1 18-3 17.500-5Q0 0-17.500-5C-18-3-18.300-1-18 2Z" fill="#FF4FA3" opacity=".9"/>
+<path d="M-12-12C-9-16-4-18 0-18" fill="none" stroke="#C6F432" stroke-width="2.600" stroke-linecap="round"/>
+<circle cx="7" cy="-15" r="1.600" fill="#C6F432"/>
+</g>
+</svg>
