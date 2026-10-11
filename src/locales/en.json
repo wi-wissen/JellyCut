@@ -86,7 +86,8 @@
     "zoomIn": "Zoom in"
   },
   "player": {
-    "fitFill": "Fit · Fill"
+    "fitFill": "Fit · Fill",
+    "ratio": "Aspect ratio"
   },
   "landing": {
     "title": "Jelly Cut",

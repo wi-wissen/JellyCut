@@ -33,14 +33,6 @@ export default defineComponent({
     </div>
 
     <ProjectMenu />
-    <button
-      type="button"
-      class="flex h-8 items-center gap-1.5 rounded-full border border-line bg-panel2 px-3 text-xs font-semibold"
-    >
-      <Icon name="ratio" class="size-3.5" />
-      {{ project.format.ratio }}
-    </button>
-
     <div class="ml-1 flex items-center">
       <button
         type="button"

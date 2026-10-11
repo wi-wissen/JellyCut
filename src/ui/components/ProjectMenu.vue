@@ -147,7 +147,7 @@ export default defineComponent({
       v-if="open"
       id="project-menu-panel"
       ref="panel"
-      class="absolute left-0 top-full z-50 mt-2 w-[300px] max-w-[calc(100vw-24px)] rounded-xl border border-line bg-panel p-2 shadow-xl"
+      class="fixed inset-x-3 top-[56px] z-50 max-h-[calc(100dvh-72px)] overflow-y-auto rounded-xl sm:absolute sm:inset-x-auto sm:left-0 sm:top-full sm:mt-2 sm:w-[300px] border border-line bg-panel p-2 shadow-xl"
     >
       <div v-if="loadError" role="alert" class="mb-2 flex items-start gap-2 rounded-lg border border-[var(--jc-danger)] bg-panel2 py-2 pl-3 pr-1 text-xs">
         <div class="min-w-0 flex-1">

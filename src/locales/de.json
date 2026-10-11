@@ -86,7 +86,8 @@
     "zoomIn": "Vergrößern"
   },
   "player": {
-    "fitFill": "Einpassen · Füllen"
+    "fitFill": "Einpassen · Füllen",
+    "ratio": "Bildformat"
   },
   "landing": {
     "title": "Jelly Cut",
