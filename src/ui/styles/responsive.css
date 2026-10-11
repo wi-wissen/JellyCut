@@ -41,7 +41,7 @@
   .jc-sheet:has(.jc-left--collapsed) {
     height: auto;
   }
-  /* Tab bar below the panel content; DOM order stays tab bar first, so the content is read first only visually. */
+  /* Tab bar at the bottom edge. It stays first in the DOM, so keyboard focus reaches the tabs before the panel content, the reverse of the visual order. */
   .jc-left {
     flex-direction: column-reverse;
   }

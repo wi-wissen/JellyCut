@@ -83,7 +83,6 @@ export default defineComponent({
       <button
         type="button"
         class="flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-fg hover:bg-panel2"
-        aria-controls="topbar-more"
         :aria-expanded="moreOpen ? 'true' : 'false'"
         @click="moreOpen = !moreOpen"
       >
