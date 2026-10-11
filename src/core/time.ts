@@ -48,12 +48,21 @@ export function frameDuration(fps: number): Micros {
   return frameStart(1, fps)
 }
 
+/**
+ * Largest frame index whose start is at or before t, i.e. the frame that is
+ * showing at t on the grid defined by frameStart.
+ */
 export function frameIndexAt(t: Micros, fps: number): number {
   assertFps(fps)
   assertTime(t)
   const { num, den } = exactRatio(fps)
-  // All operands are non-negative, so BigInt division is floor division.
-  return Number((BigInt(t) * num) / (den * BigInt(MICROS_PER_SECOND)))
+  // All operands are non-negative, so BigInt division is floor division. This is
+  // a lower bound: frameStart rounds half up, so it can start one frame later.
+  let index = (BigInt(t) * num) / (den * BigInt(MICROS_PER_SECOND))
+  while (frameStart(Number(index) + 1, fps) <= t) {
+    index += 1n
+  }
+  return Number(index)
 }
 
 export function frameStart(index: number, fps: number): Micros {

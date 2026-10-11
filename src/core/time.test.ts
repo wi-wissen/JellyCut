@@ -81,7 +81,8 @@ describe('frameStart', () => {
 describe('frameIndexAt', () => {
   it('returns the frame containing a time', () => {
     expect(frameIndexAt(0, 30)).toBe(0)
-    expect(frameIndexAt(33_333, 30)).toBe(0)
+    expect(frameIndexAt(33_332, 30)).toBe(0)
+    expect(frameIndexAt(33_333, 30)).toBe(1)
     expect(frameIndexAt(33_334, 30)).toBe(1)
     expect(frameIndexAt(3_600_000_000, 60)).toBe(216_000)
   })
@@ -89,6 +90,12 @@ describe('frameIndexAt', () => {
   it('is exact on a frame boundary', () => {
     expect(frameIndexAt(1_000_000, 30)).toBe(30)
     expect(frameIndexAt(2_000_000, 25)).toBe(50)
+  })
+
+  it('uses the rounded frame start, not a floored estimate', () => {
+    // frameStart(2, 30) = 66_667, so 66_666 is still frame 1.
+    expect(frameIndexAt(66_666, 30)).toBe(1)
+    expect(frameIndexAt(66_667, 30)).toBe(2)
   })
 
   it('is one microsecond before a boundary still in the previous frame', () => {
@@ -120,6 +127,56 @@ describe('frameIndexAt', () => {
     expect(() => frameIndexAt(-1, 30)).toThrow(RangeError)
     expect(() => frameIndexAt(NaN, 30)).toThrow(RangeError)
     expect(() => frameIndexAt(1.5, 30)).toThrow(RangeError)
+  })
+})
+
+describe('frame grid invariants', () => {
+  const rates = [24, 25, 29.97, 30, 50, 60]
+  const indices: number[] = [0, 1, 2, 3]
+  for (let i = 4; i <= 200_000; i += 997) indices.push(i)
+  indices.push(200_000)
+
+  it('frameIndexAt(frameStart(i)) is i', () => {
+    for (const fps of rates) {
+      for (const i of indices) {
+        expect(frameIndexAt(frameStart(i, fps), fps)).toBe(i)
+      }
+    }
+  })
+
+  it('frameIndexAt(frameStart(i) - 1) is i - 1', () => {
+    for (const fps of rates) {
+      for (const i of indices) {
+        if (i < 1) continue
+        expect(frameIndexAt(frameStart(i, fps) - 1, fps)).toBe(i - 1)
+      }
+    }
+  })
+
+  it('frameStart(frameIndexAt(t)) <= t < frameStart(frameIndexAt(t) + 1)', () => {
+    for (const fps of rates) {
+      for (const i of indices) {
+        const first = frameStart(i, fps)
+        const last = frameStart(i + 1, fps) - 1
+        for (const t of [first, first + 1, last]) {
+          const index = frameIndexAt(t, fps)
+          expect(frameStart(index, fps)).toBeLessThanOrEqual(t)
+          expect(t).toBeLessThan(frameStart(index + 1, fps))
+        }
+      }
+    }
+  })
+
+  it('snapToFrame is idempotent', () => {
+    for (const fps of rates) {
+      for (const i of indices) {
+        for (const t of [frameStart(i, fps), frameStart(i, fps) + 1, frameStart(i + 1, fps) - 1]) {
+          const once = snapToFrame(t, fps)
+          expect(snapToFrame(once, fps)).toBe(once)
+          expect(once).toBeLessThanOrEqual(t)
+        }
+      }
+    }
   })
 })
 
@@ -161,6 +218,11 @@ describe('formatTimecode', () => {
   it('lets minutes grow beyond 59 without an hours field', () => {
     expect(formatTimecode(4_503_400_000, 30)).toBe('75:03:12')
     expect(formatTimecode(3_600_000_000, 60)).toBe('60:00:00')
+  })
+
+  it('switches to the next frame exactly at its rounded start', () => {
+    expect(formatTimecode(33_332, 30)).toBe('00:00:00')
+    expect(formatTimecode(33_333, 30)).toBe('00:00:01')
   })
 
   it('does not crash for non-integer fps', () => {

@@ -150,6 +150,43 @@ describe('splitClip', () => {
     expect(result).not.toBeNull()
     expect(result![0].srcOut).toBe(1)
   })
+
+  it('returns null when the left part would have no source left at low speed', () => {
+    // 1 timeline us at speed 0.25 is 0.25 source us, which rounds to srcIn.
+    const clip = makeClip({ speed: 0.25, srcIn: 0, srcOut: 100 })
+    expect(splitClip(clip, 1, 'b')).toBeNull()
+  })
+
+  it('returns null when the right part would have no source left at low speed', () => {
+    // 399 timeline us at speed 0.25 maps to 99.75 source us, which rounds to srcOut.
+    const clip = makeClip({ speed: 0.25, srcIn: 0, srcOut: 100 })
+    expect(clipDuration(clip)).toBe(400)
+    expect(splitClip(clip, 399, 'b')).toBeNull()
+    expect(splitClip(clip, 398, 'b')).toBeNull()
+  })
+
+  it('keeps the split when both parts still have source at low speed', () => {
+    const clip = makeClip({ speed: 0.25, srcIn: 0, srcOut: 100 })
+    const [left, right] = splitClip(clip, 2, 'b')!
+    expect(left.srcOut - left.srcIn).toBe(1)
+    expect(right.srcOut - right.srcIn).toBe(99)
+    expect(splitClip(clip, 397, 'b')).not.toBeNull()
+  })
+
+  it('returns null when the right part has source but a zero timeline duration at speed > 1', () => {
+    // Right part: 1 source us at speed 2.5 is 0.4 timeline us, which rounds to 0.
+    const clip = makeClip({ speed: 2.5, srcIn: 0, srcOut: 4 })
+    expect(clipDuration(clip)).toBe(2)
+    expect(splitClip(clip, 1, 'b')).toBeNull()
+  })
+
+  it('splits normally at speed > 1 when both parts keep source and duration', () => {
+    const clip = makeClip({ speed: 2.5, srcIn: 0, srcOut: 10 })
+    const [left, right] = splitClip(clip, 2, 'b')!
+    expect(clipDuration(left)).toBe(2)
+    expect(clipDuration(right)).toBe(2)
+    expect(clipEnd(right)).toBe(clipEnd(clip))
+  })
 })
 
 describe('trimClipStart', () => {
@@ -385,5 +422,20 @@ describe('immutability', () => {
     expect(clip.srcOut).toBe(10_000_000)
     expect(clip.transitionIn).toEqual({ type: 'fade', duration: 1 })
     expect(list.map((c) => c.id)).toEqual(['a', 'b'])
+  })
+})
+
+describe('splitClip contiguity', () => {
+  it('keeps both parts back-to-back at low and high speeds', () => {
+    for (const speed of [0.25, 0.3, 0.5, 1, 1.5, 2, 3]) {
+      for (let k = 0; k < 200; k++) {
+        const clip = makeClip({ speed, srcOut: 1000 + k * 7, start: k })
+        const at = clip.start + 1 + ((k * 37) % Math.max(1, clipDuration(clip) - 1))
+        const parts = splitClip(clip, at, 'n')
+        if (!parts) continue
+        expect(clipEnd(parts[0])).toBe(parts[1].start)
+        expect(Math.abs(clipEnd(parts[1]) - clipEnd(clip))).toBeLessThanOrEqual(1)
+      }
+    }
   })
 })

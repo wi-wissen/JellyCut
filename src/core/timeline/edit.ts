@@ -13,6 +13,10 @@ export function clipEnd(clip: Clip): Micros {
   return clip.start + clipDuration(clip)
 }
 
+function hasUsableLength(clip: Clip): boolean {
+  return clip.srcOut - clip.srcIn >= 1 && clipDuration(clip) >= 1
+}
+
 export function splitClip(clip: Clip, at: Micros, newId: string): [Clip, Clip] | null {
   if (!(clip.start < at && at < clipEnd(clip))) return null
 
@@ -21,9 +25,12 @@ export function splitClip(clip: Clip, at: Micros, newId: string): [Clip, Clip] |
   const right = copyClip(clip, {
     id: newId,
     srcIn: splitSrc,
-    start: at,
+    // Not `at`: rounding the source split point can move the cut by a few us at low speed.
+    start: clipEnd(left),
     transitionIn: null,
   })
+  // At low speed the rounded split point can leave one side with no source left.
+  if (!hasUsableLength(left) || !hasUsableLength(right)) return null
   return [left, right]
 }
 
