@@ -122,7 +122,7 @@ export default defineComponent({
 
     <h2 id="compare">{{ $t('help.editors.sectionTable') }}</h2>
 
-    <div class="hidden md:block">
+    <div class="hidden overflow-x-auto xl:block">
       <table class="w-full border-collapse text-left text-sm">
         <caption class="sr-only">{{ $t('help.editors.tableCaption') }}</caption>
         <thead>
@@ -160,7 +160,7 @@ export default defineComponent({
       </table>
     </div>
 
-    <ul class="grid gap-3 md:hidden">
+    <ul class="grid gap-3 xl:hidden">
       <li v-for="tool in tools" :key="tool.id" class="rounded-xl border border-line bg-panel p-4">
         <h3 class="text-base font-bold">
           <a

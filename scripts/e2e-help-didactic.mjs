@@ -198,8 +198,8 @@ await check('compression: flipbook marks newly covered and uncovered edges separ
   const num = async (name) => Number((await stat(page, name)).replace(/\D/g, ''))
   const newly = await num('newly')
   const uncovered = await num('uncovered')
-  assert(newly > 0, `no newly covered pixels: ${newly}`)
-  assert(uncovered > 0, `no uncovered pixels: ${uncovered}`)
+  assert(newly >= 200, `newly covered band too thin at the default step: ${newly}`)
+  assert(uncovered >= 200, `uncovered band too thin at the default step: ${uncovered}`)
   const changed = await num('changed')
   assert(changed >= newly + uncovered, `changed ${changed} smaller than edges ${newly + uncovered}`)
   await context.close()
@@ -234,18 +234,58 @@ await check('container: strip is a 2-second excerpt; picture, time axis and soun
   await page.keyboard.press('End')
   assert((await slider.getAttribute('aria-valuenow')) === '11', 'last frame is not 11')
   assert((await slider.getAttribute('aria-valuetext')).includes('1,83 s'), 'time at last frame')
-  const thumbs = await page.locator('[role="slider"] .h-16 > div').count()
+  const thumbs = await page.locator('[role="slider"] [data-strip] > canvas').count()
   assert(thumbs === 12, `strip has ${thumbs} pictures, expected 12`)
-  const playhead = await page.locator('[role="slider"] .pointer-events-none').getAttribute('style')
-  assert(/left:\s*91\.6/.test(playhead), `playhead not at frame 11: ${playhead}`)
+  const alignment = await page.evaluate(() => {
+    const playhead = document.querySelector('[role="slider"] .pointer-events-none').getBoundingClientRect().left
+    const picture = document.querySelectorAll('[role="slider"] [data-strip] > canvas')[11].getBoundingClientRect().left
+    return playhead - picture
+  })
+  assert(Math.abs(alignment) < 1, `playhead is ${alignment}px away from picture 11`)
   const widths = await page.evaluate(() => {
-    const strip = document.querySelector('[role="slider"] .h-16').getBoundingClientRect()
+    const strip = document.querySelector('[role="slider"] [data-strip]').getBoundingClientRect()
     const wave = document.querySelector('[role="slider"] svg[viewBox="0 0 120 40"]').getBoundingClientRect()
     return [strip.left, strip.right, wave.left, wave.right]
   })
   assert(Math.abs(widths[0] - widths[2]) < 1 && Math.abs(widths[1] - widths[3]) < 1, `strip and sound differ in span: ${widths}`)
   const axis = await page.locator('[role="slider"] ~ div').first().innerText()
   assert(axis.includes('0 s') && axis.includes('2 s'), `time axis: ${axis}`)
+  await context.close()
+})
+
+await check('container: the turtle moves steadily forward through the 12 pictures, with a gap between them', async () => {
+  const { page, context } = await open('container', { width: 1440 })
+  const edges = await page.evaluate(() => {
+    const canvases = [...document.querySelectorAll('[role="slider"] [data-strip] > canvas')]
+    const boxes = canvases.map((c) => c.getBoundingClientRect())
+    const gaps = boxes.slice(1).map((b, i) => b.left - boxes[i].right)
+    // Changed columns between consecutive pictures: the uncovered band on the left, the newly covered band on the right.
+    const pixels = canvases.map((c) => c.getContext('2d').getImageData(0, 0, c.width, c.height).data)
+    const rows = []
+    for (let k = 1; k < pixels.length; k++) {
+      let left = -1
+      let right = -1
+      for (let x = 0; x < canvases[0].width; x++) {
+        for (let y = 0; y < canvases[0].height; y++) {
+          const i = (y * canvases[0].width + x) * 4
+          const d = Math.max(...[0, 1, 2].map((c) => Math.abs(pixels[k][i + c] - pixels[k - 1][i + c])))
+          if (d > 12) {
+            if (left < 0) left = x
+            right = x
+          }
+        }
+      }
+      rows.push([left, right])
+    }
+    return { gaps, rows }
+  })
+  assert(edges.gaps.every((g) => g >= 2), `pictures touch or overlap: gaps ${edges.gaps}`)
+  for (let k = 1; k < edges.rows.length; k++) {
+    const [left, right] = edges.rows[k]
+    const [prevLeft, prevRight] = edges.rows[k - 1]
+    assert(left > 0 && right > 0, `no visible change between pictures ${k} and ${k + 1}`)
+    assert(left > prevLeft && right > prevRight, `turtle does not move forward at picture ${k + 1}: ${edges.rows.join(' ')}`)
+  }
   await context.close()
 })
 
@@ -361,6 +401,27 @@ for (const slug of PAGES) {
         await context.close()
       })
     }
+  }
+}
+
+// Screenshots of the flipbook frames 3, 6 and 9 and the container strip, light and dark, phone and desktop.
+for (const scheme of ['light', 'dark']) {
+  for (const [size, width, height] of [
+    ['390', 390, 844],
+    ['1440', 1440, 900]
+  ]) {
+    await check(`didactic3 screenshots ${scheme} ${size}`, async () => {
+      const { page, context } = await open('compression', { width, height, scheme })
+      const flip = section(page, /Trick 1/)
+      for (const frame of [3, 6, 9]) {
+        await setRange(flip.locator('input[type=range]').nth(0), frame)
+        await flip.screenshot({ path: `${SHOT_DIR}/didactic3-flip-${frame}-${scheme}-${size}.png` })
+      }
+      await context.close()
+      const strip = await open('container', { width, height, scheme })
+      await section(strip.page, /Die Bilder und der Ton/).screenshot({ path: `${SHOT_DIR}/didactic3-strip-${scheme}-${size}.png` })
+      await strip.context.close()
+    })
   }
 }
 

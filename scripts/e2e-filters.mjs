@@ -113,8 +113,8 @@ async function dragSlider(slider, fromFrac, toFrac) {
 const slider = (name) => page.getByRole('slider', { name, exact: true })
 const tile = (id) => page.getByTestId(`filter-tile-${id}`)
 const openFilters = async () => {
-  await page.getByRole('tab', { name: 'Filters', exact: true }).click()
-  await page.getByRole('button', { name: 'Filter', exact: true }).click()
+  await page.getByRole('tab', { name: /^Filters?$/ }).click()
+  await page.getByRole('button', { name: /^Filters?$/ }).click()
 }
 const timelineClip = (name) => page.getByRole('button', { name: `Clip: ${name}`, exact: true }).first()
 

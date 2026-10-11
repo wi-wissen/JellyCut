@@ -1,42 +1,25 @@
 <script lang="ts">
 import { defineComponent, markRaw } from 'vue'
-import turtleUrl from '../../assets/photos/turtle.jpg'
-import { changedMask, storedShares } from '../../core/learn/demo'
-import {
-  changeKinds,
-  INSIDE_CHANGE,
-  NEWLY_COVERED,
-  polygonMask,
-  removeSubject,
-  renderFlipbook,
-  shiftMask,
-  UNCOVERED,
-  type Polygon
-} from '../../core/learn/flipbook'
+import { storedShares } from '../../core/learn/demo'
+import { buildFlipbook, flipbookKinds, INSIDE_CHANGE, NEWLY_COVERED, UNCOVERED, type Sprite } from '../../core/learn/flipbook'
 import { formatNumber } from '../numberFormat'
+import { loadPlate, loadSprite } from './turtleScene'
 
-const W = 320
-const H = 180
-const SOURCE_W = 1600
-const SOURCE_H = 894
+const W = 600
+const H = 335
+const SPRITE_W = 220
+// Left edge of the turtle in frame 0, and its height position (in pixels, from the top).
+const START_X = 14
+const TURTLE_Y = 120
 const FRAMES = 12
 const THRESHOLD = 12
 const KEYFRAME_OPTIONS = [2, 4, 8, 12]
 // Pixels the turtle swims per frame, for the motion slider (0 = still). Big enough that both edges show.
-const MOTION_SHIFT = [0, 6, 12, 18, 24]
-// Outline of the turtle in the 1600 x 894 photo, drawn a little generously.
-const TURTLE: Polygon = [
-  [190, 545], [200, 500], [250, 462], [330, 440], [345, 420], [400, 372], [480, 333], [580, 300],
-  [700, 282], [820, 280], [930, 296], [975, 312], [1000, 318], [1060, 310], [1120, 312], [1180, 322],
-  [1225, 350], [1238, 385], [1220, 430], [1175, 458], [1115, 476], [1070, 492], [1058, 530], [1050, 580],
-  [1025, 630], [985, 668], [930, 690], [870, 696], [820, 680], [760, 672], [700, 700], [640, 705],
-  [575, 702], [560, 678], [600, 650], [690, 612], [770, 575], [830, 530], [880, 500], [920, 480],
-  [900, 470], [800, 455], [690, 455], [560, 470], [430, 500], [320, 540], [240, 570]
-]
+const MOTION_SHIFT = [0, 8, 16, 24, 32]
 const ACCENT = [109, 76, 245]
 const LIGHT_ACCENT = [236, 222, 255]
 
-// Turns the photo into a short flipbook: the turtle moves, the background stays the same.
+// Turns a still photo into a short flipbook: the turtle swims over the same reef, the background stays the same.
 export default defineComponent({
   name: 'Flipbook',
   data() {
@@ -54,7 +37,7 @@ export default defineComponent({
       width: W,
       height: H,
       total: W * H,
-      pixels: null as { source: Uint8ClampedArray; background: Uint8ClampedArray; mask: Uint8Array } | null
+      pixels: null as { plate: Uint8ClampedArray; sprite: Sprite } | null
     }
   },
   computed: {
@@ -111,18 +94,8 @@ export default defineComponent({
     }
   },
   async mounted() {
-    const image = new Image()
-    image.src = turtleUrl
-    await image.decode()
-    const canvas = document.createElement('canvas')
-    canvas.width = W
-    canvas.height = H
-    const ctx = canvas.getContext('2d', { willReadFrequently: true })!
-    ctx.drawImage(image, 0, 0, W, H)
-    const source = ctx.getImageData(0, 0, W, H).data
-    const scaled: Polygon = TURTLE.map(([x, y]) => [(x * W) / SOURCE_W, (y * H) / SOURCE_H])
-    const mask = polygonMask(W, H, scaled)
-    this.pixels = markRaw({ source, background: removeSubject(source, W, H, mask), mask })
+    const [plate, sprite] = await Promise.all([loadPlate(W, H), loadSprite(SPRITE_W)])
+    this.pixels = markRaw({ plate, sprite })
     this.ready = true
     this.build()
   },
@@ -132,19 +105,12 @@ export default defineComponent({
   methods: {
     build(): void {
       if (!this.pixels) return
-      const { source, background, mask } = this.pixels
+      const { plate, sprite } = this.pixels
       const shift = MOTION_SHIFT[this.motion]!
-      const shifts = Array.from({ length: FRAMES }, (_, k) => k * shift)
-      const frames = renderFlipbook(source, background, mask, W, H, shifts)
-      const covers = shifts.map((dx) => shiftMask(mask, W, H, dx))
-      // Every pixel is compared with the same pixel in the frame before, so the uncovered background counts too.
-      const kinds: Uint8Array[] = [new Uint8Array(W * H)]
-      for (let k = 1; k < frames.length; k++) {
-        const changed = changedMask(frames[k - 1]!, frames[k]!, THRESHOLD)
-        kinds.push(changeKinds(changed, covers[k - 1]!, covers[k]!))
-      }
-      this.frames = markRaw(frames)
-      this.kinds = markRaw(kinds)
+      const xs = Array.from({ length: FRAMES }, (_, k) => START_X + k * shift)
+      const book = buildFlipbook(plate, W, H, sprite, xs, TURTLE_Y)
+      this.frames = markRaw(book.frames)
+      this.kinds = markRaw(flipbookKinds(book, W, H, THRESHOLD))
       this.draw()
     },
     draw(): void {
@@ -217,7 +183,7 @@ export default defineComponent({
           :height="height"
           role="img"
           :aria-label="$t('help.compression.flip.liveLabel', { n: frameIndex + 1 })"
-          class="block aspect-video w-full rounded-lg bg-panel2"
+          class="block aspect-[600/335] w-full rounded-lg bg-panel2"
         ></canvas>
         <figcaption class="mt-2 text-sm text-muted">{{ $t('help.compression.flip.liveCaption') }}</figcaption>
         <ul class="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-sm" :aria-label="$t('help.compression.flip.legendLabel')">
@@ -245,7 +211,7 @@ export default defineComponent({
           :height="height"
           role="img"
           :aria-label="isKeyframe ? $t('help.compression.flip.storedKeyLabel') : $t('help.compression.flip.storedChangeLabel')"
-          class="block aspect-video w-full rounded-lg bg-panel2"
+          class="block aspect-[600/335] w-full rounded-lg bg-panel2"
         ></canvas>
         <figcaption class="mt-2 text-sm text-muted">
           {{ isKeyframe ? $t('help.compression.flip.storedKeyCaption') : $t('help.compression.flip.storedChangeCaption') }}

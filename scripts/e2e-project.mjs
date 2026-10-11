@@ -97,7 +97,7 @@ await check('Firefox-like: no picker APIs are exposed', async () => {
 
 await check('Firefox-like: menu shows the browser info and no work folder item', async () => {
   await openMenu(fx)
-  await fx.getByText(/Chrome or Edge/).waitFor()
+  await fx.getByText(/Chromium-based browser/).waitFor()
   assert((await menuItem(fx, 'Choose work folder').count()) === 0, 'work folder item must be hidden')
   await closeMenuWithEscape(fx)
 })
@@ -176,7 +176,7 @@ await check('Chromium: picker APIs are present', async () => {
 await check('Chromium: menu offers Choose work folder and no browser info', async () => {
   await openMenu(cr)
   assert(await menuItem(cr, 'Choose work folder').isVisible(), 'work folder item missing')
-  const hits = await cr.getByText(/Chrome or Edge/).allInnerTexts()
+  const hits = await cr.getByText(/Chromium-based browser/).allInnerTexts()
   assert(hits.length === 0, `browser info must not be shown: ${JSON.stringify(hits)}`)
 })
 

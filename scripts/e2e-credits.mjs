@@ -35,6 +35,7 @@ const server = await createServer({ server: { port: PORT, strictPort: true }, lo
 await server.listen()
 const browser = await chromium.launch({ executablePath: findChromium(), args: ['--no-sandbox'] })
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: 'en-US' })
+await context.addInitScript("Object.defineProperty(window, 'showSaveFilePicker', { value: undefined, configurable: true, writable: true })")
 await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: ORIGIN })
 const page = await context.newPage()
 const pageErrors = []
@@ -211,7 +212,7 @@ async function runExport(openFirst) {
 }
 check('export finishes with media that need credit', await runExport(true))
 check('export hint is shown when a used medium needs credit', (await hint().count()) === 1)
-check('export hint does not block: Save stays enabled', await exportDialog().getByRole('button', { name: 'Save', exact: true }).isEnabled())
+check('export hint does not block: Save again stays enabled', await exportDialog().getByRole('button', { name: /^Save( again)?$/ }).isEnabled())
 await hint().click()
 await dialog().waitFor({ timeout: 3000 })
 check('hint button opens the credits dialog above the export dialog', (await dialog().isVisible()) && (await exportDialog().count()) === 1)
@@ -255,6 +256,7 @@ await page.setViewportSize({ width: 1440, height: 900 })
 // Guide page, German and English. A fresh context per language sets the browser language.
 async function guideCheck(locale, lang, title) {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale })
+  await ctx.addInitScript("Object.defineProperty(window, 'showSaveFilePicker', { value: undefined, configurable: true, writable: true })")
   const p = await ctx.newPage()
   const errors = []
   p.on('pageerror', (e) => errors.push(e.message))

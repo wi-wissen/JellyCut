@@ -17,7 +17,7 @@ const SHOT_PATH =
 const workDir = mkdtempSync(join(tmpdir(), 'jellycut-import-'))
 
 const MSG = {
-  cannotDecode: 'This browser cannot read this file. Please use Chrome or Edge.',
+  cannotDecode: 'This browser cannot read this file. Please use a Chromium-based browser such as Brave, Microsoft Edge or Google Chrome.',
   unsupportedFormat: 'This file type is not supported.',
   noMedia: 'This file has no picture or sound.',
   missing: 'File missing.'
@@ -76,7 +76,7 @@ if (await page.locator('#project-menu-panel').isVisible()) await page.keyboard.p
 
 // Tiles only: the remove and re-link buttons sit beside a tile and carry the file name too.
 // The per-asset Credit buttons carry the file name too; they are not tiles.
-const tile = (name) => page.locator('aside section').getByRole('button', { name }).and(page.locator('button:not([aria-label^="Remove "]):not([id^="credit-button-"])'))
+const tile = (name) => page.locator('aside section').getByRole('button', { name }).and(page.locator('button:not([aria-label^="Remove "]):not([id^="credit-button-"]):not([aria-label^="As picture in picture"]):not([aria-label^="Als Bild im Bild"])'))
 // Audio files live in the Audio tab; video and images in Media.
 const AUDIO_ONLY = new Set(['music.webm'])
 const openFor = (name) => page.getByRole('button', { name: AUDIO_ONLY.has(name) ? 'Audio' : 'Media', exact: true }).click()
@@ -262,7 +262,7 @@ await check('a garbage file gives a friendly message and the app keeps working',
 // --- Autosave and reload ---
 const beforeReload = await readState()
 await page.waitForTimeout(1500)
-await page.getByRole('img', { name: 'Autosave: saved' }).waitFor({ timeout: 8000 })
+await page.getByRole('img', { name: /Autosaved in this browser|Saved as a file/ }).waitFor({ timeout: 8000 })
 await page.reload()
 await page.locator('#project-menu-trigger').waitFor()
 // The re-link dialog opens once after a restore with missing media and would cover the tabs.

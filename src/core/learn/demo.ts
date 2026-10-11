@@ -10,22 +10,6 @@ export function frameAt(time: Micros, fps: number): number {
   return Math.floor((time * fps) / MICROS_PER_SECOND)
 }
 
-/** Start of the keyframe that a player has to begin with to show `target`. */
-export function keyframeBefore(target: Micros, interval: Micros): Micros {
-  return Math.floor(target / interval) * interval
-}
-
-export interface SeekPlan {
-  keyframe: Micros
-  /** Frames that have to be rebuilt after the keyframe, up to the target frame. */
-  framesToDecode: number
-}
-
-export function seekPlan(target: Micros, keyframeInterval: Micros, fps: number): SeekPlan {
-  const keyframe = keyframeBefore(target, keyframeInterval)
-  return { keyframe, framesToDecode: frameAt(target, fps) - frameAt(keyframe, fps) }
-}
-
 /**
  * Share of a full picture that each frame stores (0 to 1). Keyframes store everything,
  * other frames only the pixels that changed since the frame before.
