@@ -7,7 +7,9 @@ export function createAppRouter() {
     routes: [
       { path: '/', name: 'landing', component: LandingView },
       { path: '/app', name: 'editor', component: () => import('./views/EditorView.vue') },
-      { path: '/help/sources', name: 'sources', component: () => import('./views/SourcesGuideView.vue') }
+      { path: '/help/sources', name: 'sources', component: () => import('./views/SourcesGuideView.vue') },
+      // Unknown paths (the 404.html fallback of GitHub Pages lands here) go to the landing page.
+      { path: '/:pathMatch(.*)*', redirect: '/' }
     ]
   })
 }
