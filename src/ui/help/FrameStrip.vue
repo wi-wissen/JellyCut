@@ -20,10 +20,10 @@ const AXIS_SECONDS = [0, 0.5, 1, 1.5, 2]
 const WINDOW_W = 320
 const WINDOW_H = 240
 const WINDOW: Crop = { x: 320, y: 117, width: 640, height: 480 }
-const SPRITE_W = 130
-const START_X = 18
-const TURTLE_Y = 92
-const STEP = 14
+const SPRITE_W = 160
+const START_X = 12
+const TURTLE_Y = 86
+const STEP = 12
 const GAP = 4
 
 // Scrubbable strip of pictures and sound. Times stay whole microseconds; only the display is formatted.
@@ -66,6 +66,11 @@ export default defineComponent({
     this.frames = markRaw(buildFlipbook(plate, WINDOW_W, WINDOW_H, sprite, xs, TURTLE_Y).frames)
     this.paint()
   },
+  watch: {
+    frame(): void {
+      this.paintPreview()
+    }
+  },
   methods: {
     keep(i: number, el: unknown): void {
       this.canvases[i] = (el as HTMLCanvasElement | null) ?? null
@@ -75,6 +80,13 @@ export default defineComponent({
         const ctx = this.canvases[i]?.getContext('2d')
         ctx?.putImageData(new ImageData(new Uint8ClampedArray(frame), WINDOW_W, WINDOW_H), 0, 0)
       })
+      this.paintPreview()
+    },
+    /** The selected picture, large, so the motion is readable even when the strip tiles are tiny (phones). */
+    paintPreview(): void {
+      const frame = this.frames[this.frame]
+      const ctx = (this.$refs.preview as HTMLCanvasElement | undefined)?.getContext('2d')
+      if (frame && ctx) ctx.putImageData(new ImageData(new Uint8ClampedArray(frame), WINDOW_W, WINDOW_H), 0, 0)
     },
     axisLabel(seconds: number): string {
       return this.$t('units.seconds', { value: formatNumber(seconds, 1) })
@@ -124,6 +136,14 @@ export default defineComponent({
 
 <template>
   <div class="rounded-2xl border border-line bg-panel p-4 sm:p-5">
+    <canvas
+      ref="preview"
+      :width="thumbW"
+      :height="thumbH"
+      class="mx-auto mb-3 block aspect-[4/3] w-full max-w-sm rounded-xl"
+      role="img"
+      :aria-label="$t('help.container.frames.previewLabel', { frame: frame + 1 })"
+    ></canvas>
     <div
       role="slider"
       tabindex="0"

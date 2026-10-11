@@ -34,7 +34,8 @@
         "sliderLabel": "Position im Video",
         "time": "{time} s · Bild {frame}",
         "hint": "Pfeiltasten: ein Bild. Bild auf und ab: eine Sekunde. Pos 1 und Ende: Anfang und Ende.",
-        "clip": "Ein Ausschnitt von 2 Sekunden: 12 Bilder, jedes 1/6 Sekunde lang. Die Zeitachse, die Bilder und der Ton zeigen dieselben 2 Sekunden."
+        "clip": "Ein Ausschnitt von 2 Sekunden: 12 Bilder, jedes 1/6 Sekunde lang. Die Zeitachse, die Bilder und der Ton zeigen dieselben 2 Sekunden.",
+        "previewLabel": "Bild {frame} groß"
       },
       "endings": {
         "heading": "3. Die Endung ist nur die Box",
