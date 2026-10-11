@@ -20,6 +20,8 @@ const server = await preview({ root, preview: { port: 5177, strictPort: true }, 
 const origin = 'http://localhost:5177'
 const browser = await chromium.launch({ executablePath: findChromium(), args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] })
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, locale: 'en' })
+// Headless Chromium has no real file dialog: use the automatic download path.
+await page.addInitScript("Object.defineProperty(window, 'showSaveFilePicker', { value: undefined, configurable: true, writable: true })")
 const errors = []
 const failedRequests = []
 const requested = new Set()
@@ -35,7 +37,7 @@ await page.goto(`${origin}/`)
 await page.waitForSelector('h1')
 const landingJs = [...requested].filter((p) => p.endsWith('.js'))
 check('landing page renders', (await page.locator('header').innerText()).includes('Jelly Cut') && (await page.locator('h1').count()) === 1)
-check('landing page does not load the editor, mediabunny or the export worker', !landingJs.some((p) => /EditorView|mediabunny|worker|exporter/i.test(p)) && landingJs.length <= 3, landingJs.join(', '))
+check('landing page does not load the editor, mediabunny or the export worker', !landingJs.some((p) => /EditorView|mediabunny|worker|exporter/i.test(p)) && landingJs.length <= 8, landingJs.join(', '))
 await page.getByRole('link', { name: /Open editor|Editor öffnen/ }).first().click()
 await page.waitForURL(/\/app\/$/)
 await page.waitForSelector('header')

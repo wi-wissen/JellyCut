@@ -64,7 +64,7 @@ export default defineComponent({
       <JpegQualityDemo />
       <p class="text-sm text-muted">{{ $t('help.compression.lossy.note') }}</p>
       <Callout>
-        <p><strong>{{ $t('help.compression.merkeLabel') }}</strong> {{ $t('help.compression.merke') }}</p>
+        <p>{{ $t('help.compression.merke') }}</p>
       </Callout>
     </section>
 

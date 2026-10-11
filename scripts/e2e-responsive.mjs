@@ -274,15 +274,18 @@ for (const size of SIZES.filter((z) => !process.env.SIZE || z.name === process.e
       assert(Math.abs(after.x - before.x) > 2, `playhead did not move (${before.x} -> ${after.x})`)
     })
 
-    await check(`${label}: lane rows and clip bodies are 44px on touch, 38px lanes on desktop`, async () => {
-      const heights = await page.$$eval('[data-lane]', (els) => els.map((e) => e.getBoundingClientRect().height))
+    await check(`${label}: lane rows and clip bodies are 44px on touch, 38px lanes and 28px overlay rows on desktop`, async () => {
+      const lanes = await page.$$eval('[data-lane]', (els) => els.map((e) => ({ id: e.dataset.lane, h: e.getBoundingClientRect().height })))
+      const heights = lanes.map((l) => l.h)
       const bars = await page.$$eval('[data-lane] [data-kind] > button', (els) => els.map((e) => e.getBoundingClientRect().height))
       assert(heights.length === 5, `lanes ${heights.length}`)
       if (size.touch) {
         assert(heights.every((h) => h >= TOUCH_MIN - 0.5), `lane heights ${heights.map(Math.round).join(',')}`)
         assert(bars.every((h) => h >= TOUCH_MIN - 0.5), `bar heights ${bars.map(Math.round).join(',')}`)
       } else {
-        assert(heights.every((h) => Math.abs(h - 38) < 0.5), `desktop lane heights ${heights.map(Math.round).join(',')}`)
+        // Overlay rows are 28 px each on a mouse; every other lane is 38 px.
+        const ok = lanes.every((l) => (l.id === 'overlay' ? Math.abs(l.h / 28 - Math.round(l.h / 28)) < 0.01 : Math.abs(l.h - 38) < 0.5))
+        assert(ok, `desktop lane heights ${heights.map(Math.round).join(',')}`)
       }
     })
 

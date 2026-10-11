@@ -3,12 +3,13 @@ import { defineComponent, type PropType } from 'vue'
 import { HELP_PAGES, helpRoots, neighbours, type HelpPage } from './helpPages'
 import ThemeToggle from './ThemeToggle.vue'
 import SiteFooter from './SiteFooter.vue'
+import HelpIcon from './HelpIcon.vue'
 import './help.css'
 
 // Frame of every help page: header, page navigation, title, content slot, previous/next and footer.
 export default defineComponent({
   name: 'HelpLayout',
-  components: { ThemeToggle, SiteFooter },
+  components: { ThemeToggle, SiteFooter, HelpIcon },
   props: {
     page: { type: String as PropType<string>, required: true }
   },
@@ -24,12 +25,11 @@ export default defineComponent({
     title(): string {
       return this.$t(`help.${this.current.slug}.title`)
     },
-    navItems(): { slug: string; href: string; label: string; icon: string }[] {
+    navItems(): { slug: string; href: string; label: string }[] {
       return HELP_PAGES.map((p) => ({
         slug: p.slug,
         href: this.roots.help + p.dir,
-        label: this.$t(`help.${p.slug}.title`),
-        icon: p.icon
+        label: this.$t(`help.${p.slug}.title`)
       }))
     },
     neighbourLinks(): { prev?: { href: string; label: string }; next?: { href: string; label: string } } {
@@ -78,9 +78,7 @@ export default defineComponent({
               class="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold no-underline"
               :class="item.slug === current.slug ? 'bg-panel2 text-fg' : 'text-muted hover:bg-panel2 hover:text-fg'"
             >
-              <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" class="size-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path :d="item.icon" />
-              </svg>
+              <HelpIcon :name="item.slug" />
               {{ item.label }}
             </a>
           </li>

@@ -242,7 +242,8 @@ await check('size drag changes style.size in one undo step', async () => {
 })
 
 await check('colour swatch and outline switch', async () => {
-  await page.getByRole('button', { name: 'Colour #c6f432' }).first().click()
+  // Two colour palettes now: the outline (in Content) comes first, the text colour (in Look) is the last one.
+  await page.getByRole('button', { name: 'Colour #c6f432' }).last().click()
   assert((await project(page)).texts.at(-1).style.color === '#c6f432', 'colour not set')
   const sw = page.getByRole('switch', { name: 'Outline' })
   await sw.click()
@@ -251,20 +252,21 @@ await check('colour swatch and outline switch', async () => {
   assert((await project(page)).texts.at(-1).style.outline === '#14121f', 'outline not restored')
 })
 
-await check('position: Bottom button and the vertical fine slider', async () => {
-  await page.getByRole('button', { name: 'Bottom', exact: true }).click()
-  assert((await project(page)).texts.at(-1).pos.y === 0.85, 'y not 0.85')
-  assert((await page.getByRole('button', { name: 'Bottom', exact: true }).getAttribute('aria-pressed')) === 'true', 'not pressed')
-  await page.getByRole('slider', { name: 'Vertical' }).focus()
+await check('no position buttons; arrow keys move the selected text', async () => {
+  assert((await page.getByRole('button', { name: 'Bottom', exact: true }).count()) === 0, 'position buttons still there')
+  assert((await page.getByRole('slider', { name: 'Vertical' }).count()) === 0, 'vertical slider still there')
+  const before = (await project(page)).texts.at(-1).pos
+  await page.evaluate(() => document.activeElement?.blur())
   await page.keyboard.press('ArrowLeft')
-  assert(near((await project(page)).texts.at(-1).pos.y, 0.84, 0.001), 'fine slider did not move')
+  const after = (await project(page)).texts.at(-1).pos
+  assert(near(after.x, before.x - 0.01, 0.001), `x ${before.x} -> ${after.x}`)
 })
 
 await check('animation selects set animIn and animOut', async () => {
-  await page.getByRole('combobox', { name: 'In', exact: true }).selectOption('pop')
-  await page.getByRole('combobox', { name: 'Out', exact: true }).selectOption('slideUp')
+  await page.getByRole('combobox', { name: 'Enter', exact: true }).selectOption('pop')
+  await page.getByRole('combobox', { name: 'Exit', exact: true }).selectOption('slideToBottom')
   const t = (await project(page)).texts.at(-1)
-  assert(t.animIn === 'pop' && t.animOut === 'slideUp', `anim ${t.animIn}/${t.animOut}`)
+  assert(t.animIn === 'pop' && t.animOut === 'slideToBottom', `anim ${t.animIn}/${t.animOut}`)
 })
 
 await check('start and duration fields take seconds in 0.1 steps', async () => {
@@ -310,7 +312,7 @@ await check('ratio popover: an outside click closes it', async () => {
 })
 
 await check('picture fit switch sets Fill and Fit for every clip, whatever is selected', async () => {
-  await page.getByRole('button', { name: 'Back to library' }).click()
+  await page.getByRole('button', { name: 'Back', exact: true }).click()
   // Fit / Fill lives in the format popover now (the toolbar chip was removed).
   const chip = page.getByRole('button', { name: 'Aspect ratio', exact: true })
   await chip.click()

@@ -398,13 +398,11 @@ const layout = await page.evaluate(() => {
     content: pick(document.querySelector('textarea')),
     swatches: pick(document.querySelector('[role=group][aria-label="Colour"]')),
     font: pick(document.querySelector('[id^=text-font-]')),
-    position: pick(document.querySelector('[role=group][aria-label="Position"]')),
-    hint: pick([...document.querySelectorAll('p')].find((p) => /Drag the text/.test(p.textContent))),
     viewport: visibleBottom
   }
 })
-const inView = ['content', 'swatches', 'font', 'position', 'hint'].every((k) => layout[k] && layout[k].top >= 0 && layout[k].bottom <= layout.viewport)
-check('content, colours, font, position buttons and their hint are visible at 1440x900 without scrolling', inView, JSON.stringify(layout))
+const inView = ['content', 'swatches', 'font'].every((k) => layout[k] && layout[k].top >= 0 && layout[k].bottom <= layout.viewport)
+check('content, colours and font are visible at 1440x900 without scrolling', inView, JSON.stringify(layout))
 await page.screenshot({ path: join(SHOTS, 'canvas-check-text-1440.png') })
 
 // (12) Colour picker: palette cell, hex field (live and invalid), native input, arrow keys; font listbox.

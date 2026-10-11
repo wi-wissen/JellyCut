@@ -3,7 +3,6 @@
     "compression": {
       "title": "How does a video get small?",
       "lead": "A video is a flipbook of many pictures. Without tricks, the file would be huge. Here are the tricks.",
-      "merkeLabel": "Remember:",
       "merke": "A video gets small because its pictures look alike. Only what is new gets saved, and details that the eye hardly sees may go.",
       "basics": {
         "heading": "1. Picture, frame rate and resolution",

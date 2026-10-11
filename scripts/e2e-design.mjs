@@ -147,6 +147,19 @@ for (const [name, kind] of Object.entries(kinds)) {
   check(`${name}: shows the sections ${SECTIONS.join(' / ')}`, JSON.stringify(kind.sections) === JSON.stringify(SECTIONS), JSON.stringify(kind.sections))
 }
 
+// --- 1b. the library adds a picture in the picture; Round makes a square with a full radius -------
+await page.getByRole('tab', { name: 'Material', exact: true }).click()
+await page.getByRole('button', { name: 'Media', exact: true }).click()
+await page.getByRole('button', { name: 'As picture in picture', exact: true }).first().click()
+await settle(200)
+const fromLibrary = await st('(ed) => ed.selectedItem && ed.selectedItem.kind')
+check('library: "As picture in picture" adds a picture and selects it', fromLibrary === 'media', String(fromLibrary))
+await page.getByRole('tab', { name: 'Design', exact: true }).click()
+await page.getByRole('button', { name: 'Round', exact: true }).click()
+await settle(150)
+const round = await st('(ed) => ed.selectedItem')
+check('pictures: Round is a square box with a full radius', Math.abs(round.width - round.height) < 1e-9 && round.radius === 0.5, JSON.stringify({ w: round.width, h: round.height, r: round.radius }))
+
 // --- 2. no position fields and no 9-position grid, on any item ----------------------------------
 let positionHits = []
 for (const name of ['text', 'sticker', 'shape', 'region', 'picture']) {

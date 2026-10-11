@@ -30,6 +30,12 @@
   .help-prose ol {
     list-style: decimal;
   }
+  /* A list with its own classes is a layout list (chips, cards): no markers, no indent. */
+  .help-prose ul[class],
+  .help-prose ol[class] {
+    list-style: none;
+    padding-left: 0;
+  }
   .help-prose a {
     color: var(--jc-txt);
     text-decoration: underline;

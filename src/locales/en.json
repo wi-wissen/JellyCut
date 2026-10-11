@@ -21,7 +21,7 @@
     "chooseFolder": "Choose work folder…",
     "folderCurrent": "Work folder: {name}",
     "folderNone": "No work folder chosen yet",
-    "browserInfo": "This browser saves projects as files. When you open a project on another computer, media must be re-linked. For a work folder, we recommend Chrome or Edge.",
+    "browserInfo": "This browser saves projects as files. When you open a project on another computer, media must be re-linked. For a work folder, we recommend a Chromium-based browser such as Brave, Microsoft Edge or Google Chrome.",
     "fileError": "The project file could not be used.",
     "dismiss": "Dismiss message",
     "neverSaved": "Not saved as a file yet",
@@ -59,7 +59,7 @@
     "addToTimeline": "Add {name} to the timeline",
     "emptyHint": "Add videos, images or music from your computer, or drop them here.",
     "problems": {
-      "cannotDecode": "This browser cannot read this file. Please use Chrome or Edge.",
+      "cannotDecode": "This browser cannot read this file. Please use a Chromium-based browser such as Brave, Microsoft Edge or Google Chrome.",
       "unsupportedFormat": "This file type is not supported.",
       "noMedia": "This file has no picture or sound.",
       "missing": "File missing."
@@ -107,7 +107,7 @@
     "ratio": "Aspect ratio",
     "canvasLabel": "Video preview",
     "empty": "No video yet. Add media on the left and click it to put it on the timeline.",
-    "noWebgl": "Your browser cannot show the preview (WebGL is missing). Please use Chrome or Edge.",
+    "noWebgl": "Your browser cannot show the preview (WebGL is missing). Please use a Chromium-based browser such as Brave, Microsoft Edge or Google Chrome.",
     "fitMode": "Fit",
     "fillMode": "Fill",
     "fitToggle": "Toggle fit or fill, currently: {mode}",
@@ -257,7 +257,7 @@
     "fileSize": "{name} · {size}",
     "cancelled": "The export was cancelled.",
     "errors": {
-      "noEncoder": "This browser cannot encode video. Please use Chrome or Edge.",
+      "noEncoder": "This browser cannot encode video. Please use a Chromium-based browser such as Brave, Microsoft Edge or Google Chrome.",
       "empty": "There is nothing to export yet. Put a clip on the timeline first.",
       "missing": "Files are missing for the export: {names}. Import them again in the library.",
       "gifTooLarge": "GIFs get huge: please pick a shorter section or a lower size",
@@ -320,7 +320,7 @@
       "busy": "The device is being used by another program right now.",
       "aborted": "The recording was interrupted.",
       "empty": "The recording is empty. Record a bit longer.",
-      "unsupported": "This browser cannot record here. Chrome or Edge work.",
+      "unsupported": "This browser cannot record here. Chromium-based browsers such as Brave, Microsoft Edge or Google Chrome work.",
       "import": "The recording could not be processed.",
       "generic": "The recording did not work. Please try again."
     }
@@ -414,7 +414,7 @@
     },
     "errors": {
       "wrongFile": "This file does not match: its length or type differs from the project. Choose the right file.",
-      "unsupported": "This browser cannot read this file. Please use Chrome or Edge.",
+      "unsupported": "This browser cannot read this file. Please use a Chromium-based browser such as Brave, Microsoft Edge or Google Chrome.",
       "unknown": "This media is no longer part of the project."
     },
     "folder": {
@@ -478,7 +478,7 @@
     "creating": "Creating... {percent} %",
     "abort": "Abort",
     "errors": {
-      "noEncoder": "This browser cannot create the example. Please use Chrome or Edge or add your own media.",
+      "noEncoder": "This browser cannot create the example. Please use a Chromium-based browser such as Brave, Microsoft Edge or Google Chrome, or add your own media.",
       "failed": "The example could not be created. Please try again or add your own media."
     }
   },

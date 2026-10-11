@@ -77,3 +77,37 @@ export function renderFlipbook(
     return frame
   })
 }
+
+/** Kinds of changed pixels between two frames (see changeKinds). 0 means unchanged. */
+export const NEWLY_COVERED = 1
+export const UNCOVERED = 2
+export const INSIDE_CHANGE = 3
+
+/** The mask moved `dx` pixels to the right, the same shift renderFlipbook applies to the subject. */
+export function shiftMask(mask: Uint8Array, width: number, height: number, dx: number): Uint8Array {
+  const out = new Uint8Array(mask.length)
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const tx = x + dx
+      if (mask[y * width + x] && tx >= 0 && tx < width) out[y * width + tx] = 1
+    }
+  }
+  return out
+}
+
+/**
+ * Kind of every pixel that differs between two consecutive frames (0 where nothing differs).
+ * NEWLY_COVERED: the subject covers the pixel now but did not before. UNCOVERED: the subject has
+ * just left it, so the background shows again. INSIDE_CHANGE: the subject covers it in both frames
+ * but the picture underneath has moved on.
+ */
+export function changeKinds(changed: Uint8Array, coverBefore: Uint8Array, coverNow: Uint8Array): Uint8Array {
+  const kinds = new Uint8Array(changed.length)
+  for (let p = 0; p < changed.length; p++) {
+    if (!changed[p]) continue
+    if (coverNow[p] && !coverBefore[p]) kinds[p] = NEWLY_COVERED
+    else if (!coverNow[p] && coverBefore[p]) kinds[p] = UNCOVERED
+    else kinds[p] = INSIDE_CHANGE
+  }
+  return kinds
+}

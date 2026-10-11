@@ -3,7 +3,6 @@
     "compression": {
       "title": "Wie wird ein Video klein?",
       "lead": "Ein Video ist ein Daumenkino aus vielen Bildern. Ohne Tricks wäre die Datei riesig. Hier sind die Tricks.",
-      "merkeLabel": "Merke:",
       "merke": "Ein Video wird klein, weil sich Bilder ähneln. Gespeichert wird nur das Neue, und Details, die das Auge kaum sieht, dürfen gehen.",
       "basics": {
         "heading": "1. Bild, Bildrate und Auflösung",

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { MICROS_PER_SECOND } from '../time'
-import { changedMask, countSet, frameAt, keyframeBefore, meanDifferencePercent, rawVideoBytes, seekPlan, storedShares } from './demo'
-import { polygonMask, removeSubject, renderFlipbook } from './flipbook'
+import { changedMask, countSet, demoWaveform, frameAt, jumpSteps, keyframeBefore, meanDifferencePercent, rawVideoBytes, seekPlan, storedShares } from './demo'
+import { changeKinds, INSIDE_CHANGE, NEWLY_COVERED, polygonMask, removeSubject, renderFlipbook, shiftMask, UNCOVERED } from './flipbook'
 
 const S = MICROS_PER_SECOND
 
@@ -81,5 +81,64 @@ describe('flipbook pixels', () => {
     expect(second![3 * 4]).toBe(10)
     expect(second![4 * 4]).toBe(20)
     expect(countSet(changedMask(first!, second!, 0))).toBe(4)
+  })
+})
+
+describe('jump plan', () => {
+  it('rebuilds the frames between the keyframe before the target and the target', () => {
+    expect(jumpSteps(23, 8)).toEqual({ keyframe: 16, rebuild: [17, 18, 19, 20, 21, 22, 23] })
+    expect(jumpSteps(24, 8)).toEqual({ keyframe: 24, rebuild: [] })
+    expect(jumpSteps(0, 4)).toEqual({ keyframe: 0, rebuild: [] })
+  })
+})
+
+describe('demo waveform', () => {
+  it('is the same for the same seed and has many different bar heights', () => {
+    const bars = demoWaveform(120)
+    expect(demoWaveform(120)).toEqual(bars)
+    expect(new Set(bars.map((b) => b.toFixed(3))).size).toBeGreaterThanOrEqual(6)
+    expect(Math.max(...bars)).toBe(1)
+  })
+
+  it('is not periodic: no lag up to 40 bars correlates strongly with the original', () => {
+    const bars = demoWaveform(120)
+    const mean = bars.reduce((a, b) => a + b, 0) / bars.length
+    const variance = bars.reduce((a, b) => a + (b - mean) ** 2, 0)
+    for (let lag = 4; lag <= 40; lag++) {
+      let sum = 0
+      for (let i = 0; i + lag < bars.length; i++) sum += (bars[i]! - mean) * (bars[i + lag]! - mean)
+      expect(Math.abs(sum / variance)).toBeLessThan(0.4)
+    }
+  })
+})
+
+describe('changed pixels at the moving edges', () => {
+  // A 20 x 3 picture: the background is one grey, the subject a dark silhouette 8 px wide, moved 5 px.
+  const width = 20
+  const height = 3
+  const background = new Uint8ClampedArray(width * height * 4).fill(200)
+  for (let p = 0; p < width * height; p++) background[p * 4 + 3] = 255
+  const source = new Uint8ClampedArray(background)
+  const mask = new Uint8Array(width * height)
+  for (let y = 0; y < height; y++) for (let x = 4; x < 12; x++) mask[y * width + x] = 1
+  for (let p = 0; p < width * height; p++) if (mask[p]) source.set([30, 30, 30, 255], p * 4)
+
+  it('marks the leading edge as newly covered and the trailing edge as uncovered', () => {
+    const [before, now] = renderFlipbook(source, background, mask, width, height, [0, 5])
+    const kinds = changeKinds(changedMask(before!, now!, 12), shiftMask(mask, width, height, 0), shiftMask(mask, width, height, 5))
+    const expected = Array.from({ length: width }, (_, x) => (x >= 4 && x <= 8 ? UNCOVERED : x >= 12 && x <= 16 ? NEWLY_COVERED : 0))
+    expect([...kinds.slice(width, 2 * width)]).toEqual(expected)
+  })
+
+  it('counts the uncovered background as changed, so both edges show up', () => {
+    const [before, now] = renderFlipbook(source, background, mask, width, height, [0, 5])
+    const changed = changedMask(before!, now!, 12)
+    const kinds = changeKinds(changed, shiftMask(mask, width, height, 0), shiftMask(mask, width, height, 5))
+    expect(countSet(changed)).toBe(10 * height)
+    expect(kinds.filter((k) => k === NEWLY_COVERED).length).toBe(5 * height)
+    expect(kinds.filter((k) => k === UNCOVERED).length).toBe(5 * height)
+    expect(kinds.filter((k) => k === INSIDE_CHANGE).length).toBe(0)
+    expect(now![4 * 4]).toBe(200)
+    expect(before![4 * 4]).toBe(30)
   })
 })

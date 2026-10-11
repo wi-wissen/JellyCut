@@ -50,7 +50,7 @@ export default defineComponent({
         </li>
       </ul>
       <Callout>
-        <p><strong>{{ $t('help.container.endings.memoLabel') }}</strong> {{ $t('help.container.endings.memo') }}</p>
+        <p>{{ $t('help.container.endings.memo') }}</p>
       </Callout>
     </section>
 

@@ -1,8 +1,18 @@
 <script lang="ts">
 import { defineComponent, markRaw } from 'vue'
 import turtleUrl from '../../assets/photos/turtle.jpg'
-import { changedMask, countSet, storedShares } from '../../core/learn/demo'
-import { polygonMask, removeSubject, renderFlipbook, type Polygon } from '../../core/learn/flipbook'
+import { changedMask, storedShares } from '../../core/learn/demo'
+import {
+  changeKinds,
+  INSIDE_CHANGE,
+  NEWLY_COVERED,
+  polygonMask,
+  removeSubject,
+  renderFlipbook,
+  shiftMask,
+  UNCOVERED,
+  type Polygon
+} from '../../core/learn/flipbook'
 import { formatNumber } from '../numberFormat'
 
 const W = 320
@@ -12,8 +22,8 @@ const SOURCE_H = 894
 const FRAMES = 12
 const THRESHOLD = 12
 const KEYFRAME_OPTIONS = [2, 4, 8, 12]
-// Pixels the turtle swims per frame, for the motion slider (0 = still).
-const MOTION_SHIFT = [0, 1, 2, 3, 5]
+// Pixels the turtle swims per frame, for the motion slider (0 = still). Big enough that both edges show.
+const MOTION_SHIFT = [0, 6, 12, 18, 24]
 // Outline of the turtle in the 1600 x 894 photo, drawn a little generously.
 const TURTLE: Polygon = [
   [190, 545], [200, 500], [250, 462], [330, 440], [345, 420], [400, 372], [480, 333], [580, 300],
@@ -24,6 +34,7 @@ const TURTLE: Polygon = [
   [900, 470], [800, 455], [690, 455], [560, 470], [430, 500], [320, 540], [240, 570]
 ]
 const ACCENT = [109, 76, 245]
+const LIGHT_ACCENT = [236, 222, 255]
 
 // Turns the photo into a short flipbook: the turtle moves, the background stays the same.
 export default defineComponent({
@@ -37,7 +48,8 @@ export default defineComponent({
       playing: false,
       timer: 0,
       frames: markRaw([]) as Uint8ClampedArray[],
-      masks: markRaw([]) as Uint8Array[],
+      // Per frame and pixel: a changeKinds value, 0 where the pixel did not change.
+      kinds: markRaw([]) as Uint8Array[],
       frameCount: FRAMES,
       width: W,
       height: H,
@@ -50,7 +62,7 @@ export default defineComponent({
       return KEYFRAME_OPTIONS[this.keyframeIndex]!
     },
     counts(): number[] {
-      return this.frames.map((_, k) => (k === 0 ? this.total : countSet(this.masks[k]!)))
+      return this.kinds.map((kind) => kind.reduce((n, v) => n + (v ? 1 : 0), 0))
     },
     shares(): number[] {
       return storedShares(this.counts, this.total, this.keyframeEvery)
@@ -60,6 +72,24 @@ export default defineComponent({
     },
     changed(): number {
       return this.counts[this.frameIndex] ?? 0
+    },
+    bands(): { newly: number; uncovered: number; inside: number } {
+      const out = { newly: 0, uncovered: 0, inside: 0 }
+      const kind = this.kinds[this.frameIndex]
+      if (!kind) return out
+      for (const v of kind) {
+        if (v === NEWLY_COVERED) out.newly++
+        else if (v === UNCOVERED) out.uncovered++
+        else if (v === INSIDE_CHANGE) out.inside++
+      }
+      return out
+    },
+    swatches(): Record<string, string> {
+      return {
+        newly: `rgb(${ACCENT.join(' ')})`,
+        uncovered: `rgb(${LIGHT_ACCENT.join(' ')})`,
+        inside: `rgba(${ACCENT.join(', ')}, 0.55)`
+      }
     },
     totalPercent(): number {
       const sum = this.shares.reduce((a, b) => a + b, 0)
@@ -104,25 +134,24 @@ export default defineComponent({
       if (!this.pixels) return
       const { source, background, mask } = this.pixels
       const shift = MOTION_SHIFT[this.motion]!
-      const frames = renderFlipbook(
-        source,
-        background,
-        mask,
-        W,
-        H,
-        Array.from({ length: FRAMES }, (_, k) => k * shift)
-      )
-      const masks: Uint8Array[] = [new Uint8Array(W * H)]
-      for (let k = 1; k < frames.length; k++) masks.push(changedMask(frames[k - 1]!, frames[k]!, THRESHOLD))
+      const shifts = Array.from({ length: FRAMES }, (_, k) => k * shift)
+      const frames = renderFlipbook(source, background, mask, W, H, shifts)
+      const covers = shifts.map((dx) => shiftMask(mask, W, H, dx))
+      // Every pixel is compared with the same pixel in the frame before, so the uncovered background counts too.
+      const kinds: Uint8Array[] = [new Uint8Array(W * H)]
+      for (let k = 1; k < frames.length; k++) {
+        const changed = changedMask(frames[k - 1]!, frames[k]!, THRESHOLD)
+        kinds.push(changeKinds(changed, covers[k - 1]!, covers[k]!))
+      }
       this.frames = markRaw(frames)
-      this.masks = markRaw(masks)
+      this.kinds = markRaw(kinds)
       this.draw()
     },
     draw(): void {
       if (!this.ready) return
       const frame = this.frames[this.frameIndex]
-      const mask = this.masks[this.frameIndex]
-      if (!frame || !mask) return
+      const kind = this.kinds[this.frameIndex]
+      if (!frame || !kind) return
       const key = this.isKeyframe
       const live = new ImageData(W, H)
       const stored = new ImageData(W, H)
@@ -131,13 +160,18 @@ export default defineComponent({
         const r = frame[i]!
         const g = frame[i + 1]!
         const b = frame[i + 2]!
-        if (key || mask[p]) {
+        const k = kind[p]!
+        if (key || k) {
           stored.data.set([r, g, b, 255], i)
         }
         if (key) {
           live.data.set([r, g, b, 255], i)
-        } else if (mask[p]) {
+        } else if (k === NEWLY_COVERED) {
           live.data.set([...ACCENT, 255], i)
+        } else if (k === UNCOVERED) {
+          live.data.set([...LIGHT_ACCENT, 255], i)
+        } else if (k === INSIDE_CHANGE) {
+          live.data.set([0.5 * r + 0.5 * ACCENT[0]!, 0.5 * g + 0.5 * ACCENT[1]!, 0.5 * b + 0.5 * ACCENT[2]!, 255].map(Math.round), i)
         } else {
           const gray = 0.3 * r + 0.59 * g + 0.11 * b
           live.data.set([0.45 * r + 0.55 * gray, 0.45 * g + 0.55 * gray, 0.45 * b + 0.55 * gray, 255].map(Math.round), i)
@@ -186,6 +220,23 @@ export default defineComponent({
           class="block aspect-video w-full rounded-lg bg-panel2"
         ></canvas>
         <figcaption class="mt-2 text-sm text-muted">{{ $t('help.compression.flip.liveCaption') }}</figcaption>
+        <ul class="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-sm" :aria-label="$t('help.compression.flip.legendLabel')">
+          <li class="flex items-center gap-2">
+            <span class="size-3 shrink-0 rounded-sm" :style="{ background: swatches.newly }" aria-hidden="true"></span>
+            <span>{{ $t('help.compression.flip.legend.newly') }}</span>
+            <span class="tabular-nums text-muted" data-stat="newly">{{ format(bands.newly) }}</span>
+          </li>
+          <li class="flex items-center gap-2">
+            <span class="size-3 shrink-0 rounded-sm" :style="{ background: swatches.uncovered }" aria-hidden="true"></span>
+            <span>{{ $t('help.compression.flip.legend.uncovered') }}</span>
+            <span class="tabular-nums text-muted" data-stat="uncovered">{{ format(bands.uncovered) }}</span>
+          </li>
+          <li class="flex items-center gap-2">
+            <span class="size-3 shrink-0 rounded-sm" :style="{ background: swatches.inside }" aria-hidden="true"></span>
+            <span>{{ $t('help.compression.flip.legend.inside') }}</span>
+            <span class="tabular-nums text-muted" data-stat="inside">{{ format(bands.inside) }}</span>
+          </li>
+        </ul>
       </figure>
       <figure class="m-0">
         <canvas

@@ -21,7 +21,7 @@
     "chooseFolder": "Arbeitsordner wählen…",
     "folderCurrent": "Arbeitsordner: {name}",
     "folderNone": "Noch kein Arbeitsordner gewählt",
-    "browserInfo": "Dieser Browser speichert Projekte als Datei. Wer ein Projekt auf einem anderen Computer öffnet, muss die Medien neu verknüpfen. Für einen Arbeitsordner empfehlen wir Chrome oder Edge.",
+    "browserInfo": "Dieser Browser speichert Projekte als Datei. Wer ein Projekt auf einem anderen Computer öffnet, muss die Medien neu verknüpfen. Für einen Arbeitsordner empfehlen wir einen Chromium-basierten Browser wie Brave, Microsoft Edge oder Google Chrome.",
     "fileError": "Die Projektdatei konnte nicht verwendet werden.",
     "dismiss": "Hinweis schließen",
     "neverSaved": "Noch nicht als Datei gespeichert",
@@ -59,7 +59,7 @@
     "addToTimeline": "{name} zur Timeline hinzufügen",
     "emptyHint": "Füge Videos, Bilder oder Musik von deinem Computer hinzu oder ziehe sie hierher.",
     "problems": {
-      "cannotDecode": "Dieser Browser kann diese Datei nicht lesen. Bitte nutze Chrome oder Edge.",
+      "cannotDecode": "Dieser Browser kann diese Datei nicht lesen. Bitte nutze einen Chromium-basierten Browser wie Brave, Microsoft Edge oder Google Chrome.",
       "unsupportedFormat": "Dieser Dateityp wird nicht unterstützt.",
       "noMedia": "Diese Datei enthält weder Bild noch Ton.",
       "missing": "Datei fehlt."
@@ -107,7 +107,7 @@
     "ratio": "Bildformat",
     "canvasLabel": "Vorschau des Videos",
     "empty": "Noch kein Video. Füge links Medien hinzu und klicke sie an, um sie in die Timeline zu legen.",
-    "noWebgl": "Dein Browser kann die Vorschau nicht darstellen (WebGL fehlt). Bitte Chrome oder Edge verwenden.",
+    "noWebgl": "Dein Browser kann die Vorschau nicht darstellen (WebGL fehlt). Bitte nutze einen Chromium-basierten Browser wie Brave, Microsoft Edge oder Google Chrome.",
     "fitMode": "Einpassen",
     "fillMode": "Füllen",
     "fitToggle": "Einpassen oder Füllen umschalten, aktuell: {mode}",
@@ -257,7 +257,7 @@
     "fileSize": "{name} · {size}",
     "cancelled": "Der Export wurde abgebrochen.",
     "errors": {
-      "noEncoder": "Dieser Browser kann kein Video kodieren. Bitte Chrome oder Edge verwenden.",
+      "noEncoder": "Dieser Browser kann kein Video kodieren. Bitte nutze einen Chromium-basierten Browser wie Brave, Microsoft Edge oder Google Chrome.",
       "empty": "Es gibt noch nichts zu exportieren. Lege zuerst einen Clip auf die Timeline.",
       "missing": "Für den Export fehlen Dateien: {names}. Importiere sie in der Bibliothek erneut.",
       "gifTooLarge": "GIFs werden sehr groß: bitte einen kürzeren Abschnitt oder eine kleinere Größe wählen.",
@@ -414,7 +414,7 @@
     },
     "errors": {
       "wrongFile": "Diese Datei passt nicht: Länge oder Typ weichen vom Projekt ab. Wähle die richtige Datei.",
-      "unsupported": "Dieser Browser kann diese Datei nicht lesen. Bitte nutze Chrome oder Edge.",
+      "unsupported": "Dieser Browser kann diese Datei nicht lesen. Bitte nutze einen Chromium-basierten Browser wie Brave, Microsoft Edge oder Google Chrome.",
       "unknown": "Dieses Medium gehört nicht mehr zum Projekt."
     },
     "folder": {

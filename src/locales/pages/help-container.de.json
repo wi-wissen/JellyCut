@@ -50,7 +50,6 @@
         "mkv": {
           "text": "Eine große Box, die viele Spuren aufnehmen kann, zum Beispiel mehrere Tonspuren."
         },
-        "memoLabel": "Merke:",
         "memo": "Endung ist die Box. Der Codec ist das Packverfahren für die Bilder und den Ton. Beides muss zu deinem Abspielprogramm passen."
       },
       "app": {

@@ -50,7 +50,6 @@
         "mkv": {
           "text": "A big box that can hold many tracks, for example several sound tracks."
         },
-        "memoLabel": "Remember:",
         "memo": "The ending is the box. The codec is the packing method for the pictures and the sound. Both must fit your player."
       },
       "app": {
