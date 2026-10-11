@@ -49,6 +49,12 @@ const r = await page.evaluate(async () => {
     out.boundary.push([n, await frameNumber(frameStart(n, 30) - 4000), n - 1])
     out.mid.push([n, await frameNumber(frameStart(n, 30) + 16_000)])
   }
+  out.info = []
+  for (const n of [0, 2, 14, 45]) {
+    const info = await provider.getFrameInfo('f', frameStart(n, 30))
+    out.info.push([n, info?.start ?? null, info?.end ?? null, frameStart(n, 30)])
+  }
+  out.imageInfo = await provider.getFrameInfo('img', 0)
   const img = await provider.getFrame('img', 0)
   out.imageSize = img ? [img.width, img.height] : null
   out.h264 = await provider.getFrame('h264', 0)
@@ -68,6 +74,7 @@ check('sequential frame numbers are exact', exact(r.sequential), JSON.stringify(
 check('random access (seeking backward and forward) is exact', exact(r.random), JSON.stringify(r.random))
 check('4 ms before a frame start shows the previous frame', r.boundary.every(([, got, want]) => got === want), JSON.stringify(r.boundary))
 check('mid-frame times show the frame that started before', exact(r.mid), JSON.stringify(r.mid))
+check('frame info gives the real frame span around the requested time (within 1.5 ms of the grid)', r.info.every(([, s, e, g]) => s !== null && s <= g + 1500 && e > g && e - s > 25000 && e - s < 40000) && r.imageInfo === null, JSON.stringify([r.info, r.imageInfo]))
 check('still image comes back as an image of the right size', JSON.stringify(r.imageSize) === '[320,180]', JSON.stringify(r.imageSize))
 check('undecodable and unknown assets give null instead of throwing', r.unknown === null, String(r.unknown))
 console.log(`INFO h264 in this browser: ${r.h264}; 90 sequential frames took ${r.sequentialMs} ms`)

@@ -87,6 +87,18 @@ export class ExactFrameProvider {
     return wrapped.canvas
   }
 
+  /**
+   * The real time span (microseconds in the source file) of the frame shown at `srcTime`.
+   * Cuts must land on these, not on a computed frame grid, because container timestamps are quantised.
+   * Images have no frames: they return null.
+   */
+  async getFrameInfo(assetId: string, srcTime: Micros, lane = ''): Promise<{ start: Micros; end: Micros } | null> {
+    const entry = await this.open(assetId, lane)
+    if (!entry || entry.kind === 'image') return null
+    const frame = await this.getFrame(assetId, srcTime, lane)
+    return frame && entry.last ? { start: entry.last.start, end: entry.last.end } : null
+  }
+
   async dispose(): Promise<void> {
     const all = await Promise.all(this.entries.values())
     for (const entry of all) {
