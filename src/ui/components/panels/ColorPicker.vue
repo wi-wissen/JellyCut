@@ -8,6 +8,8 @@ import { TAILWIND_NEUTRALS, TAILWIND_ROWS, TAILWIND_SHADES } from '../../../core
 const DEFAULT_COLORS: readonly string[] = ['#ffffff', '#14121f', '#c6f432', '#ffe066', '#ff5ca8', '#6d4cf5']
 const RECENT_KEY = 'jc-recent-colors'
 const RECENT_MAX = 8
+// One cool grey (slate) and one warm grey (stone) are enough; the other three are nearly identical.
+const REDUNDANT_GREYS = new Set(['gray', 'zinc', 'neutral'])
 const POPOVER_WIDTH = 300
 const EDGE = 8
 
@@ -70,9 +72,9 @@ export default defineComponent({
     current(): string {
       return normalizeHex(this.modelValue) ?? this.modelValue
     },
-    /** Palette rows: 22 hues of 11 shades, then the neutrals. */
+    /** Palette rows: the colour hues of 11 shades, one cool and one warm grey, then white and black. */
     grid(): Cell[][] {
-      const rows = TAILWIND_ROWS.map((row) =>
+      const rows = TAILWIND_ROWS.filter((row) => !REDUNDANT_GREYS.has(row.hue)).map((row) =>
         row.hexes.map((hex, i): Cell => {
           const shade = TAILWIND_SHADES[i]
           const hue = this.$t(`colors.hues.${row.hue}`)

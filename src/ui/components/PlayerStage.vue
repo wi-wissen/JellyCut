@@ -9,6 +9,10 @@ import PlayerOverlay from './PlayerOverlay.vue'
 
 // Not reactive on purpose: the engine owns DOM elements, textures and decoders. There is one player.
 let engine: PreviewEngine | null = null
+let sizeObserver: ResizeObserver | null = null
+let stopDensity: (() => void) | null = null
+/** Upper limit for the preview canvas, in device pixels along the longer side. */
+const MAX_PREVIEW_DEVICE_PX = 2560
 const registered = new Map<string, File>()
 
 const TEXT_TARGETS = new Set(['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A'])
@@ -72,17 +76,58 @@ export default defineComponent({
       return
     }
     this.syncProject()
+    this.observeSize(canvas)
     void engine.seek(this.playheadMicros)
     document.addEventListener('keydown', this.onKeydown)
   },
   beforeUnmount() {
     document.removeEventListener('keydown', this.onKeydown)
+    sizeObserver?.disconnect()
+    sizeObserver = null
+    stopDensity?.()
+    stopDensity = null
     engine?.dispose()
     engine = null
     registered.clear()
   },
   methods: {
     ...mapActions(useEditorStore, ['setPlayhead', 'togglePlaying']),
+    /**
+     * Draws the preview at the size it is actually shown, in DEVICE pixels. On a HiDPI screen (or with
+     * browser zoom) a canvas that is smaller than that gets scaled up and text looks washed out.
+     */
+    observeSize(canvas: HTMLCanvasElement): void {
+      if (typeof ResizeObserver === 'undefined') return
+      const apply = (): void => {
+        if (!engine) return
+        const rect = canvas.getBoundingClientRect()
+        const dpr = window.devicePixelRatio || 1
+        let width = rect.width * dpr
+        let height = rect.height * dpr
+        const longest = Math.max(width, height)
+        if (longest > MAX_PREVIEW_DEVICE_PX) {
+          width = (width * MAX_PREVIEW_DEVICE_PX) / longest
+          height = (height * MAX_PREVIEW_DEVICE_PX) / longest
+        }
+        engine.setPreviewSize(Math.round(width), Math.round(height))
+      }
+      sizeObserver = new ResizeObserver(apply)
+      sizeObserver.observe(canvas)
+      // Browser zoom or moving the window to another monitor changes the pixel density without a resize.
+      const watchDensity = (): void => {
+        densityQuery?.removeEventListener('change', onDensityChange)
+        densityQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`)
+        densityQuery.addEventListener('change', onDensityChange)
+      }
+      const onDensityChange = (): void => {
+        apply()
+        watchDensity()
+      }
+      let densityQuery: MediaQueryList | null = null
+      watchDensity()
+      stopDensity = () => densityQuery?.removeEventListener('change', onDensityChange)
+      apply()
+    },
     syncProject(): void {
       if (!engine) return
       this.syncAssets()

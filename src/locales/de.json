@@ -453,7 +453,7 @@
     "more": "Weitere Farben",
     "recent": "Zuletzt benutzt",
     "defaults": "Standardfarben",
-    "palette": "Tailwind-Palette",
+    "palette": "Farben",
     "hex": "Hex-Farbe",
     "hexHint": "#RGB oder #RRGGBB",
     "hexInvalid": "Keine Farbe. Verwende #RGB oder #RRGGBB.",
@@ -483,11 +483,11 @@
       "fuchsia": "Fuchsia",
       "pink": "Pink",
       "rose": "Rosa",
-      "slate": "Schiefer",
+      "slate": "Kühles Grau",
       "gray": "Grau",
       "zinc": "Zink",
       "neutral": "Neutral",
-      "stone": "Stein"
+      "stone": "Warmes Grau"
     }
   }
 }
