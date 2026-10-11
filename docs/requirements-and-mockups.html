@@ -1,0 +1,643 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Videoeditor Anforderungen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Source+Sans+3:wght@400;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F6F5FA; --surface:#FFFFFF; --fg:#1A1830; --muted:#5A5875; --line:#DEDCEA;
+  --accent:#5B3FE0; --accent-fg:#FFFFFF; --signal:#C6F432; --signal-fg:#14121F;
+  --code-bg:#EEEDF6; --warn-bg:#FFF3CF; --warn-fg:#6B4A00; --ok-bg:#DDF3E4; --ok-fg:#145C33; --later-bg:#E8E6F4; --later-fg:#4A4670;
+  --font-head:'Sora',system-ui,sans-serif; --font-body:'Source Sans 3',system-ui,sans-serif; --font-mono:'DM Mono',ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F0E17; --surface:#181725; --fg:#ECEBF7; --muted:#A3A1BD; --line:#2B2A40;
+  --accent:#A593FF; --accent-fg:#0F0E17; --signal:#C6F432; --signal-fg:#14121F;
+  --code-bg:#1F1E30; --warn-bg:#3A2F10; --warn-fg:#F2D58A; --ok-bg:#12301F; --ok-fg:#8FDDA9; --later-bg:#26243D; --later-fg:#B9B6D8; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F0E17; --surface:#181725; --fg:#ECEBF7; --muted:#A3A1BD; --line:#2B2A40;
+  --accent:#A593FF; --accent-fg:#0F0E17; --signal:#C6F432; --signal-fg:#14121F;
+  --code-bg:#1F1E30; --warn-bg:#3A2F10; --warn-fg:#F2D58A; --ok-bg:#12301F; --ok-fg:#8FDDA9; --later-bg:#26243D; --later-fg:#B9B6D8; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:17px;line-height:1.55;padding-inline:16px;padding-block:0}
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr);gap:0 48px}
+@media (min-width:1100px){.wrap{grid-template-columns:200px minmax(0,1fr)}}
+nav.toc{display:none}
+@media (min-width:1100px){nav.toc{display:block;position:sticky;top:24px;align-self:start;padding-top:56px;font-size:14px}}
+nav.toc a{display:block;color:var(--muted);text-decoration:none;padding:5px 0;border-left:2px solid var(--line);padding-left:12px}
+nav.toc a:hover{color:var(--fg);border-left-color:var(--accent)}
+main{min-width:0;padding-block:48px 80px}
+h1,h2,h3{font-family:var(--font-head);line-height:1.2;text-wrap:balance;margin:0}
+h1{font-size:clamp(28px,4.4vw,44px);letter-spacing:-.02em;font-weight:700}
+h2{font-size:26px;letter-spacing:-.01em;margin-top:64px;padding-top:8px;font-weight:700}
+h3{font-size:18px;margin-top:28px;font-weight:600}
+p{margin:12px 0;max-width:72ch}
+.eyebrow{font-family:var(--font-mono);font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.lead{font-size:19px;color:var(--fg);max-width:64ch}
+code,pre{font-family:var(--font-mono);font-size:14px}
+code{background:var(--code-bg);padding:1px 6px;border-radius:5px}
+pre{background:var(--code-bg);padding:16px;border-radius:10px;overflow-x:auto;line-height:1.5;margin:16px 0;max-width:100%}
+pre code{background:none;padding:0}
+ul,ol{padding-left:22px;margin:10px 0;max-width:72ch}
+li{margin:4px 0}
+.tw{overflow-x:auto;margin:16px 0;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:10px 14px;border-bottom:1px solid var(--line)}
+th{font-family:var(--font-mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;background:var(--code-bg)}
+tr:last-child td{border-bottom:0}
+td:first-child{white-space:nowrap}
+.tag{display:inline-block;font-family:var(--font-mono);font-size:12px;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.t-v1{background:var(--accent);color:var(--accent-fg)}
+.t-v15{background:var(--signal);color:var(--signal-fg)}
+.t-v2{background:var(--later-bg);color:var(--later-fg)}
+.t-open{background:var(--warn-bg);color:var(--warn-fg)}
+.t-ok{background:var(--ok-bg);color:var(--ok-fg)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:20px 0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;min-width:0}
+.card b{display:block;font-family:var(--font-head);font-size:14px;margin-bottom:4px}
+.card span{color:var(--muted);font-size:15px}
+.note{background:var(--warn-bg);color:var(--warn-fg);border-radius:10px;padding:12px 16px;margin:16px 0;max-width:72ch;font-size:15.5px}
+.btn{font:inherit;font-weight:600;background:var(--accent);color:var(--accent-fg);border:0;border-radius:10px;padding:10px 18px;min-height:44px;cursor:pointer}
+.btn.sec{background:var(--surface);color:var(--fg);border:1px solid var(--line)}
+.pipe{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;margin:16px 0}
+.pipe .st{flex:1 1 140px;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px}
+.pipe .st b{display:block;font-family:var(--font-mono);font-size:12px;color:var(--accent);letter-spacing:.04em;margin-bottom:2px}
+.pipe .ar{align-self:center;color:var(--muted);font-family:var(--font-mono)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+hr{border:0;border-top:1px solid var(--line);margin:40px 0}
+
+/* ---------- Mockup ---------- */
+.mbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:16px 0 12px}
+.mtab{font:inherit;font-size:15px;font-weight:600;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:999px;padding:8px 16px;min-height:44px;cursor:pointer}
+.mtab[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.mspacer{flex:1}
+.mscroll{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.mock{--m-bg:#F4F3FA;--m-panel:#FFFFFF;--m-panel2:#ECEAF6;--m-line:#DAD7EA;--m-fg:#1A1830;--m-muted:#625F80;--m-fill:#6D4CF5;--m-fill-fg:#FFFFFF;--m-txt:#5B3FE0;--m-signal:#C6F432;--m-signal-fg:#14121F;--m-stage:#DCD8EE;--m-v1:#4F7DC4;--m-v2:#D9733C;--m-v3:#6F7389;--m-wave:#2E9E63;--m-music:#7E6BD6;
+  font-family:'Sora',system-ui,sans-serif;color:var(--m-fg);background:var(--m-bg);font-size:13px;line-height:1.35}
+.mock.dark{--m-bg:#0E0F14;--m-panel:#171923;--m-panel2:#222536;--m-line:#2A2D3C;--m-fg:#E9EAF2;--m-muted:#9A9EB3;--m-fill:#6D4CF5;--m-txt:#A593FF;--m-stage:#07080B;--m-v1:#34508F;--m-v2:#A8442A;--m-v3:#4A4F61;--m-wave:#4FD48A;--m-music:#4A3C99}
+.mock *{box-sizing:border-box}
+.mock button{font:inherit;color:inherit}
+.m-app{width:1120px;height:700px;display:flex;flex-direction:column;position:relative}
+.m-top{height:52px;flex:none;display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--m-panel);border-bottom:1px solid var(--m-line)}
+.m-logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px}
+.m-logo i{width:20px;height:20px;border-radius:6px;background:linear-gradient(90deg,#7C5CFF 0 46%,transparent 46% 54%,#C6F432 54%)}
+.m-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--m-line);border-radius:8px;padding:0 10px;height:34px;background:var(--m-panel2);font-weight:600}
+.m-ib{width:34px;height:34px;border:0;border-radius:8px;background:transparent;display:inline-flex;align-items:center;justify-content:center;color:var(--m-fg)}
+.m-ib:hover{background:var(--m-panel2)}
+.m-ib.dis{opacity:.35}
+.m-export{margin-left:auto;background:var(--m-signal);color:var(--m-signal-fg);border:0;border-radius:9px;height:36px;padding:0 18px;font-weight:700}
+.m-sp{flex:1}
+.ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.m-main{flex:1;min-height:0;display:flex}
+.m-left{width:350px;flex:none;background:var(--m-panel);border-right:1px solid var(--m-line);display:flex;flex-direction:column;min-height:0}
+.m-tabs{padding:8px 12px 4px;border-bottom:1px solid var(--m-line);display:flex;flex-direction:column;gap:2px}
+.m-grp{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--m-muted);margin:4px 0 2px}
+.m-row{display:flex;gap:6px}
+.m-tab{flex:1 1 0;min-width:0;height:34px;display:flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:8px;background:transparent;font-size:12px;font-weight:600;color:var(--m-fg)}
+.m-tab.on{background:var(--m-fill);color:var(--m-fill-fg)}
+.m-tab.soon{opacity:.45}
+.m-lib{flex:1;min-height:0;overflow:hidden;padding:12px;display:flex;flex-direction:column;gap:10px}
+.m-h{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--m-muted);font-weight:600}
+.m-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.m-th{aspect-ratio:16/10;border-radius:8px;display:flex;align-items:flex-end;padding:6px;color:#fff;font-size:11px;font-weight:600;text-shadow:0 1px 2px #0008}
+.m-add{border:1.5px dashed var(--m-line);color:var(--m-txt);justify-content:center;align-items:center;font-size:22px;text-shadow:none}
+.m-link{color:var(--m-txt);font-weight:600;font-size:12px}
+.m-sec{border:1px solid var(--m-line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:var(--m-bg)}
+.m-seg{display:flex;background:var(--m-panel2);border-radius:8px;padding:3px;gap:3px}
+.m-seg span{flex:1;text-align:center;padding:6px 4px;border-radius:6px;font-weight:600;font-size:12px}
+.m-seg span.on{background:var(--m-fill);color:var(--m-fill-fg)}
+.m-sl{height:6px;border-radius:3px;background:var(--m-line);position:relative;margin:8px 0}
+.m-sl i{position:absolute;top:-6px;width:18px;height:18px;border-radius:50%;background:var(--m-signal);border:2px solid var(--m-fill);margin-left:-9px}
+.m-sl b{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--m-fill)}
+.m-kv{display:flex;justify-content:space-between;align-items:center;font-weight:600}
+.m-kv small{color:var(--m-muted);font-weight:400;font-size:12px}
+.m-back{display:flex;align-items:center;gap:6px;font-weight:600;color:var(--m-txt);background:none;border:0;padding:0;height:28px}
+.m-right{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--m-bg)}
+.m-stage{flex:1;min-height:0;background:var(--m-stage);display:flex;align-items:center;justify-content:center;position:relative;padding:14px}
+.m-player{height:100%;max-height:100%;aspect-ratio:16/9;max-width:100%;background:linear-gradient(160deg,#2E6F8E 0%,#5FA8A0 45%,#F2B15C 100%);position:relative;border-radius:4px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:9%}
+.m-sub{font-weight:700;font-size:26px;color:#fff;text-shadow:0 2px 6px #0007;position:relative;padding:2px 8px}
+.m-sub b{background:var(--m-signal);color:var(--m-signal-fg);padding:0 6px;border-radius:5px;text-shadow:none}
+.m-sub.sel{outline:2px solid var(--m-signal)}
+.m-sub.sel::before,.m-sub.sel::after{content:"";position:absolute;width:9px;height:9px;background:#fff;border:2px solid #6D4CF5;border-radius:50%}
+.m-sub.sel::before{left:-6px;top:-6px}.m-sub.sel::after{right:-6px;bottom:-6px}
+.m-ptool{position:absolute;top:22px;right:22px;display:flex;gap:6px}
+.m-ptool .m-chip{background:#000a;color:#fff;border-color:#fff3;height:30px;font-size:12px}
+.m-acts{flex:none;display:flex;flex-wrap:nowrap;align-items:center;gap:2px;padding:6px 10px;background:var(--m-panel);border-top:1px solid var(--m-line);border-bottom:1px solid var(--m-line)}
+.m-act{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:50px;padding:4px 6px;border:0;border-radius:8px;background:transparent;font-size:10.5px;font-weight:600}
+.m-act:hover{background:var(--m-panel2)}
+.m-act.hot{background:var(--m-signal);color:var(--m-signal-fg)}
+.m-play{width:40px;height:40px;border-radius:50%;border:0;background:var(--m-fill);color:var(--m-fill-fg);display:inline-flex;align-items:center;justify-content:center}
+.m-time{font-family:'DM Mono',monospace;font-size:14px;font-weight:500;padding:0 8px}
+.m-sep{width:1px;height:30px;background:var(--m-line);margin:0 6px}
+.m-tl{height:236px;flex:none;background:var(--m-panel);display:flex;flex-direction:column;min-width:0}
+.m-tlbar{height:36px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid var(--m-line)}
+.m-zoom{width:120px}
+.m-tlbody{flex:1;min-height:0;position:relative;padding:0 12px}
+.m-ruler{margin-left:84px;height:22px;display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:10px;color:var(--m-muted);border-bottom:1px solid var(--m-line);align-items:center}
+.m-trk{display:flex;height:38px}
+.m-lab{width:84px;flex:none;display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:600;color:var(--m-muted)}
+.m-lane{flex:1;position:relative}
+.m-clip{position:absolute;top:3px;bottom:3px;border-radius:6px;padding:0 8px;display:flex;align-items:center;font-size:11px;font-weight:600;color:#fff;overflow:hidden;white-space:nowrap}
+.m-clip.sel{outline:2px solid var(--m-signal);outline-offset:1px}
+.m-clip.sel::before,.m-clip.sel::after{content:"";position:absolute;top:0;bottom:0;width:7px;background:var(--m-signal)}
+.m-clip.sel::before{left:0}.m-clip.sel::after{right:0}
+.m-clip.wave{background-color:transparent;background-image:repeating-linear-gradient(90deg,var(--m-wave) 0 2px,transparent 2px 5px);color:var(--m-wave);border:1px solid var(--m-wave)}
+.m-tr{position:absolute;top:6px;width:16px;height:26px;margin-left:-8px;border-radius:6px;background:var(--m-panel);border:2px solid var(--m-fill)}
+.m-ph{position:absolute;top:0;bottom:0;width:2px;background:var(--m-fill);left:calc(12px + 84px + (100% - 24px - 84px) * .38)}
+.m-ph::before{content:"";position:absolute;top:0;left:-6px;width:14px;height:12px;background:var(--m-fill);clip-path:polygon(0 0,100% 0,50% 100%)}
+.m-dim{position:absolute;inset:0;background:#0007;display:flex;align-items:center;justify-content:center}
+.m-dlg{width:480px;background:var(--m-panel);border:1px solid var(--m-line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 60px #0006}
+.m-dlg h4{margin:0;font-size:17px}
+.m-opt{display:flex;flex-direction:column;gap:6px}
+.m-btn{height:38px;border-radius:9px;border:1px solid var(--m-line);background:var(--m-panel2);font-weight:600;padding:0 16px}
+.m-btn.go{background:var(--m-signal);color:var(--m-signal-fg);border-color:var(--m-signal);font-weight:700}
+.m-bar{height:8px;border-radius:4px;background:var(--m-line);overflow:hidden}
+.m-bar i{display:block;height:100%;background:var(--m-fill)}
+/* Feinschnitt */
+.m-fine{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--m-bg)}
+.m-cmp{display:flex;gap:14px;justify-content:center;padding:14px 14px 6px}
+.m-fr{flex:1 1 0;max-width:330px}
+.m-fr .im{aspect-ratio:16/9;border:2px solid var(--m-fg);border-radius:4px;position:relative}
+.m-fr .im.cut{border-color:var(--m-fill);opacity:.6}
+.m-fr .im.cut::after{content:"CUT";position:absolute;top:6px;right:6px;background:var(--m-signal);color:var(--m-signal-fg);font-weight:700;font-size:10px;padding:1px 8px;border-radius:4px}
+.m-fr .cp{display:flex;justify-content:space-between;color:var(--m-muted);margin-top:4px;font-family:'DM Mono',monospace;font-size:11px}
+.m-strip{margin:6px 14px 0;position:relative}
+.m-tiles{display:flex;gap:3px}
+.m-tile{flex:1 1 0;min-width:0;font-family:'DM Mono',monospace;font-size:9.5px;color:var(--m-muted);text-align:center}
+.m-tile i{display:block;aspect-ratio:16/10;border:2px solid var(--m-line);border-radius:3px}
+.m-tile.key i{border-color:var(--m-signal)}
+.m-tile.key{color:var(--m-txt);font-weight:700}
+.m-cutline{position:absolute;top:-6px;bottom:0;left:50%;width:3px;margin-left:-1.5px;background:var(--m-signal);z-index:2}
+.m-wavebox{margin:6px 14px 0;position:relative;height:96px;background:var(--m-panel);border:1px solid var(--m-line);border-radius:8px;overflow:hidden}
+.m-wavebox svg{position:absolute;inset:0;width:100%;height:100%}
+.m-pause{position:absolute;top:0;bottom:0;background:#C6F43233;border-left:1px dashed var(--m-signal);border-right:1px dashed var(--m-signal);display:flex;align-items:flex-start;justify-content:center;font-size:10px;font-weight:700;color:var(--m-fg);padding-top:3px}
+.m-fctl{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;padding:10px 14px 4px}
+.m-fb{height:40px;padding:0 12px;border-radius:9px;border:1px solid var(--m-line);background:var(--m-panel);font-weight:600;display:inline-flex;align-items:center;gap:6px}
+.m-fb.hot{background:var(--m-signal);color:var(--m-signal-fg);border-color:var(--m-signal);font-weight:700;padding:0 22px}
+.m-fnote{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:center;color:var(--m-muted);font-size:11.5px;padding:2px 14px}
+.m-pill{border:1px solid var(--m-fill);color:var(--m-txt);border-radius:999px;padding:2px 10px;font-weight:600}
+/* Phone */
+.m-phone{width:390px;height:760px;margin:20px auto;border:1px solid var(--m-line);border-radius:22px;overflow:hidden;display:flex;flex-direction:column;background:var(--m-bg)}
+.m-phone .m-stage{flex:none;height:230px}
+.m-phone .m-acts{overflow-x:auto}
+.m-phone .m-tl{height:auto;flex:1}
+.m-bottomtabs{display:flex;background:var(--m-panel);border-top:1px solid var(--m-line);padding:6px 4px;overflow-x:auto;gap:2px}
+.m-bottomtabs .m-act{min-width:58px}
+.mcap{color:var(--muted);font-size:15px;margin:10px 0 0;max-width:80ch}
+.sprite{position:absolute;width:0;height:0;overflow:hidden}
+</style>
+
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z" fill="currentColor"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-fwd" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+  <symbol id="i-dback" viewBox="0 0 24 24"><path d="M12 5l-7 7 7 7M19 5l-7 7 7 7"/></symbol>
+  <symbol id="i-dfwd" viewBox="0 0 24 24"><path d="M12 5l7 7-7 7M5 5l7 7-7 7"/></symbol>
+  <symbol id="i-split" viewBox="0 0 24 24"><path d="M12 3v18M5 8l4 4-4 4M19 8l-4 4 4 4"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></symbol>
+  <symbol id="i-flip" viewBox="0 0 24 24"><path d="M12 3v18M8 7L3 17h5zM16 7l5 10h-5z"/></symbol>
+  <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-3-6.2M20 4v5h-5"/></symbol>
+  <symbol id="i-speed" viewBox="0 0 24 24"><path d="M4 17a8 8 0 1 1 16 0M12 17l4-5"/></symbol>
+  <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6l-5 4zM17 9l4 6M21 9l-4 6"/></symbol>
+  <symbol id="i-vol" viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6l-5 4zM17 8a5 5 0 0 1 0 8"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24"><path d="M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3"/></symbol>
+  <symbol id="i-magnet" viewBox="0 0 24 24"><path d="M5 4v7a7 7 0 0 0 14 0V4h-4v7a3 3 0 0 1-6 0V4z"/></symbol>
+  <symbol id="i-media" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M8 5v14"/></symbol>
+  <symbol id="i-audio" viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></symbol>
+  <symbol id="i-rec" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="currentColor"/></symbol>
+  <symbol id="i-text" viewBox="0 0 24 24"><path d="M5 6V4h14v2M12 4v16M9 20h6"/></symbol>
+  <symbol id="i-sticker" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></symbol>
+  <symbol id="i-draw" viewBox="0 0 24 24"><path d="M4 20l1-5L16 4l4 4L9 19z"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></symbol>
+  <symbol id="i-trans" viewBox="0 0 24 24"><path d="M4 5v14l8-7zM20 5v14l-8-7z"/></symbol>
+  <symbol id="i-cc" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 12h4M13 12h4M7 15h2M11 15h6"/></symbol>
+  <symbol id="i-full" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+  <symbol id="i-zoom" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M21 21l-5-5M11 8v6M8 11h6"/></symbol>
+  <symbol id="i-ratio" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/></symbol>
+  <symbol id="i-crop" viewBox="0 0 24 24"><path d="M6 3v15h15M3 6h15v15"/></symbol>
+</svg>
+
+<div class="wrap">
+<nav class="toc" aria-label="Inhalt">
+  <a href="#ueberblick">Überblick</a>
+  <a href="#entscheidungen">Entscheidungen</a>
+  <a href="#mockups">Mockups</a>
+  <a href="#funktionen">Funktionsumfang</a>
+  <a href="#architektur">Architektur</a>
+  <a href="#datenmodell">Datenmodell</a>
+  <a href="#schneiden">Schneiden</a>
+  <a href="#export">Export</a>
+  <a href="#dateien">Dateien &amp; Browser</a>
+  <a href="#ui">UI-Regeln</a>
+  <a href="#quellen">Quellen &amp; Lizenzen</a>
+  <a href="#plan">Tests &amp; Meilensteine</a>
+  <a href="#offen">Offene Punkte</a>
+  <a href="#prompt">Start-Prompt</a>
+</nav>
+
+<main>
+<p class="eyebrow">Übergabe an den Entwicklungs-Chat · Stand 11.10.2026</p>
+<h1>Jelly Cut: Videoeditor für Schulen im Browser</h1>
+<p class="lead">Ein einfacher, CapCut-ähnlicher Videoeditor für Schüler, der vollständig im Browser läuft, ohne Konto, ohne Werbung und ohne Bezahlschranke. Dieses Dokument beschreibt die beschlossenen Anforderungen, die Oberfläche und die technische Richtung, damit die Umsetzung ohne Rückfragen starten kann.</p>
+<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:18px">
+  <a class="btn" href="#mockups" style="text-decoration:none;display:inline-flex;align-items:center">Zu den Mockups</a>
+  <a class="btn sec" href="#prompt" style="text-decoration:none;display:inline-flex;align-items:center">Zum Start-Prompt</a>
+</div>
+
+<h2 id="ueberblick">Überblick</h2>
+<div class="cards">
+  <div class="card"><b>Zielgruppe</b><span>Schüler (Klasse 5 bis 12) und Lehrkräfte. Bedienung muss ohne Anleitung gelingen, Beschriftungen statt reiner Symbole.</span></div>
+  <div class="card"><b>Plattform</b><span>Web-App, alles lokal im Browser. Chrome und Edge zuerst (Schul-Windows-PCs), danach Firefox und Safari/iPad.</span></div>
+  <div class="card"><b>Datenschutz</b><span>Videos verlassen das Gerät nicht. Keine Konten, kein Tracking, keine Serververarbeitung.</span></div>
+  <div class="card"><b>Geschwindigkeit</b><span>Muss: nicht langsamer als Shotcut auf denselben PCs (3 min Video ≈ 15 min). Ziel: höchstens Echtzeit.</span></div>
+</div>
+<p>Hintergrund: Die Schüler nutzen CapCut, das wegen Bezahlschranke, Werbung und KI-Schwerpunkt für den Unterricht unpraktisch ist. Shotcut war zu kompliziert. Der Editor soll die vertraute Logik von CapCut (Spuren, Teilen, Text, Übergänge, Musik, Export) in einer ruhigen, gut beschrifteten Oberfläche anbieten. KI-Funktionen sind optional und kommen später.</p>
+
+<h2 id="entscheidungen">Entscheidungen</h2>
+<div class="tw"><table>
+<tr><th>Thema</th><th>Entscheidung</th><th>Stand</th></tr>
+<tr><td>Ausführung</td><td>Komplett im Browser, keine Server-Videoverarbeitung. HyperFrames (Headless-Chromium + FFmpeg) wird nicht verwendet.</td><td><span class="tag t-ok">fest</span></td></tr>
+<tr><td>Medienbasis</td><td>WebCodecs (Decode/Encode), Mediabunny (Demux/Mux, MP4), Web Audio, WebGL2.</td><td><span class="tag t-ok">fest</span></td></tr>
+<tr><td>Renderer</td><td>Eigener dünner WebGL2-Compositor. Keine Game-Engine (PixiJS), kein Konva in Version 1, kein GSAP (Lizenz unklar), eigene Easing-Funktionen.</td><td><span class="tag t-ok">fest</span></td></tr>
+<tr><td>Export</td><td>Frame für Frame zeichnen, an <code>VideoEncoder</code> übergeben, gestreamt in MP4 schreiben. Immer neu kodieren. Smart Rendering (unveränderte Abschnitte kopieren) später, die Architektur sieht Abschnitte schon vor.</td><td><span class="tag t-ok">fest</span></td></tr>
+<tr><td>UI-Stack</td><td>Vue 3 (Options API), Pinia, Vite, Tailwind, Vitest, Fontsource (Schriften per npm, selbst gehostet), vue-i18n, TypeScript im Kern.</td><td><span class="tag t-ok">fest</span></td></tr>
+<tr><td>Kern ohne Vue</td><td>Projektmodell, Schnittlogik, Renderer, Export als reine TypeScript-Module. Vue ist nur die Oberfläche. Pro-Frame-Zustand liegt nicht in Vue-Reaktivität.</td><td><span class="tag t-ok">fest</span></td></tr>
+<tr><td>Layout</td><td>Zwei Spalten plus Timeline. Links Tab-Leiste (oben, gruppiert) mit Bibliothek, die bei Auswahl zum Eigenschaften-Panel wird. Rechts Player mit Aktionsleiste. Unten Timeline.</td><td><span class="tag t-ok">fest</span></td></tr>
+<tr><td>Look</td><td>Ein Look ("Splice"-Anmutung): Violett als Hauptfarbe, Limette als Signalfarbe. Light (Standard) und Dark über Design-Tokens. Keine weiteren Stilrichtungen.</td><td><span class="tag t-ok">fest</span></td></tr>
+<tr><td>Sprache</td><td>Oberfläche Deutsch und Englisch (i18n, Standard nach Browsersprache). Code und Bezeichner Englisch.</td><td><span class="tag t-ok">fest</span></td></tr>
+<tr><td>Projektdatei</td><td>JSON, als Download und automatisch lokal gespeichert. Chrome: Arbeitsordner mit relativen Pfaden. Andere Browser: Neuverknüpfung über Name, Größe, Dauer.</td><td><span class="tag t-ok">fest</span></td></tr>
+<tr><td>Name</td><td>Muster: Tier oder Adjektiv plus "Cut", englisch, kurz, das Symbol leitet sich aus dem Namen ab. Gewählt: <b>Jelly Cut</b> (Qualle in Violett und Limette). Keine Markenprüfung, Kinderprojekt.</td><td><span class="tag t-ok">fest</span></td></tr>
+</table></div>
+
+<h2 id="mockups">Mockups</h2>
+<p>Die Mockups sind verbindlich für Aufbau, Gruppierung und Beschriftung. Farben und Maße kommen aus den Design-Tokens (siehe UI-Regeln). Die Beispielinhalte sind erfunden.</p>
+<div class="mbar" role="group" aria-label="Mockup wählen">
+  <button class="mtab" data-view="library" aria-pressed="true">Editor: Bibliothek</button>
+  <button class="mtab" data-view="clip" aria-pressed="false">Editor: Clip gewählt</button>
+  <button class="mtab" data-view="text" aria-pressed="false">Editor: Text gewählt</button>
+  <button class="mtab" data-view="fine" aria-pressed="false">Feinschnitt</button>
+  <button class="mtab" data-view="export" aria-pressed="false">Export</button>
+  <button class="mtab" data-view="phone" aria-pressed="false">Handy / Tablet</button>
+  <span class="mspacer"></span>
+  <button class="mtab" id="themeBtn" aria-pressed="false">Dark-Theme ansehen</button>
+</div>
+<div class="mscroll"><div class="mock" id="mock"></div></div>
+<p class="mcap" id="mockcap"></p>
+
+<h3>Aufbau in Worten</h3>
+<ul>
+<li><b>Kopfleiste:</b> Projektname, Format (16:9, 9:16, 1:1, 4:5), Rückgängig, Wiederholen, Export.</li>
+<li><b>Tab-Leiste links oben</b> in drei beschrifteten Gruppen: <i>Material</i> (Medien, Audio, Aufnahme), <i>Gestalten</i> (Text, Sticker, Zeichnen, Untertitel) und <i>Look</i> (Filter, Übergänge). Jeder Tab hat Symbol und Text.</li>
+<li><b>Linkes Panel:</b> zeigt die Bibliothek des Tabs. Wird ein Element gewählt, wechselt es zu dessen Eigenschaften, mit Rückweg "Zurück zur Bibliothek". Es gibt keine rechte Spalte.</li>
+<li><b>Player:</b> direktes Verschieben, Skalieren und Drehen mit Anfassern. Oben rechts Einpassen/Füllen und Zoom.</li>
+<li><b>Aktionsleiste unter dem Player:</b> Abspielen, Frame vor/zurück, Zeit, Teilen, Feinschnitt, Duplizieren, Spiegeln, Drehen, Tempo, Ton aus, Löschen. Beschriftete Schaltflächen, mindestens 44 px hoch.</li>
+<li><b>Timeline:</b> feste Spuren (Text, Überlagerung, Video, Originalton, Musik), Magnet (Einrasten), Zoom, Abspielkopf, Schnittgriffe, Übergangsmarke am Schnitt.</li>
+</ul>
+
+<h2 id="funktionen">Funktionsumfang</h2>
+<p>Phasen: <span class="tag t-v1">V1</span> Mindestumfang, <span class="tag t-v15">V1.5</span> direkt danach, <span class="tag t-v2">V2</span> später. Die Akzeptanzkriterien sind das, was die Entwicklung prüfbar machen soll.</p>
+<div class="tw"><table>
+<tr><th>ID</th><th>Funktion</th><th>Phase</th><th>Akzeptanz</th></tr>
+<tr><td>P-01</td><td>Projekt neu, laden, speichern (JSON), Autosave</td><td><span class="tag t-v1">V1</span></td><td>Nach Neuladen ist der letzte Stand ohne Aktion wieder da. JSON-Download und -Import funktionieren.</td></tr>
+<tr><td>P-02</td><td>Arbeitsordner (Chrome) und Neuverknüpfung (andere Browser)</td><td><span class="tag t-v1">V1</span></td><td>Chrome: relative Pfade, Projekt ist zwischen Rechnern verschiebbar. Sonst: fehlende Medien werden per Name, Größe, Dauer erkannt und angeboten.</td></tr>
+<tr><td>M-01</td><td>Import Video, Audio, Bild; Bild als Standbild-Clip mit Dauer</td><td><span class="tag t-v1">V1</span></td><td>Bild-Clip hat einstellbare Dauer (Standard 5 s), verhält sich in der Timeline wie ein Videoclip.</td></tr>
+<tr><td>S-01</td><td>Teilen am Abspielkopf, Trimmen mit Griffen, Löschen</td><td><span class="tag t-v1">V1</span></td><td>Nicht-destruktiv. Hauptspur schließt Lücken automatisch. Schnitt springt auf ein echtes Quell-Frame.</td></tr>
+<tr><td>S-02</td><td>Frame-genaue Vorschau beim Pausieren und Schritt für Schritt</td><td><span class="tag t-v1">V1</span></td><td>Das angezeigte Bild entspricht exakt dem späteren Exportbild an dieser Zeit.</td></tr>
+<tr><td>S-03</td><td>Feinschnitt-Modus (Vollbild möglich)</td><td><span class="tag t-v1">V1</span></td><td>Zwei Bilder (letztes behaltenes, erstes entferntes), Frame-Streifen, Wellenform, Pausen-Markierung, ±1 Frame, Keyframe-Sprung, Zoom bis 1 Frame ≈ 64 px, Tastatur (Pfeile, Shift = 10 Frames, K).</td></tr>
+<tr><td>S-04</td><td>Rasten an Keyframes (Schalter, Standard an)</td><td><span class="tag t-v1">V1</span></td><td>Aus: Schnitt auf jedes Frame möglich. Vorschau bleibt flüssig.</td></tr>
+<tr><td>S-05</td><td>Rückgängig und Wiederholen, unbegrenzte Tiefe im Speicher</td><td><span class="tag t-v1">V1</span></td><td>Strg+Z, Strg+Y bzw. Umschalt+Strg+Z. Jede Bearbeitung ist ein Schritt.</td></tr>
+<tr><td>S-06</td><td>Duplizieren, Kopieren, Einfügen, Ersetzen (Clip tauschen, Bearbeitung bleibt)</td><td><span class="tag t-v15">V1.5</span></td><td>Ersetzen behält Position, Effekte und Länge soweit möglich.</td></tr>
+<tr><td>F-01</td><td>Format: 16:9, 9:16, 1:1, 4:5; Einpassen oder Füllen; Zoom und Verschieben im Player; Hintergrund (Unschärfe oder Farbe)</td><td><span class="tag t-v1">V1</span></td><td>Quadratisches Video mit Füllen ist ohne Rand möglich. Export hat exakt das gewählte Format.</td></tr>
+<tr><td>F-02</td><td>Spiegeln, Drehen (90° und frei)</td><td><span class="tag t-v1">V1</span></td><td>Gilt pro Clip, auch im Export.</td></tr>
+<tr><td>T-01</td><td>Text: Inhalt, 6 bis 8 kuratierte Schriften, Größe, Farbe, Kontur, Hintergrund, Position</td><td><span class="tag t-v1">V1</span></td><td>Direkt im Player bearbeitbar. Aussehen in Vorschau und Export identisch.</td></tr>
+<tr><td>T-02</td><td>Animations-Presets für Text (Einblenden, Pop, Gleiten)</td><td><span class="tag t-v1">V1</span></td><td>Ein- und Ausblenden getrennt wählbar, Dauer einstellbar.</td></tr>
+<tr><td>U-01</td><td>Übergänge (ca. 10 Stück) am Schnitt, Dauer einstellbar</td><td><span class="tag t-v1">V1</span></td><td>Gesamtlänge bleibt gleich, wenn Handles vorhanden sind. Sonst werden Clips so verschoben, dass keine Standbilder entstehen, und die Verkürzung wird angezeigt.</td></tr>
+<tr><td>A-01</td><td>Originalton aus, Lautstärke, Musik hinzufügen, Ein- und Ausblenden</td><td><span class="tag t-v1">V1</span></td><td>Pro Clip und Musikspur. Kurze Ton-Überblendung (ca. 15 ms) an jedem Schnitt gegen Knacken.</td></tr>
+<tr><td>A-02</td><td>Aufnahme: Mikrofon, Kamera, Bildschirm</td><td><span class="tag t-v1">V1</span></td><td>Ergebnis landet als Clip in der Bibliothek. Bildschirmaufnahme ist auf iPads im Browser vermutlich nicht möglich (testen), dort wird der Knopf ausgeblendet.</td></tr>
+<tr><td>X-01</td><td>Export: Auflösung (480p, 720p, 1080p), Bildrate (24, 30, 60), Qualität (Gut, Klein, Sehr klein), MP4</td><td><span class="tag t-v1">V1</span></td><td>Fortschrittsanzeige, Abbrechen, geschätzte Dauer. Bitraten verstecken sich hinter den Qualitätsstufen.</td></tr>
+<tr><td>X-02</td><td>GIF-Export</td><td><span class="tag t-v15">V1.5</span></td><td>Max. Breite und Bildrate wählbar, Dateigröße wird geschätzt.</td></tr>
+<tr><td>L-01</td><td>Filter (inkl. Schwarzweiß) und Anpassung (Helligkeit, Kontrast, Sättigung)</td><td><span class="tag t-v15">V1.5</span></td><td>Intensität einstellbar. Ein Shader pro Filter.</td></tr>
+<tr><td>L-02</td><td>Überlagerung: Bild oder Video über Video</td><td><span class="tag t-v15">V1.5</span></td><td>Position, Größe, Deckkraft, Dauer wie bei Text.</td></tr>
+<tr><td>L-03</td><td>Sticker und animierte Reaktionen (kuratiert, selbst gehostet)</td><td><span class="tag t-v15">V1.5</span></td><td>Nur lizenzgeprüfte Dateien im Repository. Keine externen Dienste zur Laufzeit.</td></tr>
+<tr><td>L-04</td><td>Zeichnen und Hervorheben: Stift, Pfeil, Rahmen, Weichzeichnen oder Verpixeln eines Bereichs</td><td><span class="tag t-v15">V1.5</span></td><td>Pro Element mit Start, Dauer und Position, nachträglich änderbar.</td></tr>
+<tr><td>L-05</td><td>Tempo (0,25 bis 4×), Standbild aus Frame</td><td><span class="tag t-v15">V1.5</span></td><td>Video über neue Zeitzuordnung. Ton zunächst mit Tonhöhenänderung oder stumm.</td></tr>
+<tr><td>E-01</td><td>Quellen-Hilfe: Seite mit Links zu freien Bildern, Musik, Videos und Lizenzhinweisen, automatisch erzeugte Credits</td><td><span class="tag t-v15">V1.5</span></td><td>Credits-Text lässt sich kopieren. Link in der Bibliothek.</td></tr>
+<tr><td>E-02</td><td>"Blick hinter die Kulissen": Erklärmodus (echte Paketdaten, Ebenen als 3D, Live-Pipeline)</td><td><span class="tag t-v15">V1.5</span></td><td>Zeigt für das aktuelle Projekt die echten Zwischenschritte. Eigene Spezifikation folgt.</td></tr>
+<tr><td>K-01</td><td>Untertitel automatisch (Whisper im Browser), TikTok-Stil</td><td><span class="tag t-v2">V2</span></td><td>Modell wird lokal geladen. Wortzeiten für Hervorhebung.</td></tr>
+<tr><td>K-02</td><td>Transkript-Schnitt (Wort löschen schneidet das Video)</td><td><span class="tag t-v2">V2</span></td><td>Baut auf K-01 auf.</td></tr>
+<tr><td>K-03</td><td>Smart Rendering, Grünbild (Chroma-Key), Vorlagen, KI-Funktionen</td><td><span class="tag t-v2">V2</span></td><td>Jeweils eigene Spezifikation.</td></tr>
+</table></div>
+<p><b>Bewusst nicht dabei:</b> Cloud-Speicher, Konten, Credits, Generieren von Videos, Markenkit, Plug-ins.</p>
+
+<h2 id="architektur">Architektur</h2>
+<div class="pipe" aria-label="Pipeline">
+  <div class="st"><b>1 QUELLE</b>Datei lesen, Spuren und Zeitstempel (Mediabunny <code>Input</code>)</div><span class="ar">→</span>
+  <div class="st"><b>2 DECODE</b>WebCodecs, in der Vorschau zusätzlich <code>&lt;video&gt;</code></div><span class="ar">→</span>
+  <div class="st"><b>3 COMPOSITE</b>WebGL2: Clip, Filter, Bereichseffekte, Sticker, Text, Zeichnung</div><span class="ar">→</span>
+  <div class="st"><b>4 ENCODE</b><code>VideoEncoder</code> über <code>CanvasSource</code>, Ton aus Offline-Mix</div><span class="ar">→</span>
+  <div class="st"><b>5 MUX</b>Mediabunny <code>Output</code>, MP4, gestreamt</div>
+</div>
+<p><b>Vorschau und Export teilen sich dieselbe Zeichenfunktion</b> <code>drawFrame(project, time, frameSource, target)</code>. Nur die Frame-Quelle unterscheidet sich: Vorschau nutzt versteckte <code>&lt;video&gt;</code>-Elemente (Ton als Taktgeber, bei Rückstand werden Frames übersprungen). Beim Pausieren und Schritt für Schritt wird ab dem vorherigen Keyframe mit WebCodecs dekodiert, die Frames rund um den Abspielkopf liegen im Cache. Der Export dekodiert strikt der Reihe nach (Mediabunny <code>CanvasSink</code>) und kennt keine Echtzeit.</p>
+<h3>Modulstruktur</h3>
+<pre><code>src/
+  core/                 # reines TypeScript, kein Vue, mit Vitest getestet
+    project/            # Schema, Validierung, Migrationen, Standardwerte
+    timeline/           # Teilen, Trimmen, Ripple, Einrasten, Übergangsplaner
+    time.ts             # Zeit in Mikrosekunden, Frame-Raster
+    history/            # Rückgängig/Wiederholen (Patches oder Snapshots)
+    render/             # WebGL2-Compositor, Shader, Text-Layout, drawFrame()
+    media/              # Probe, Decode, Frame-Cache, Ton-Spitzenwerte
+    audio/              # Vorschau-Mixer (Web Audio), Offline-Mix für Export
+    export/             # Planer (Abschnitte), Encode-Pipeline, Presets, GIF
+    io/                 # Dateizugriff-Adapter, Autosave, JSON ein/aus
+  ui/                   # Vue 3 (Options API), Pinia-Stores, Komponenten
+  workers/              # Decode/Encode-Worker, später Whisper-Worker
+  locales/              # de.json, en.json</code></pre>
+<h3>Regeln für die Umsetzung</h3>
+<ul>
+<li>Der Renderzustand (Frames, Decoder, Texturen) liegt nicht in Vue. Vue erhält nur die Abspielzeit in gedrosselten Updates. Große Objekte nie in reaktive Daten legen (<code>shallowRef</code> oder gar nicht).</li>
+<li>Der Export wird als Liste von Abschnitten geplant (<code>render</code> oder <code>copy</code>). In V1 gibt es nur <code>render</code>. Der Planer ist von Anfang an eine eigene Funktion.</li>
+<li>Decode und Encode laufen in Workern, die Oberfläche bleibt bedienbar.</li>
+<li>Mediabunny wird mit exakter Version festgelegt (geprüfte API: 1.60.0, aktuell neuere 1.61.x vorhanden, vor dem Upgrade prüfen).</li>
+<li>Vor dem Export prüfen <code>canEncodeVideo</code> (Mediabunny) und <code>track.canDecode()</code>, bevor Auswahlmöglichkeiten angeboten werden. H.264 bevorzugt, VP9 als Rückfall (in MP4 getestet, Player-Kompatibilität prüfen). <code>hardwareAcceleration</code> ist nur ein Hinweis.</li>
+<li>Reihenfolge pro Frame: Clip, Filter, Bereichseffekte (Weichzeichnen/Verpixeln in einer Maske), Sticker und Überlagerungen, Text, Zeichnungen.</li>
+</ul>
+
+<h2 id="datenmodell">Datenmodell (Entwurf)</h2>
+<p>Alle Zeiten sind ganze Mikrosekunden (wie die WebCodecs-Zeitstempel). Schnittpunkte werden auf echte Zeitstempel der Quelle gesetzt, nie auf gerundete Sekundenwerte.</p>
+<pre><code>{
+  "version": 1,
+  "name": "Summer trip",
+  "format": { "ratio": "16:9", "width": 1920, "height": 1080, "fps": 30,
+              "background": { "type": "blur" } },
+  "assets": [
+    { "id": "a1", "kind": "video", "name": "Beach.mp4", "relPath": "media/Beach.mp4",
+      "size": 123456789, "duration": 16433000, "width": 3840, "height": 2160, "fps": 60 }
+  ],
+  "clips": [
+    { "id": "c1", "track": "video", "assetId": "a1",
+      "srcIn": 2000000, "srcOut": 9000000, "start": 0, "speed": 1,
+      "transform": { "fit": "fill", "scale": 1, "x": 0, "y": 0, "rotation": 0, "flipX": false },
+      "volume": 1, "muted": false, "filter": null,
+      "transitionIn": { "type": "wipe", "duration": 500000 } }
+  ],
+  "texts": [
+    { "id": "t1", "start": 1000000, "duration": 4000000, "text": "Summer trip",
+      "style": { "font": "Sora", "size": 64, "color": "#FFFFFF", "outline": "#14121F" },
+      "pos": { "x": 0.5, "y": 0.85 }, "animIn": "pop", "animOut": null }
+  ],
+  "overlays": [], "stickers": [], "drawings": [],
+  "music": [ { "id": "m1", "assetId": "a2", "start": 0, "srcIn": 0, "srcOut": 30000000,
+               "volume": 0.6, "fadeIn": 500000, "fadeOut": 1000000 } ]
+}</code></pre>
+<p>Die Übergangsangabe liegt am zweiten Clip des Schnitts (<code>transitionIn</code>). Der Renderer benötigt dort Überlappung (siehe nächster Abschnitt). Bild-Clips sind Clips mit <code>assetId</code> eines Bildes und fester Dauer. Das Schema bekommt von Anfang an eine <code>version</code> und Migrationsfunktionen.</p>
+
+<h2 id="schneiden">Schneiden, Übergänge, Feinschnitt</h2>
+<h3>Lange und große Videos (bis ca. 50 Minuten, 4K)</h3>
+<p>Schüler bringen ungeschnittene Aufnahmen mit. Import und erstes Bearbeiten dürfen nicht auf Dekodieren warten. Erste Messung: Dekodieren per WebCodecs lief bei einer Testdatei (vermutlich 4K mit 60 Bildern/s) mit nur 15 Bildern/s auf alter Hardware. Daraus folgen Regeln:</p>
+<ul>
+<li><b>Import = nur lesen, nie dekodieren.</b> Mediabunny liest Container und Keyframe-Index direkt aus der <code>File</code> (Streaming, kein Laden in den Speicher). Ein 50-Minuten-Clip ist in Sekunden in der Timeline.</li>
+<li><b>Abspielen:</b> über <code>&lt;video&gt;</code> (nativer, meist hardwarebeschleunigter Pfad, in der Messung nicht abgedeckt). WebCodecs nur für Pausenbild, Einzelschritte und Export. In M0 messen, ob 4K-Wiedergabe über <code>&lt;video&gt;</code> flüssig ist.</li>
+<li><b>Nur Benötigtes dekodieren:</b> Fenster um den Abspielkopf (Ringpuffer mit wenigen Dutzend Frames). Jedes <code>VideoFrame</code> sofort mit <code>close()</code> freigeben, sonst läuft der GPU-Speicher voll. Nie ein ganzes Video im Speicher halten.</li>
+<li><b>Vorschaubilder:</b> träge, nur Keyframes, in Reihenfolge der Sichtbarkeit, zwischengespeichert.</li>
+<li><b>Wellenform:</b> Ton streamend dekodieren und nur Spitzenwerte behalten (50 Minuten Ton roh wären über 1 GB). Erscheint nach und nach in der Timeline. Ton-Dekodierung ist deutlich billiger als Video.</li>
+<li><b>Export:</b> dekodiert nur das tatsächlich verwendete Material (springt zum Keyframe vor jedem Abschnitt). Eine 50-Minuten-Aufnahme, die auf 5 Minuten gekürzt wird, kostet etwa 5 Minuten Dekodierung. Reine 4K-Quellen sind der teure Fall.</li>
+<li><b>Schnellvorschau-Datei</b> (kleine Kopie im Hintergrund) nur optional und später, weil das Erzeugen selbst dekodieren muss.</li>
+<li>In M0 messen: Dekodiergeschwindigkeit für 1080p30 (typisches Schülervideo) und 4K60, <code>&lt;video&gt;</code>-Wiedergabe, Speicherverbrauch bei 50-Minuten-Datei.</li>
+</ul>
+<h3>Handles und Übergänge</h3>
+<p>Ein Übergang braucht Überlappung. Beim Schneiden bleibt ungenutztes Quellmaterial am Clip-Rand übrig ("Handles"). Der Planer nimmt es zuerst: Der Übergang wird um den Schnitt zentriert, die Gesamtlänge bleibt gleich. Fehlen Handles, werden die Clips verschoben und das Projekt wird um die Übergangsdauer kürzer (sichtbar angezeigt). Standbilder als Notlösung werden vermieden.</p>
+<h3>Frame-genaue Vorschau</h3>
+<p><code>&lt;video&gt;.currentTime</code> ist nicht garantiert frame-genau und taugt nur zum Abspielen. Pausierte Bilder und Einzelschritte kommen aus WebCodecs: ab dem vorherigen Keyframe dekodieren, die Frames in einem kleinen Ringpuffer halten. Das Rasten an Keyframes beschleunigt die Vorschau, weil dort sofort dekodiert werden kann.</p>
+<h3>Feinschnitt-Modus</h3>
+<ul>
+<li>Zwei Bilder nebeneinander: letztes behaltenes Frame und erstes entferntes Frame.</li>
+<li>Frame-Streifen mit Keyframe-Markierung, darunter die Ton-Wellenform an derselben Zeitachse.</li>
+<li>Wellenform: Ton einmal dekodieren, Spitzenwerte in mehreren Detailstufen berechnen und zwischenspeichern. Pausen (Pegel unter einem einstellbaren Schwellwert für mindestens 0,3 s) werden als Vorschlag markiert, mit Sprung zur nächsten Pause.</li>
+<li>Beim Frame-Schritt spielt ein kurzer Ton-Schnipsel, damit man hört, wo man ist.</li>
+<li>Schritte: Frame, Keyframe, Pause. Zoom stufenlos von Sekunden bis 1 Frame ≈ 64 px.</li>
+</ul>
+
+<h2 id="export">Export</h2>
+<ul>
+<li>Auflösung 480p, 720p, 1080p. Bildrate 24, 30, 60. Qualität: <i>Gut</i>, <i>Klein</i>, <i>Sehr klein</i>. Bitraten werden nicht angezeigt.</li>
+<li>Startwerte der Bitraten (ungeprüft, per Messung anpassen): 1080p30 etwa 5 bis 8 Mbit/s für <i>Gut</i>.</li>
+<li>Schnittstelle: <code>plan(project, preset) → Segment[]</code>, dann <code>run(segments, onProgress, signal)</code>. Abbrechen über <code>AbortSignal</code> (bei Mediabunny <code>output.cancel()</code>).</li>
+<li>Vor dem Start: Kodierer prüfen, Auswahl und Rückfall (H.264, sonst VP9) anzeigen. Danach: Datei zum Speichern anbieten.</li>
+<li><b>Hintergrund-Tab:</b> Browser drosseln Tabs im Hintergrund stark (Zeichnen, Bildabgriff vom Canvas, Timer). Erste Messung in Firefox deutet darauf hin (siehe Meilenstein 0). Den Export-Renderer deshalb so bauen, dass er im Worker mit <code>OffscreenCanvas</code> läuft, und in M0 prüfen, ob er im Hintergrund durchläuft. Bis dahin: Hinweis "Tab sichtbar lassen" und Erkennung über <code>visibilitychange</code>.</li>
+<li>Rückstau beachten: Bei <code>await source.add()</code> nicht ungebremst Frames erzeugen. Pro Frame Zeichnen, Kodieren und Warten getrennt messen.</li>
+</ul>
+<h3>Leistungsnachweis (Meilenstein 0)</h3>
+<p>Eine <b>Messseite</b> liegt vor (Artefakt "Export-Geschwindigkeitstest"). Sie rendert mit WebGL (Übergang, Filter, Text) und kodiert mit Mediabunny, getrennt für Zeichnen und Kodieren, mit Hardware- und Softwarekodierer, und vergleicht mit dem Shotcut-Wert. Erste Messung in Headless-Chromium ohne GPU (2 Kerne, VP9, 720p, 10 s): Faktor 0,45, also etwa 14 Bilder pro Sekunde. Das ist nur ein Funktionsnachweis. Maßgeblich ist die Messung auf den Schul-PCs. Ergebnis geht in die Festlegung der Standardwerte ein.</p>
+<p><b>Erste Messung auf einem Entwickler-PC</b> (Firefox 157, Windows, 16 Kerne, Radeon R9 200): 720p H.264 automatisch 58 Bilder/s (Faktor 1,93, 3 min in ca. 1:33 min), 720p H.264 per Prozessor 12 Bilder/s (Faktor 0,41, ca. 7:24 min). Alle weiteren Läufe (VP9, AV1, 1080p) lagen unabhängig vom Codec bei nur 1 bis 2 Bildern pro Sekunde, mit kaum Zeichen- und Kodierzeit. Der Tab war tatsächlich im Hintergrund, diese Läufe sind ungültig. Im Vordergrund: 1080p H.264 automatisch 29 Bilder/s (Faktor 0,97, 3 min in ca. 3:06 min), also etwa Echtzeit und rund fünfmal schneller als Shotcut bei gleichem Material. Dekodieren: 15 Bilder/s (Faktor 0,25) bei einer Testdatei, die vermutlich 4K mit 60 Bildern/s hat. Die Messseite meldet jetzt die Auflösung der Quelle mit.</p>
+
+<h2 id="dateien">Dateien, Speichern, Browser</h2>
+<div class="tw"><table>
+<tr><th>Thema</th><th>Chrome / Edge</th><th>Firefox</th><th>Safari / iPad</th></tr>
+<tr><td>WebCodecs</td><td>ab 94</td><td>Desktop ab 130</td><td>ab 26</td></tr>
+<tr><td>Ordnerzugriff (<code>showDirectoryPicker</code>)</td><td>ja (ab 86)</td><td>nein</td><td>nein</td></tr>
+<tr><td>Dateiauswahl und Download</td><td>ja, Fallback nicht nötig</td><td><code>&lt;input type=file&gt;</code>, <code>&lt;a download&gt;</code></td><td>dito</td></tr>
+<tr><td>Besonderheiten</td><td>Hauptziel, Messung auf Schul-PCs</td><td>Eingeschränkt unterstützt: HEVC-Videos (iPhone) lassen sich nicht öffnen. Der Editor prüft das beim Import mit <code>canDecode()</code> und zeigt "Bitte Chrome oder Edge benutzen, Firefox kann dieses Video nicht lesen". Ausgabe H.264 oder VP9.</td><td>Kodierung teils unvollständig, Bildschirmaufnahme vermutlich nicht möglich</td></tr>
+</table></div>
+<p>Autosave ins lokale Browser-Dateisystem (OPFS) oder IndexedDB. Der Zustand liegt nur im Browser und kann verschwinden, deshalb deutlicher Hinweis und leicht erreichbarer JSON-Download. Fallback ohne Ordnerzugriff: <code>browser-fs-access</code> oder eigener Adapter hinter derselben Schnittstelle. Medien werden nie kopiert oder hochgeladen.</p>
+
+<h2 id="ui">UI-Regeln</h2>
+<ul>
+<li><b>Design-Tokens:</b> alle Farben, Radien, Abstände als CSS-Variablen (Tailwind darauf aufgebaut). Light ist Standard, Dark per Umschalter und nach Systemvorgabe. Richtwerte der Mockups: Hauptfarbe Violett (#6D4CF5, Text auf Hell #5B3FE0, Text auf Dunkel #A593FF), Signalfarbe Limette (#C6F432) nur als Fläche mit dunkler Schrift, Hintergründe Light #F4F3FA/#FFFFFF, Dark #0E0F14/#171923.</li>
+<li><b>Schriften:</b> Sora (Überschriften, Bedienelemente), DM Mono (Zeiten, Frame-Zahlen), über Fontsource lokal. Wenige, feste Größen.</li>
+<li><b>Responsive:</b> Desktop wie in den Mockups. Auf Tablets und schmalen Fenstern stapeln sich Player, Aktionsleiste und Timeline, die Tab-Leiste wandert nach unten. Timeline scrollt seitlich.</li>
+<li><b>Bedienbarkeit:</b> Touch-Flächen mindestens 44 px. Jedes Symbol hat einen Text oder <code>aria-label</code>. Alle Funktionen per Tastatur, Fokus sichtbar. Kontrast mindestens 4,5:1 für Text.</li>
+<li><b>Sprache:</b> alle Texte über i18n, keine festen Strings in Komponenten. Zahlen und Zeiten lokalisiert.</li>
+<li><b>Fehler verständlich:</b> fehlende Datei, nicht unterstütztes Format, Browser kann nicht kodieren: klare Meldung mit nächstem Schritt, nie nur Fehlercode.</li>
+</ul>
+
+<h2 id="quellen">Quellen und Lizenzen</h2>
+<ul>
+<li><b>Quellen-Hilfe:</b> kuratierte Linkliste zu freien Bildern, Musik und Videos mit Lizenzhinweis und Anleitung zum Nennen der Urheber. Die Liste wird vor Aufnahme geprüft (Lizenztexte, Nutzungsbedingungen).</li>
+<li><b>Credits:</b> Der Editor merkt sich pro Medium Quelle und Lizenz (Eingabefeld) und erzeugt daraus einen kopierbaren Text.</li>
+<li><b>Sticker und GIFs:</b> nur selbst gehostete, lizenzgeprüfte Dateien. Tenor-API existiert nicht mehr, keine Abhängigkeit von Drittanbietern zur Laufzeit.</li>
+<li><b>Bibliotheken:</b> vor Einsatz Lizenz jeweils prüfen. Offen: gl-transitions (Einzelübergänge mit eigener Lizenzangabe). Selbst geschrieben statt Bibliothek: TikTok-Untertitel-Gruppierung (Wörter nach Pausen und Länge zu Seiten bündeln, ca. 50 Zeilen, kein <code>@remotion/captions</code>) und Sticker-Animationen. Ausgeschlossen: GSAP, dotLottie-web, PixiJS, Konva (V1).</li>
+<li><b>Sticker:</b> statische Bilder (SVG oder PNG, selbst gehostet) mit Animationseffekten aus der eigenen Easing-Bibliothek (Pop, Wackeln, Hüpfen, Drehen, Einblenden). Animierte Reaktionen später als vorgerenderte Bildfolgen.</li>
+</ul>
+
+<h2 id="plan">Tests und Meilensteine</h2>
+<h3>Tests</h3>
+<ul>
+<li><b>Vitest</b> für den Kern: Zeitrechnung, Schnittoperationen, Übergangsplaner (mit und ohne Handles), Projektschema und Migrationen, Rückgängig/Wiederholen.</li>
+<li><b>Bildvergleich:</b> ein Exportframe wird mit der Vorschau an derselben Zeit verglichen (Toleranz festlegen).</li>
+<li><b>Ende-zu-Ende</b> mit Playwright (später): Import, Schnitt, Export, Datei prüfen (Dauer, Auflösung).</li>
+</ul>
+<h3>Meilensteine</h3>
+<div class="tw"><table>
+<tr><th>Nr.</th><th>Inhalt</th><th>Ergebnis</th></tr>
+<tr><td>M0</td><td>Spike: ein Clip dekodieren, mit WebGL zeichnen, Text darüber, exportieren. Messung auf Schul-PC.</td><td>Faktor gegenüber Shotcut, Standardwerte, Kodierer-Rückfälle</td></tr>
+<tr><td>M1</td><td>Projektmodell, Timeline, Teilen, Trimmen, Rückgängig, Vorschau mit Abspielen und Einzelbildern</td><td>Schneiden funktioniert frame-genau</td></tr>
+<tr><td>M2</td><td>Text, Übergänge, Format, Einpassen/Füllen, Spiegeln/Drehen</td><td>Gestalten funktioniert</td></tr>
+<tr><td>M3</td><td>Ton: Originalton, Musik, Überblendungen, Feinschnitt mit Wellenform</td><td>Versprecher sauber schneiden</td></tr>
+<tr><td>M4</td><td>Export-Dialog, Presets, Speichern, Autosave, Ordnerzugriff, Neuverknüpfung</td><td>Komplette V1-Kette</td></tr>
+<tr><td>M5</td><td>Aufnahme, i18n, Responsive, Barrierefreiheit, Politur, Test mit Schülern</td><td>V1 fertig</td></tr>
+</table></div>
+
+<h2 id="offen">Offene Punkte</h2>
+<div class="tw"><table>
+<tr><th>Punkt</th><th>Stand</th></tr>
+<tr><td>Messung auf Schul-PCs (Messseite), Hardware- gegenüber Softwarekodierer</td><td><span class="tag t-open">offen</span></td></tr>
+<tr><td>Bildschirmaufnahme und Kamera auf iPads im Browser</td><td><span class="tag t-open">testen</span></td></tr>
+<tr><td>Bitraten für die Qualitätsstufen</td><td><span class="tag t-open">per Messung</span></td></tr>
+<tr><td>Lizenzen: gl-transitions, Sticker-Quellen</td><td><span class="tag t-open">prüfen</span></td></tr>
+<tr><td>Whisper-Wortzeiten im Browser (<code>return_timestamps: "word"</code>), Modellgröße ca. 200 MB, Alternativen</td><td><span class="tag t-open">V2, prüfen</span></td></tr>
+<tr><td>iPhone-Clips (HEVC, .mov): Dekodierung auf Schul-PCs (Windows braucht ggf. die HEVC-Erweiterung, Firefox verweigert HEVC). Fallback-Hinweis für Schüler ("Kompatibelste" Aufnahmeeinstellung am iPhone) und Prüfung per <code>track.canDecode()</code> beim Import</td><td><span class="tag t-open">prüfen</span></td></tr>
+<tr><td>Dekodierleistung: Messung 1080p24 = 58 Bilder/s, 4K60 = 15 Bilder/s, in beiden Fällen etwa 120 Megapixel pro Sekunde (WebCodecs mit Skalierung auf 1280 px, alter PC). Daraus: 1080p30 etwa doppelte Echtzeit, 4K30 nur etwa halbe Echtzeit</td><td><span class="tag t-ok">gemessen</span></td></tr>
+<tr><td>Erklärmodus "Blick hinter die Kulissen"</td><td><span class="tag t-v15">eigene Spezifikation</span></td></tr>
+</table></div>
+
+<h2 id="prompt">Start-Prompt für den Entwicklungs-Chat</h2>
+<p>Zum Einfügen in den Entwicklungs-Chat, zusammen mit dieser Seite:</p>
+<pre><code id="promptText">Du bist mein Entwicklungspartner für einen Videoeditor für Schulen, der komplett im Browser läuft (Vue 3 Options API, TypeScript im Kern, Vite, Tailwind, Vitest, Pinia, vue-i18n, Fontsource).
+
+Grundlage ist das Anforderungsdokument "Videoeditor Anforderungen" (Entscheidungen, Mockups, Funktionsumfang, Architektur, Datenmodell). Halte dich daran. Abweichungen oder Lücken sprichst du vor der Umsetzung an.
+
+Regeln:
+- Kern (core/) ist reines TypeScript ohne Vue und mit Vitest getestet. Vue ist nur die Oberfläche.
+- Vorschau und Export nutzen dieselbe Funktion drawFrame(). Renderzustand liegt nicht in Vue-Reaktivität.
+- Zeiten sind ganze Mikrosekunden, Schnitte liegen auf echten Quell-Zeitstempeln.
+- Export als Planer (Abschnitte) plus Pipeline, in V1 immer neu kodieren. Mediabunny mit exakter Version, Fähigkeiten vor Anzeige prüfen.
+- Alle Texte über i18n (de, en), Design-Tokens für Light und Dark, Touch-Flächen mindestens 44 px, Tastaturbedienung.
+- Nur lizenzgeprüfte Bibliotheken und Medien. Kein GSAP, kein PixiJS, kein Konva in V1.
+
+Starte mit Meilenstein 0 (Spike und Messung): ein Clip dekodieren, mit WebGL zeichnen, Text darüber, mit Mediabunny exportieren, Zeiten für Zeichnen und Kodieren getrennt messen. Danach Meilenstein 1. Arbeite in kleinen, prüfbaren Schritten und liefere zu jedem Schritt die Tests.</code></pre>
+<button class="btn" id="copyPrompt">Prompt kopieren</button> <span id="copyMsg" role="status" style="margin-left:10px;color:var(--muted);font-size:15px"></span>
+</main>
+</div>
+
+<script>
+(function(){
+  function ic(n){return '<svg class="ic" aria-hidden="true"><use href="#i-'+n+'"/></svg>';}
+  function act(label,icon,cls){return '<button class="m-act'+(cls?' '+cls:'')+'">'+ic(icon)+'<span>'+label+'</span></button>';}
+  function tab(label,icon,on,soon){return '<button class="m-tab'+(on?' on':'')+(soon?' soon':'')+'">'+ic(icon)+label+'</button>';}
+  function tabs(active){
+    return '<div class="m-tabs">'+
+      '<div class="m-grp">Material</div><div class="m-row">'+tab('Medien','media',active==='media')+tab('Audio','audio',active==='audio')+tab('Aufnahme','rec',active==='rec')+'</div>'+
+      '<div class="m-grp">Gestalten</div><div class="m-row">'+tab('Text','text',active==='text')+tab('Sticker','sticker',false,1)+tab('Zeichnen','draw',false,1)+tab('Untertitel','cc',false,1)+'</div>'+
+      '<div class="m-grp">Look</div><div class="m-row">'+tab('Filter','filter',false,1)+tab('Übergänge','trans',active==='trans')+'<span style="flex:2"></span></div>'+
+    '</div>';
+  }
+  function top(){
+    return '<div class="m-top"><div class="m-logo"><i></i>Jelly Cut</div><span class="m-chip">Summer trip</span><span class="m-chip">'+ic('ratio')+'16:9</span>'+
+      '<button class="m-ib" aria-label="Rückgängig">'+ic('undo')+'</button><button class="m-ib dis" aria-label="Wiederholen">'+ic('redo')+'</button>'+
+      '<button class="m-export">Export</button></div>';
+  }
+  function sl(v,label,val){return '<div><div class="m-kv"><span>'+label+'</span><small>'+val+'</small></div><div class="m-sl"><b style="width:'+v+'%"></b><i style="left:'+v+'%"></i></div></div>';}
+  var libPanel = '<div class="m-lib"><div class="m-h">Medien · Ordner /summer-trip</div><div class="m-grid">'+
+    '<div class="m-th" style="background:linear-gradient(135deg,#2E6F8E,#5FA8A0)">Intro.mp4</div>'+
+    '<div class="m-th" style="background:linear-gradient(135deg,#C4572B,#F2B15C)">Beach.mp4</div>'+
+    '<div class="m-th" style="background:linear-gradient(135deg,#3b3f48,#8a8f99)">Interview.mp4</div>'+
+    '<div class="m-th" style="background:linear-gradient(135deg,#5B3FE0,#C6F432)">Logo.png</div>'+
+    '<div class="m-th m-add">+</div></div>'+
+    '<span class="m-link">Wo finde ich freie Bilder und Musik? →</span></div>';
+  var clipPanel = '<div class="m-lib"><button class="m-back">'+ic('back')+'Zurück zur Bibliothek</button><div class="m-h">Clip · Beach.mp4</div>'+
+    '<div class="m-sec"><div class="m-kv"><span>Bild im Format</span></div><div class="m-seg"><span>Einpassen</span><span class="on">Füllen</span></div>'+sl(55,'Zoom','120 %')+'</div>'+
+    '<div class="m-sec">'+sl(80,'Lautstärke','80 %')+'<div class="m-kv"><span>Originalton</span><small>an</small></div>'+sl(40,'Tempo','1,0×')+'</div>'+
+    '<div class="m-sec"><div class="m-kv"><span>Übergang am Schnitt</span><small>Wischen · 0,5 s</small></div></div></div>';
+  var textPanel = '<div class="m-lib"><button class="m-back">'+ic('back')+'Zurück zur Bibliothek</button><div class="m-h">Text · "Let\'s GO to the beach"</div>'+
+    '<div class="m-sec"><div class="m-kv"><span>Schrift</span><small>Sora Bold</small></div>'+sl(45,'Größe','64')+
+    '<div class="m-kv"><span>Farbe</span><span style="display:flex;gap:6px"><i style="width:20px;height:20px;border-radius:50%;background:#fff;border:2px solid #6D4CF5"></i><i style="width:20px;height:20px;border-radius:50%;background:#C6F432"></i><i style="width:20px;height:20px;border-radius:50%;background:#FF5CA8"></i><i style="width:20px;height:20px;border-radius:50%;background:#14121F"></i></span></div></div>'+
+    '<div class="m-sec"><div class="m-kv"><span>Kontur und Hintergrund</span><small>Kontur an</small></div><div class="m-kv"><span>Einblenden</span><small>Pop</small></div><div class="m-kv"><span>Ausblenden</span><small>keine</small></div></div></div>';
+  function tl(sel){
+    var c=function(l,w,col,t,s){return '<div class="m-clip'+(s?' sel':'')+'" style="left:'+l+'%;width:'+w+'%;background:'+col+'">'+t+'</div>';};
+    return '<div class="m-tl"><div class="m-tlbar"><button class="m-ib" aria-label="Magnet">'+ic('magnet')+'</button><span style="font-size:11px;color:var(--m-muted)">Einrasten an</span><span class="m-sp"></span>'+
+      '<button class="m-ib" aria-label="Verkleinern">'+ic('zoom')+'</button><div class="m-sl m-zoom"><i style="left:45%"></i></div><button class="m-ib" aria-label="Timeline einpassen">'+ic('full')+'</button></div>'+
+      '<div class="m-tlbody"><div class="m-ruler"><span>0:00</span><span>0:05</span><span>0:10</span><span>0:15</span><span>0:20</span><span>0:25</span><span>0:30</span></div>'+
+      '<div class="m-trk"><div class="m-lab">'+ic('text')+'Text</div><div class="m-lane">'+c(6,22,'#6D4CF5','Summer trip',sel==='text')+'</div></div>'+
+      '<div class="m-trk"><div class="m-lab">'+ic('sticker')+'Überlagerung</div><div class="m-lane">'+c(45,12,'#B8456F','Logo.png')+'</div></div>'+
+      '<div class="m-trk"><div class="m-lab">'+ic('media')+'Video</div><div class="m-lane">'+c(0,30,'var(--m-v1)','Intro.mp4')+c(30,36,'var(--m-v2)','Beach.mp4',sel==='clip')+c(66,34,'var(--m-v3)','Interview.mp4')+'<div class="m-tr" style="left:30%"></div></div></div>'+
+      '<div class="m-trk"><div class="m-lab">'+ic('vol')+'Originalton</div><div class="m-lane"><div class="m-clip wave" style="left:0;width:30%"></div><div class="m-clip wave" style="left:30%;width:36%"></div><div class="m-clip wave" style="left:66%;width:34%"></div></div></div>'+
+      '<div class="m-trk"><div class="m-lab">'+ic('audio')+'Musik</div><div class="m-lane">'+c(0,100,'var(--m-music)','Chill beat.mp3')+'</div></div>'+
+      '<div class="m-ph"></div></div></div>';
+  }
+  function right(sel){
+    var sub = '<div class="m-sub'+(sel==='text'?' sel':'')+'">Let\'s <b>GO</b> to the beach</div>';
+    return '<div class="m-right"><div class="m-stage"><div class="m-player">'+sub+'</div>'+
+      '<div class="m-ptool"><span class="m-chip">Einpassen · Füllen</span><span class="m-chip">'+ic('zoom')+'120 %</span></div></div>'+
+      '<div class="m-acts"><button class="m-play" aria-label="Abspielen">'+ic('play')+'</button><button class="m-ib" aria-label="Ein Frame zurück">'+ic('back')+'</button><button class="m-ib" aria-label="Ein Frame vor">'+ic('fwd')+'</button><span class="m-time">00:11:08</span><span class="m-sep"></span>'+
+      act('Teilen','split','hot')+act('Feinschnitt','crop')+act('Duplizieren','copy')+act('Spiegeln','flip')+act('Drehen','rotate')+act('Tempo','speed')+act('Ton aus','mute')+act('Löschen','trash')+'</div></div>';
+  }
+  function editor(panel,activeTab,sel){
+    return '<div class="m-app">'+top()+'<div class="m-main"><div class="m-left">'+tabs(activeTab)+panel+'</div>'+right(sel)+'</div>'+tl(sel)+'</div>';
+  }
+  function wave(){
+    var s='', n=150, seed=7;
+    function r(){seed=(seed*9301+49297)%233280;return seed/233280;}
+    for(var i=0;i<n;i++){
+      var x=i*(100/n), pause=(i>=44&&i<=58)||(i>=104&&i<=112);
+      var a=pause?(0.04+r()*0.05):(0.25+r()*0.65);
+      var h=a*86;
+      s+='<rect x="'+x.toFixed(2)+'%" y="'+(48-h/2).toFixed(1)+'" width="0.5%" height="'+h.toFixed(1)+'" rx="1" fill="var(--m-wave)"/>';
+    }
+    return '<svg preserveAspectRatio="none" aria-hidden="true">'+s+'</svg>';
+  }
+  function fine(){
+    var t='';
+    for(var i=0;i<16;i++){var n=324+i,key=n%8===0;
+      t+='<div class="m-tile'+(key?' key':'')+'"><i style="background:linear-gradient(135deg,hsl('+(18+i*2)+',55%,42%),hsl('+(36+i*2)+',80%,62%))"></i>'+(key?'KEY '+n:'#'+n)+'</div>';}
+    return '<div class="m-app"><div class="m-top"><div class="m-logo"><i></i>Feinschnitt</div><span class="m-chip">Beach.mp4 · 30 fps</span><span class="m-sp"></span><button class="m-btn">'+ic('full')+' Vollbild</button><button class="m-export">Fertig</button></div>'+
+    '<div class="m-fine"><div class="m-cmp"><div class="m-fr"><div class="im" style="background:linear-gradient(160deg,#C4572B,#F2B15C)"></div><div class="cp"><span>Letztes behaltenes Bild</span><span>#331 · 11:01</span></div></div>'+
+    '<div class="m-fr"><div class="im cut" style="background:linear-gradient(160deg,#C4572B,#F2B15C)"></div><div class="cp"><span>Erstes entferntes Bild</span><span>#332 · 11:02</span></div></div></div>'+
+    '<div class="m-strip"><div class="m-tiles">'+t+'</div><div class="m-cutline"></div></div>'+
+    '<div class="m-wavebox">'+wave()+'<div class="m-pause" style="left:29%;width:9.5%">Pause 0,42 s</div><div class="m-pause" style="left:69%;width:5.5%">Pause 0,25 s</div><div class="m-cutline" style="top:0"></div></div>'+
+    '<div class="m-fctl"><button class="m-fb">'+ic('dback')+'Pause</button><button class="m-fb">'+ic('back')+'Keyframe</button><button class="m-fb">'+ic('back')+'1 Frame</button><button class="m-fb hot">Hier schneiden</button><button class="m-fb">1 Frame'+ic('fwd')+'</button><button class="m-fb">Keyframe'+ic('fwd')+'</button><button class="m-fb">Pause'+ic('dfwd')+'</button></div>'+
+    '<div class="m-fnote"><span>Zoom</span><div class="m-sl" style="width:200px"><b style="width:75%"></b><i style="left:75%"></i></div><span>1 Frame = 64 px</span><span class="m-pill">Einrasten an Keyframes: aus</span><span class="m-pill">Ton beim Schritt: an</span><span class="m-pill">Überblendung 15 ms</span></div>'+
+    '<div class="m-fnote"><span>Pfeiltasten: Frame · Umschalt: 10 Frames · K: nächster Keyframe · P: nächste Pause</span></div></div></div>';
+  }
+  function exp(){
+    var base=editor(libPanel,'media',null);
+    var dlg='<div class="m-dim"><div class="m-dlg"><h4>Video exportieren</h4>'+
+      '<div class="m-opt"><span class="m-h">Auflösung</span><div class="m-seg"><span>480p</span><span>720p</span><span class="on">1080p</span></div></div>'+
+      '<div class="m-opt"><span class="m-h">Bilder pro Sekunde</span><div class="m-seg"><span>24</span><span class="on">30</span><span>60</span></div></div>'+
+      '<div class="m-opt"><span class="m-h">Qualität</span><div class="m-seg"><span class="on">Gut</span><span>Klein</span><span>Sehr klein</span></div></div>'+
+      '<div class="m-opt"><span class="m-h">Format</span><div class="m-seg"><span class="on">Video (MP4)</span><span>GIF</span></div></div>'+
+      '<div class="m-kv"><span>Dauer 00:30 · Größe ca. 24 MB</span><small>Schätzung</small></div>'+
+      '<div class="m-opt"><div class="m-kv"><span>Wird erstellt …</span><small>42 %</small></div><div class="m-bar"><i style="width:42%"></i></div></div>'+
+      '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="m-btn">Abbrechen</button><button class="m-btn go">Export starten</button></div></div></div>';
+    return base.replace(/<\/div>$/, dlg+'</div>');
+  }
+  function phone(){
+    return '<div style="padding:10px 0"><div class="m-phone">'+
+      '<div class="m-top" style="padding:0 10px"><div class="m-logo"><i></i>Jelly Cut</div><button class="m-ib" aria-label="Rückgängig">'+ic('undo')+'</button><button class="m-export" style="height:32px;padding:0 12px">Export</button></div>'+
+      '<div class="m-stage"><div class="m-player"><div class="m-sub" style="font-size:18px">Let\'s <b>GO</b> to the beach</div></div></div>'+
+      '<div class="m-acts"><button class="m-play" aria-label="Abspielen">'+ic('play')+'</button><span class="m-time">00:11</span>'+act('Teilen','split','hot')+act('Feinschnitt','crop')+act('Tempo','speed')+act('Ton aus','mute')+act('Löschen','trash')+'</div>'+
+      '<div class="m-tl"><div class="m-tlbody" style="overflow-x:auto"><div style="min-width:520px;position:relative">'+
+      '<div class="m-ruler"><span>0:00</span><span>0:10</span><span>0:20</span><span>0:30</span></div>'+
+      '<div class="m-trk"><div class="m-lab">Video</div><div class="m-lane"><div class="m-clip" style="left:0;width:30%;background:var(--m-v1)">Intro</div><div class="m-clip sel" style="left:30%;width:36%;background:var(--m-v2)">Beach</div><div class="m-clip" style="left:66%;width:34%;background:var(--m-v3)">Interview</div></div></div>'+
+      '<div class="m-trk"><div class="m-lab">Musik</div><div class="m-lane"><div class="m-clip" style="left:0;width:100%;background:var(--m-music)">Chill beat</div></div></div>'+
+      '</div></div></div>'+
+      '<div class="m-bottomtabs">'+act('Medien','media','')+act('Audio','audio')+act('Aufnahme','rec')+act('Text','text')+act('Sticker','sticker')+act('Filter','filter')+act('Übergänge','trans')+'</div></div></div>';
+  }
+  var views={
+    library:{html:function(){return editor(libPanel,'media',null);},cap:'Ausgangszustand: nichts gewählt. Links die Bibliothek des Tabs "Medien", rechts Player mit Aktionsleiste, unten die Timeline. Tabs mit gedämpfter Schrift (Sticker, Zeichnen, Untertitel, Filter) sind erst ab V1.5 bzw. V2 aktiv, bleiben aber sichtbar, damit das Layout stabil ist.'},
+    clip:{html:function(){return editor(clipPanel,'media','clip');},cap:'Ein Videoclip ist gewählt (Umrandung mit Schnittgriffen). Das linke Panel zeigt dessen Eigenschaften: Format (Einpassen/Füllen) und Zoom, Lautstärke, Originalton, Tempo, Übergang am Schnitt.'},
+    text:{html:function(){return editor(textPanel,'text','text');},cap:'Ein Text ist gewählt (Anfasser direkt im Player). Das Panel zeigt Schrift, Größe, Farbe, Kontur, Ein- und Ausblenden. Hier fällt der Mehrwert gegenüber einer rechten Spalte weg: der Player bleibt groß.'},
+    fine:{html:fine,cap:'Feinschnitt: Zwei Bilder rund um den Schnitt, darunter Frame-Streifen und Wellenform mit markierten Pausen (hell hinterlegt). Gedacht für Versprecher: in eine Pause springen, Frame-genau einstellen, "Hier schneiden".'},
+    export:{html:exp,cap:'Export-Dialog mit Auflösung, Bildrate, Qualität und Format. Bitraten sind hinter den Qualitätsstufen versteckt. Im Beispiel läuft gerade ein Export (Fortschritt und Abbrechen).'},
+    phone:{html:phone,cap:'Schmale Ansicht (Handy, kleines Tablet): Player oben, Aktionsleiste scrollt seitlich, Timeline scrollt seitlich, die Tab-Leiste liegt unten.'}
+  };
+  var mock=document.getElementById('mock'), cap=document.getElementById('mockcap');
+  var cur='library';
+  function show(v){cur=v;mock.innerHTML=views[v].html();cap.textContent=views[v].cap;
+    document.querySelectorAll('.mtab[data-view]').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.view===v?'true':'false');});}
+  document.querySelectorAll('.mtab[data-view]').forEach(function(b){b.addEventListener('click',function(){show(b.dataset.view);});});
+  var tb=document.getElementById('themeBtn');
+  tb.addEventListener('click',function(){var d=mock.classList.toggle('dark');tb.setAttribute('aria-pressed',d?'true':'false');tb.textContent=d?'Light-Theme ansehen':'Dark-Theme ansehen';});
+  show('library');
+  var cp=document.getElementById('copyPrompt'),msg=document.getElementById('copyMsg'),pt=document.getElementById('promptText');
+  cp.addEventListener('click',function(){
+    var done=function(){msg.textContent='Kopiert.';};
+    var fb=function(){var r=document.createRange();r.selectNodeContents(pt);var s=window.getSelection();s.removeAllRanges();s.addRange(r);msg.textContent='Text ist markiert, bitte mit Strg+C kopieren.';};
+    try{navigator.clipboard.writeText(pt.textContent).then(done,fb);}catch(e){fb();}
+  });
+})();
+</script>
+
+</body></html>
