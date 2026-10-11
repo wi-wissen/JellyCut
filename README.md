@@ -61,6 +61,7 @@ node scripts/e2e-hidpi.mjs        # canvas drawn at device resolution
 node scripts/e2e-canvas.mjs       # editing text and clips directly in the player
 node scripts/e2e-overlays.mjs      # stickers, shapes and pen strokes: preview pixels, export frame, undo
 node scripts/e2e-overlays2.mjs     # opacity, animations, blur/pixelate areas, pictures and videos: preview and export pixels
+node scripts/e2e-overlays3.mjs     # vector stickers, slide directions, stacking order, marker pen, picture timing: preview and export pixels
 node scripts/e2e-finecut.mjs
 node scripts/e2e-record.mjs
 node scripts/e2e-relink.mjs
