@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { withTimeout } from '../../core/async/timeout'
 import { friendlyRecordError, type RecordKind, type RecordLocale } from '../../core/record/record'
 import { Recorder, detectRecordCapabilities, RecordingError } from '../../engine/record/recorder'
 import { useEditorStore } from './editor'
@@ -8,11 +9,30 @@ export type RecordPhase = 'idle' | 'starting' | 'recording' | 'paused' | 'finish
 
 const TICK_MS = 250
 const TIME_ANNOUNCE_MS = 10_000
+/**
+ * Upper bound for taking a finished recording into the library (probe 30 s and thumbnail 10 s have their own
+ * limits). Whatever happens, the panel leaves 'finishing' and offers the raw file.
+ */
+export const IMPORT_TIMEOUT_MS = 60_000
 
 // The recorder owns the stream and the MediaRecorder: they are not reactive state.
 let recorder: Recorder | null = null
 let ticker: ReturnType<typeof setInterval> | null = null
 let guardsInstalled = false
+// The finished recording, kept outside reactive state until it is in the library, so a failed import never loses it.
+let pendingFile: File | null = null
+
+function downloadFile(file: File): void {
+  const url = URL.createObjectURL(file)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = file.name
+  document.body.append(link)
+  link.click()
+  link.remove()
+  // Revoking at once can cancel the download in some browsers.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+}
 
 const ACTIVE_PHASES: readonly RecordPhase[] = ['starting', 'recording', 'paused', 'finishing']
 const LIVE_PHASES: readonly RecordPhase[] = ['starting', 'recording', 'paused']
@@ -71,6 +91,8 @@ export const useRecordStore = defineStore('record', {
     errorKey: null as string | null,
     fileName: null as string | null,
     assetId: null as string | null,
+    /** An error happened after the recording was complete: it can be saved as a file or imported again. */
+    hasRawFile: false,
     capabilities: detectRecordCapabilities()
   }),
   getters: {
@@ -90,6 +112,8 @@ export const useRecordStore = defineStore('record', {
       this.errorKey = null
       this.fileName = null
       this.assetId = null
+      this.hasRawFile = false
+      pendingFile = null
       const next = new Recorder()
       recorder = next
       try {
@@ -135,8 +159,8 @@ export const useRecordStore = defineStore('record', {
       this.phase = 'finishing'
       this.stopTicker()
       try {
-        const file = await finished.stop()
-        await this.importRecording(file)
+        pendingFile = await finished.stop()
+        await this.importRecording(pendingFile)
       } catch (e) {
         this.fail(e)
       } finally {
@@ -171,6 +195,8 @@ export const useRecordStore = defineStore('record', {
       this.errorKey = null
       this.fileName = null
       this.assetId = null
+      this.hasRawFile = false
+      pendingFile = null
       this.statusKey = ''
     },
 
@@ -181,25 +207,49 @@ export const useRecordStore = defineStore('record', {
       void this.start(kind)
     },
 
+    /** Puts the file into the library. Ends in 'done' or 'error'; never stays pending longer than IMPORT_TIMEOUT_MS. */
     async importRecording(file: File): Promise<void> {
       const media = useMediaStore()
       const editor = useEditorStore()
-      await media.importFiles([file])
+      // The recorder's clock backs up containers without a length (MediaRecorder output has none).
+      const durationHintSeconds = this.elapsedMs > 0 ? this.elapsedMs / 1000 : undefined
+      await withTimeout(media.importFiles([file], [], { durationHintSeconds }), IMPORT_TIMEOUT_MS, 'import')
       const asset = [...editor.project.assets].reverse().find((a) => a.name === file.name)
       if (!asset || media.statusOf(asset.id) !== 'ready') {
+        this.fail(new Error('import failed'))
         this.errorKey = 'record.error.import'
-        this.phase = 'error'
         return
       }
+      pendingFile = null
+      this.hasRawFile = false
       this.assetId = asset.id
       this.fileName = file.name
       this.phase = 'done'
       this.statusKey = 'record.status.stopped'
     },
 
+    /** Offers the recorded file as a download, for when the library could not take it. */
+    saveRecording(): void {
+      if (pendingFile) downloadFile(pendingFile)
+    },
+
+    /** Tries to take the kept recording into the library again. */
+    async importAgain(): Promise<void> {
+      const file = pendingFile
+      if (!file || this.phase !== 'error') return
+      this.phase = 'finishing'
+      this.errorKey = null
+      try {
+        await this.importRecording(file)
+      } catch (e) {
+        this.fail(e)
+      }
+    },
+
     fail(error: unknown): void {
       const name = error instanceof RecordingError ? error.name : errorName(error)
       this.errorKey = friendlyRecordError(name)
+      this.hasRawFile = pendingFile !== null
       this.phase = 'error'
       this.statusKey = ''
     },

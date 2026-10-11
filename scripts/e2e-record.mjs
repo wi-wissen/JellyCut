@@ -5,7 +5,8 @@
 // Headless Chromium cannot show the screen picker, so the screen source is a canvas stream (see mediaStubs).
 import { chromium } from 'playwright-core'
 import { createServer } from 'vite'
-import { existsSync, mkdirSync, readdirSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
 import { join } from 'node:path'
 
 const PORT = Number(process.env.E2E_PORT ?? 5183)
@@ -45,6 +46,26 @@ function findChromium() {
 function mediaStubs(opts) {
   const md = navigator.mediaDevices
   window.__streams = []
+  // Failure injection for the Firefox-like cases: a recorder that never fires 'stop', and unreadable recorder output.
+  const stopDesc = Object.getOwnPropertyDescriptor(MediaRecorder.prototype, 'onstop')
+  Object.defineProperty(MediaRecorder.prototype, 'onstop', {
+    configurable: true,
+    get: stopDesc.get,
+    set(fn) {
+      stopDesc.set.call(this, window.__silentStop ? null : fn)
+    }
+  })
+  const dataDesc = Object.getOwnPropertyDescriptor(MediaRecorder.prototype, 'ondataavailable')
+  Object.defineProperty(MediaRecorder.prototype, 'ondataavailable', {
+    configurable: true,
+    get: dataDesc.get,
+    set(fn) {
+      if (!fn) return dataDesc.set.call(this, fn)
+      dataDesc.set.call(this, (event) =>
+        window.__garbage ? fn({ data: new Blob([new Uint8Array(5000).fill(7)]) }) : fn(event)
+      )
+    }
+  })
   window.__mode = 'normal'
   const realGetUserMedia = md.getUserMedia.bind(md)
   md.getUserMedia = async (constraints) => {
@@ -410,6 +431,83 @@ for (const scheme of ['light', 'dark']) {
     assert(asset.kind === 'video' && asset.width > 0, `screen asset ${asset.kind} ${asset.width}`)
     assert(await tracksEnded(page), 'screen tracks are still live after the browser ended the share')
   })
+  await context.close()
+}
+
+// ---------- Firefox-like failures: recorder without 'stop' event, duration-less files, unreadable output ----------
+{
+  const { page, context } = await freshPage({ scheme: 'light' })
+  await check('screen: a recorder that never fires stop still ends the share at once and yields the clip', async () => {
+    const before = await assetIds(page)
+    await page.evaluate(() => (window.__silentStop = true))
+    await sourceButton(page, 'screen').click()
+    await stopButton(page).waitFor()
+    await page.waitForTimeout(2000)
+    await stopButton(page).click()
+    await waitUntil(() => tracksEnded(page), 1000, 'tracks were not stopped right after Stop')
+    await addButton(page).waitFor({ timeout: 20000 })
+    const proj = await project(page)
+    const asset = proj.assets.find((a) => !before.includes(a.id) && NAME_PATTERN.screen.test(a.name))
+    assert(asset && asset.kind === 'video', 'no screen asset')
+    assert(near(asset.duration / 1e6, 2, 1), `duration ${(asset.duration / 1e6).toFixed(2)} s`)
+    await page.evaluate(() => (window.__silentStop = false))
+  })
+  await context.close()
+}
+{
+  const { page, context } = await freshPage({ scheme: 'light' })
+  await check('screen: unreadable recorder output ends in an error with a raw download, tracks ended', async () => {
+    await page.evaluate(() => (window.__garbage = true))
+    await sourceButton(page, 'screen').click()
+    await stopButton(page).waitFor()
+    await page.waitForTimeout(1500)
+    await stopButton(page).click()
+    const alert = page.getByRole('alert')
+    await alert.waitFor({ timeout: 20000 })
+    assert(await tracksEnded(page), 'screen tracks are still live after a failed import')
+    const save = page.getByRole('button', { name: 'Save recording as a file', exact: true })
+    await save.waitFor()
+    const [download] = await Promise.all([page.waitForEvent('download'), save.click()])
+    assert(/^Screen .*\.webm$/.test(download.suggestedFilename()), `download name ${download.suggestedFilename()}`)
+    assert((await recState(page)).phase === 'error', 'phase is not error')
+  })
+  await context.close()
+}
+{
+  const dir = join(SHOT_DIR, 'record-fixtures')
+  mkdirSync(dir, { recursive: true })
+  // -live 1 writes WebM like a browser's MediaRecorder: no Duration, no Cues. liveVfr drops frames (variable timing).
+  const live = join(dir, 'live.webm')
+  const liveVideo = join(dir, 'live-video.webm')
+  const liveVfr = join(dir, 'live-vfr.webm')
+  const ff = (...args) => execFileSync('ffmpeg', ['-v', 'error', '-y', ...args], { stdio: 'inherit' })
+  const src = ['-f', 'lavfi', '-i', 'testsrc=size=640x360:rate=15']
+  ff(...src, '-f', 'lavfi', '-i', 'sine=frequency=440', '-t', '2', '-c:v', 'libvpx', '-c:a', 'libopus', '-f', 'webm', '-live', '1', live)
+  ff(...src, '-t', '2', '-c:v', 'libvpx', '-f', 'webm', '-live', '1', liveVideo)
+  ff(...src, '-vf', "select='not(mod(n,3))+gt(random(0),0.6)'", '-fps_mode', 'vfr', '-t', '2', '-c:v', 'libvpx', '-f', 'webm', '-live', '1', liveVfr)
+  const { page, context } = await freshPage({ scheme: 'light' })
+  for (const [label, path] of [['audio+video', live], ['video only', liveVideo], ['variable frame timing', liveVfr]]) {
+    await check(`import of a duration-less WebM (${label}) finishes with a computed duration and a thumbnail`, async () => {
+      const bytes = readFileSync(path).toString('base64')
+      const t0 = Date.now()
+      const result = await page.evaluate(async ([b64, name]) => {
+        const raw = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
+        const file = new File([raw], name, { type: 'video/webm' })
+        const pinia = document.querySelector('#app').__vue_app__.config.globalProperties.$pinia
+        await pinia._s.get('media').importFiles([file])
+        const asset = pinia.state.value.editor.history.present.assets.find((a) => a.name === name)
+        return {
+          asset,
+          status: asset && pinia.state.value.media.status[asset.id],
+          thumb: !!(asset && pinia.state.value.media.thumbnails[asset.id])
+        }
+      }, [bytes, `${label}.webm`])
+      assert(Date.now() - t0 < 10000, `import took ${Date.now() - t0} ms`)
+      assert(result.asset && result.status === 'ready', `status ${result.status}`)
+      assert(near(result.asset.duration / 1e6, 2, 0.5), `duration ${result.asset.duration / 1e6}`)
+      assert(result.thumb, 'no thumbnail')
+    })
+  }
   await context.close()
 }
 

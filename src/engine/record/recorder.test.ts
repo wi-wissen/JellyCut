@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Recorder, RecordingError } from './recorder'
+import { Recorder, RecordingError, STOP_EVENT_TIMEOUT_MS } from './recorder'
 
 // Fakes for the browser media APIs: enough to drive the recorder's state machine without devices.
 class FakeTrack {
@@ -37,6 +37,9 @@ class FakeStream {
 class FakeMediaRecorder {
   static supported = new Set(['audio/webm;codecs=opus', 'video/webm;codecs=vp9,opus'])
   static instances: FakeMediaRecorder[] = []
+  /** A browser that delivers the last chunk but never fires 'stop'. */
+  static silentStop = false
+  static deliverNothing = false
   static isTypeSupported(type: string) {
     return FakeMediaRecorder.supported.has(type)
   }
@@ -61,8 +64,8 @@ class FakeMediaRecorder {
   }
   stop() {
     this.state = 'inactive'
-    this.ondataavailable?.({ data: new Blob([new Uint8Array(512)]) })
-    this.onstop?.()
+    if (!FakeMediaRecorder.deliverNothing) this.ondataavailable?.({ data: new Blob([new Uint8Array(512)]) })
+    if (!FakeMediaRecorder.silentStop) this.onstop?.()
   }
 }
 
@@ -81,6 +84,8 @@ beforeEach(() => {
   clock = 0
   tracks = []
   FakeMediaRecorder.instances = []
+  FakeMediaRecorder.silentStop = false
+  FakeMediaRecorder.deliverNothing = false
   const mediaStream = (count: number) => {
     const list = Array.from({ length: count }, () => new FakeTrack())
     tracks.push(list)
@@ -208,5 +213,40 @@ describe('Recorder', () => {
     } finally {
       FakeMediaRecorder.supported = new Set(['audio/webm;codecs=opus', 'video/webm;codecs=vp9,opus'])
     }
+  })
+
+  it('stops the tracks the moment stop() is called, before the recorder has answered', async () => {
+    FakeMediaRecorder.silentStop = true
+    const recorder = new Recorder()
+    await recorder.start('screen', options())
+    tick(1000)
+    const result = recorder.stop()
+    expect(tracks[0]!.every((t) => t.readyState === 'ended')).toBe(true)
+    await vi.advanceTimersByTimeAsync(STOP_EVENT_TIMEOUT_MS)
+    await result
+  })
+
+  it('does not hang when the recorder never fires stop: the recording is returned after the time limit', async () => {
+    FakeMediaRecorder.silentStop = true
+    const recorder = new Recorder()
+    await recorder.start('screen', options())
+    tick(1000)
+    const result = recorder.stop()
+    await vi.advanceTimersByTimeAsync(STOP_EVENT_TIMEOUT_MS)
+    const file = await result
+    expect(file.size).toBeGreaterThan(0)
+  })
+
+  it('reports an empty recording (not a hang) when no data ever arrives, and ends the share', async () => {
+    FakeMediaRecorder.silentStop = true
+    FakeMediaRecorder.deliverNothing = true
+    const recorder = new Recorder()
+    await recorder.start('screen', options())
+    tick(1000)
+    const result = recorder.stop()
+    const assertion = expect(result).rejects.toMatchObject({ name: 'EmptyRecordingError' })
+    await vi.advanceTimersByTimeAsync(STOP_EVENT_TIMEOUT_MS)
+    await assertion
+    expect(tracks[0]!.every((t) => t.readyState === 'ended')).toBe(true)
   })
 })

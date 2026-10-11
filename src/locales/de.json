@@ -323,6 +323,9 @@
     "addToTimeline": "Zur Timeline hinzufügen",
     "again": "Neu aufnehmen",
     "tryAgain": "Erneut versuchen",
+    "saveFile": "Aufnahme als Datei speichern",
+    "importAgain": "Noch einmal in die Bibliothek legen",
+    "rawFileHint": "Deine Aufnahme ist nicht verloren. Speichere sie als Datei und ziehe sie später in die Bibliothek.",
     "announceTime": "Aufnahmezeit {time}",
     "status": {
       "started": "Aufnahme gestartet",
@@ -339,6 +342,7 @@
       "empty": "Die Aufnahme ist leer. Nimm etwas länger auf.",
       "unsupported": "Dieser Browser kann hier nicht aufnehmen. Chrome oder Edge funktionieren.",
       "import": "Die Aufnahme konnte nicht verarbeitet werden.",
+      "timeout": "Das Übernehmen dauert zu lange und wurde abgebrochen.",
       "generic": "Die Aufnahme hat nicht geklappt. Versuche es noch einmal."
     }
   },
@@ -605,7 +609,11 @@
     "menu": {
       "label": "Aktionen für das ausgewählte Element",
       "more": "Weitere Aktionen",
-      "freezeFrame": "Standbild"
+      "freezeFrame": "Standbild",
+      "stackFront": "In den Vordergrund",
+      "stackForward": "Eine Ebene nach vorn",
+      "stackBackward": "Eine Ebene nach hinten",
+      "stackBack": "In den Hintergrund"
     },
     "transitions": {
       "none": "Kein Übergang",

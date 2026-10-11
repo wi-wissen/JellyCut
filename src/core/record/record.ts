@@ -64,6 +64,7 @@ export type RecordErrorKey =
   | 'record.error.aborted'
   | 'record.error.empty'
   | 'record.error.unsupported'
+  | 'record.error.timeout'
   | 'record.error.generic'
 
 export function friendlyRecordError(errorName: string): RecordErrorKey {
@@ -79,6 +80,8 @@ export function friendlyRecordError(errorName: string): RecordErrorKey {
       return 'record.error.aborted'
     case 'EmptyRecordingError':
       return 'record.error.empty'
+    case 'TimeoutError':
+      return 'record.error.timeout'
     case 'UnsupportedRecordingError':
       return 'record.error.unsupported'
     default:

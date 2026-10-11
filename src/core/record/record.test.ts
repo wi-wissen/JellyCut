@@ -96,6 +96,7 @@ describe('friendlyRecordError', () => {
   it('maps recorder errors', () => {
     expect(friendlyRecordError('EmptyRecordingError')).toBe('record.error.empty')
     expect(friendlyRecordError('UnsupportedRecordingError')).toBe('record.error.unsupported')
+    expect(friendlyRecordError('TimeoutError')).toBe('record.error.timeout')
   })
 
   it('falls back to the generic message for security errors and anything else', () => {

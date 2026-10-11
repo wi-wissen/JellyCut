@@ -11,7 +11,7 @@ export default defineComponent({
   name: 'RecordPanel',
   components: { Icon },
   computed: {
-    ...mapState(useRecordStore, ['phase', 'kind', 'elapsedMs', 'level', 'announcedTens', 'statusKey', 'errorKey', 'fileName', 'capabilities', 'live']),
+    ...mapState(useRecordStore, ['phase', 'kind', 'elapsedMs', 'level', 'announcedTens', 'statusKey', 'errorKey', 'fileName', 'hasRawFile', 'capabilities', 'live']),
     sources(): RecordKind[] {
       return RECORD_KINDS.filter((kind) => canRecordKind(kind, this.capabilities))
     },
@@ -38,7 +38,7 @@ export default defineComponent({
     void this.$nextTick(() => this.onPhase(this.phase))
   },
   methods: {
-    ...mapActions(useRecordStore, ['start', 'stop', 'cancel', 'pause', 'resume', 'addToTimeline', 'reset', 'retry']),
+    ...mapActions(useRecordStore, ['start', 'stop', 'cancel', 'pause', 'resume', 'addToTimeline', 'reset', 'retry', 'saveRecording', 'importAgain']),
     iconFor(kind: RecordKind): string {
       return ICON_FOR_KIND[kind]
     },
@@ -47,7 +47,7 @@ export default defineComponent({
       // Focus stays on a button after each change: a focused body would let Space start the timeline.
       if (phase === 'recording') this.focusRef('stopButton')
       if (phase === 'done') this.focusRef('addButton')
-      if (phase === 'error') this.focusRef('retryButton')
+      if (phase === 'error') this.focusRef(this.hasRawFile ? 'saveButton' : 'retryButton')
     },
     attachPreview(): void {
       const video = this.$refs.preview as HTMLVideoElement | undefined
@@ -87,6 +87,24 @@ export default defineComponent({
         class="flex flex-col gap-2 rounded-xl border border-[var(--jc-danger)] bg-panel2 p-3 text-sm"
       >
         <p>{{ $t(errorKey ?? 'record.error.generic') }}</p>
+        <template v-if="hasRawFile">
+          <p class="text-xs text-muted">{{ $t('record.rawFileHint') }}</p>
+          <button
+            ref="saveButton"
+            type="button"
+            class="min-h-11 self-start rounded-lg bg-fill px-4 font-bold text-fill-fg hover:opacity-90"
+            @click="saveRecording"
+          >
+            {{ $t('record.saveFile') }}
+          </button>
+          <button
+            type="button"
+            class="min-h-11 self-start rounded-lg border border-line px-4 font-semibold hover:bg-panel"
+            @click="importAgain"
+          >
+            {{ $t('record.importAgain') }}
+          </button>
+        </template>
         <button
           ref="retryButton"
           type="button"

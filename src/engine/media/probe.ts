@@ -1,5 +1,7 @@
 import { ALL_FORMATS, BlobSource, Input } from 'mediabunny'
 import type { AssetKind } from '../../core/project/types'
+import { TimeoutError, withTimeout } from '../../core/async/timeout'
+import { pickDurationSeconds } from '../../core/media/duration'
 import { secondsToMicros, type Micros } from '../../core/time'
 
 export type ProbeProblem = 'unsupported-format' | 'cannot-decode-video' | 'cannot-decode-audio' | 'no-media'
@@ -19,6 +21,16 @@ export interface MediaInfo {
   audioCodec: string | null
   /** Empty when the browser can use the file. */
   problems: ProbeProblem[]
+}
+
+/** Whole probe; a stalled demuxer or decoder check must not block an import forever. */
+export const PROBE_TIMEOUT_MS = 30_000
+/** canDecode asks the browser's decoder; some builds never answer for codecs they do not ship. */
+const CAN_DECODE_TIMEOUT_MS = 5_000
+
+export interface ProbeOptions {
+  /** Length the caller knows (a recording's clock), used when the container has none. */
+  durationHintSeconds?: number
 }
 
 const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'avif'])
@@ -47,12 +59,32 @@ async function probeImage(file: File): Promise<MediaInfo> {
   }
 }
 
+async function canDecodeWithin(check: Promise<boolean>): Promise<boolean> {
+  try {
+    return await withTimeout(check, CAN_DECODE_TIMEOUT_MS, 'canDecode')
+  } catch {
+    return false
+  }
+}
+
+async function attempt<T>(step: () => Promise<T>): Promise<T | null> {
+  try {
+    return await step()
+  } catch {
+    return null
+  }
+}
+
 /**
  * Reads container metadata only. Never decodes frames, so a 50 minute file is ready in moments.
+ * Throws a TimeoutError when the container cannot be read in time; other failures are reported as problems.
  */
-export async function probeFile(file: File): Promise<MediaInfo> {
+export async function probeFile(file: File, options: ProbeOptions = {}): Promise<MediaInfo> {
   if (isImageFile(file)) return probeImage(file)
+  return withTimeout(probeMedia(file, options), PROBE_TIMEOUT_MS, 'probe')
+}
 
+async function probeMedia(file: File, options: ProbeOptions): Promise<MediaInfo> {
   const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS })
   try {
     const video = await input.getPrimaryVideoTrack()
@@ -64,7 +96,13 @@ export async function probeFile(file: File): Promise<MediaInfo> {
       }
     }
 
-    const durationSeconds = await input.computeDuration()
+    // MediaRecorder output (Firefox and Chromium) has no Duration element: fall back to the last packets.
+    const durationSeconds = pickDurationSeconds([
+      await attempt(() => input.computeDuration()),
+      await attempt(() => (video ?? audio)!.computeDuration()),
+      options.durationHintSeconds
+    ])
+    if (durationSeconds === null) throw new Error('the length of the file is unknown')
     const problems: ProbeProblem[] = []
     let width: number | undefined
     let height: number | undefined
@@ -76,13 +114,13 @@ export async function probeFile(file: File): Promise<MediaInfo> {
       videoCodec = await video.getCodec()
       width = await video.getDisplayWidth()
       height = await video.getDisplayHeight()
-      const stats = await video.computePacketStats(100)
-      fps = stats.averagePacketRate > 0 ? Math.round(stats.averagePacketRate * 1000) / 1000 : undefined
-      if (!(await video.canDecode())) problems.push('cannot-decode-video')
+      const stats = await attempt(() => video.computePacketStats(100))
+      fps = stats && stats.averagePacketRate > 0 ? Math.round(stats.averagePacketRate * 1000) / 1000 : undefined
+      if (!(await canDecodeWithin(video.canDecode()))) problems.push('cannot-decode-video')
     }
     if (audio) {
       audioCodec = await audio.getCodec()
-      if (!(await audio.canDecode())) problems.push('cannot-decode-audio')
+      if (!(await canDecodeWithin(audio.canDecode()))) problems.push('cannot-decode-audio')
     }
 
     return {
@@ -95,7 +133,8 @@ export async function probeFile(file: File): Promise<MediaInfo> {
       videoCodec, audioCodec,
       problems
     }
-  } catch {
+  } catch (e) {
+    if (e instanceof TimeoutError) throw e
     return {
       kind: 'video', name: file.name, size: file.size, duration: 0, hasAudio: false,
       videoCodec: null, audioCodec: null, problems: ['unsupported-format']

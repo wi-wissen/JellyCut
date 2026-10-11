@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { withTimeout } from '../../core/async/timeout'
 import { createIdGenerator, nextId } from '../../core/timeline/ids'
 import { projectIds } from '../../core/timeline/ops'
 import { addAsset, addMusic, appendClip, assetFromProbe } from '../../core/timeline/insert'
@@ -40,6 +41,8 @@ export type LinkBasis = RelinkReason | 'path' | 'manual'
 
 const THUMB_WIDTH = 320
 const THUMB_QUALITY = 0.8
+// A decoder that never answers must not keep an import (and the Record tab) waiting.
+const THUMB_TIMEOUT_MS = 10_000
 const THUMB_MAX_TIME: Micros = secondsToMicros(1)
 const LENGTH_TOLERANCE: Micros = MICROS_PER_SECOND
 const SCAN_MAX_DEPTH = 3
@@ -135,6 +138,12 @@ function errorMessage(error: unknown): string {
 function thumbnailTime(asset: Asset): Micros {
   if (asset.kind !== 'video') return 0
   return Math.min(THUMB_MAX_TIME, Math.floor(asset.duration / 2))
+}
+
+/** The frame at the usual thumbnail time; streamed recordings can lack it, so the first frame is the fallback. */
+async function thumbnailFrame(asset: Asset): Promise<DecodedFrame | null> {
+  const time = thumbnailTime(asset)
+  return (await getFrameProvider().getFrame(asset.id, time)) ?? (time > 0 ? getFrameProvider().getFrame(asset.id, 0) : null)
 }
 
 async function makeThumbnail(asset: Asset): Promise<string | null> {
@@ -243,7 +252,11 @@ export const useMediaStore = defineStore('media', {
   },
   actions: {
     /** Probes the files and adds them to the project in one undo step. Never throws. */
-    async importFiles(list: File[], relPaths: (string | null)[] = []): Promise<void> {
+    async importFiles(
+      list: File[],
+      relPaths: (string | null)[] = [],
+      options: { durationHintSeconds?: number } = {}
+    ): Promise<void> {
       if (list.length === 0) return
       this.importing++
       try {
@@ -252,7 +265,7 @@ export const useMediaStore = defineStore('media', {
         const imported: { asset: Asset; info: MediaInfo; file: File }[] = []
         for (const [index, file] of list.entries()) {
           try {
-            const info = await probeFile(file)
+            const info = await probeFile(file, options)
             const relPath = relPaths[index] ?? file.name
             const asset = assetFromProbe(info, nextAssetId(projectIds(editor.project)), relPath)
             imported.push({ asset, info, file })
@@ -282,7 +295,7 @@ export const useMediaStore = defineStore('media', {
         for (const { asset } of imported) {
           if (this.statusOf(asset.id) !== 'ready') continue
           try {
-            const frame = await getFrameProvider().getFrame(asset.id, thumbnailTime(asset))
+            const frame = await withTimeout(thumbnailFrame(asset), THUMB_TIMEOUT_MS, 'thumbnail')
             if (frame) this.thumbnails[asset.id] = thumbnailFrom(frame)
           } catch (e) {
             this.lastImportError = errorMessage(e)

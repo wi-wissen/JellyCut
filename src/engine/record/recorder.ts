@@ -8,10 +8,18 @@ import {
   type RecordKind,
   type RecordLocale
 } from '../../core/record/record'
+import { TimeoutError, withTimeout } from '../../core/async/timeout'
 
 /** Chunks are flushed once a second, so a crash loses at most that much. */
 const TIMESLICE_MS = 1000
 const LIMIT_CHECK_MS = 250
+/**
+ * How long stop() waits for the recorder's final 'stop' event. Chunks arrive every second anyway, so a browser
+ * that never fires it (seen with screen capture) still yields the recording instead of hanging.
+ */
+export const STOP_EVENT_TIMEOUT_MS = 4000
+/** A recorder that already went inactive (its source ended) only needs a moment to deliver its last chunk. */
+const INACTIVE_GRACE_MS = 300
 
 const AUDIO_CONSTRAINTS: MediaTrackConstraints = { echoCancellation: true, noiseSuppression: true }
 
@@ -188,15 +196,22 @@ export class Recorder {
     this.phase = 'stopping'
     this.clearTimers()
     try {
-      await new Promise<void>((resolve, reject) => {
+      const stopped = new Promise<void>((resolve, reject) => {
         media.onstop = () => resolve()
         media.onerror = (event) => {
           const name = (event as Event & { error?: { name?: string } }).error?.name ?? 'UnknownError'
           reject(new RecordingError(name, 'recorder failed'))
         }
-        if (media.state === 'inactive') resolve()
-        else media.stop()
       })
+      const wasInactive = media.state === 'inactive'
+      if (!wasInactive) media.stop()
+      // The capture is over once stop() was asked for: end the share now, not after the recorder has answered.
+      this.stopTracks()
+      try {
+        await withTimeout(stopped, wasInactive ? INACTIVE_GRACE_MS : STOP_EVENT_TIMEOUT_MS, 'recorder stop')
+      } catch (e) {
+        if (!(e instanceof TimeoutError)) throw e
+      }
       const size = this.chunks.reduce((total, chunk) => total + chunk.size, 0)
       if (isEmptyRecording(size, this.accumulatedMs)) {
         throw new RecordingError('EmptyRecordingError', 'the recording is empty')
@@ -261,15 +276,18 @@ export class Recorder {
     }
   }
 
-  /** Stops every track and the meter. Safe to call more than once. */
-  private release(): void {
+  /** Stops every track (the browser's sharing indicator goes off) and the meter. Safe to call more than once. */
+  private stopTracks(): void {
     this.clearTimers()
-    if (this.stream) {
-      for (const track of this.stream.getTracks()) {
-        track.removeEventListener('ended', this.onTrackEnded)
-        track.stop()
-      }
+    if (!this.stream) return
+    for (const track of this.stream.getTracks()) {
+      track.removeEventListener('ended', this.onTrackEnded)
+      track.stop()
     }
+  }
+
+  private release(): void {
+    this.stopTracks()
     this.stream = null
     this.media = null
   }

@@ -323,6 +323,9 @@
     "addToTimeline": "Add to timeline",
     "again": "Record again",
     "tryAgain": "Try again",
+    "saveFile": "Save recording as a file",
+    "importAgain": "Add to the library again",
+    "rawFileHint": "Your recording is not lost. Save it as a file and drag it into the library later.",
     "announceTime": "Recording time {time}",
     "status": {
       "started": "Recording started",
@@ -339,6 +342,7 @@
       "empty": "The recording is empty. Record a bit longer.",
       "unsupported": "This browser cannot record here. Chromium-based browsers such as Brave, Microsoft Edge or Google Chrome work.",
       "import": "The recording could not be processed.",
+      "timeout": "Adding the recording took too long and was stopped.",
       "generic": "The recording did not work. Please try again."
     }
   },
@@ -605,7 +609,11 @@
     "menu": {
       "label": "Actions for the selected item",
       "more": "More actions",
-      "freezeFrame": "Freeze frame"
+      "freezeFrame": "Freeze frame",
+      "stackFront": "Bring to front",
+      "stackForward": "Bring forward",
+      "stackBackward": "Send backward",
+      "stackBack": "Send to back"
     },
     "transitions": {
       "none": "No transition",
