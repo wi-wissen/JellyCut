@@ -39,3 +39,16 @@ describe('editor store', () => {
     expect(store.subtitle).toEqual({ lead: 'Ein Tag am', accent: 'Meer' })
   })
 })
+
+describe('start project', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('is empty and untitled outside ?demo=1', () => {
+    const store = useEditorStore()
+    expect(store.demo).toBe(false)
+    expect(store.project.name).toBe('Untitled project')
+    expect(store.project.assets).toEqual([])
+    expect(store.project.clips).toEqual([])
+    expect(store.playheadMicros).toBe(0)
+  })
+})

@@ -34,6 +34,12 @@ export class ExactFrameProvider {
 
   setFile(assetId: string, file: File, isImage: boolean): void {
     this.files.set(assetId, { file, isImage })
+    // A lookup made before the file existed cached "no decoder"; drop it so the next lookup decodes the file.
+    for (const [key, entry] of this.entries) {
+      if (!key.startsWith(`${assetId}|`)) continue
+      this.entries.delete(key)
+      void entry.then((e) => (e?.kind === 'video' ? e.input.dispose() : undefined))
+    }
   }
 
   hasFile(assetId: string): boolean {

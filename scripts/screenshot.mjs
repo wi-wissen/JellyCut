@@ -1,9 +1,10 @@
 // Usage: node scripts/screenshot.mjs <out.png> [light|dark] [width] [height] [locale] [path]
+// The default path opens the demo project (?demo=1); use /app/ for the empty start.
 import { chromium } from 'playwright-core'
 import { createServer } from 'vite'
 import { existsSync, readdirSync } from 'node:fs'
 
-const [out = 'shot.png', theme = 'light', width = '1120', height = '700', locale = 'de', path = '/app/'] = process.argv.slice(2)
+const [out = 'shot.png', theme = 'light', width = '1120', height = '700', locale = 'de', path = '/app/?demo=1'] = process.argv.slice(2)
 
 function findChromium() {
   const root = process.env.PLAYWRIGHT_BROWSERS_PATH ?? '/opt/pw-browsers'

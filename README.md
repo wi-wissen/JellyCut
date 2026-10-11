@@ -41,6 +41,7 @@ npm run build        # production build (editor and help pages are lazy-loaded c
 ```
 
 Real-browser checks (Playwright + Chromium + the Vite dev server). Each script exits non-zero on failure:
+The editor starts with an empty project. Tests that need the built-in demo project open `/app/?demo=1`; a demo session never touches the autosave.
 
 ```
 node scripts/e2e-project.mjs      # save, open, autosave, undo/redo
@@ -62,6 +63,7 @@ node scripts/e2e-finecut.mjs
 node scripts/e2e-record.mjs
 node scripts/e2e-relink.mjs
 node scripts/e2e-media-remove.mjs
+node scripts/e2e-start.mjs        # first start: empty project, example video, autosave, ?demo=1
 npm run build && node scripts/e2e-build.mjs   # smoke test of the production build
 ```
 
