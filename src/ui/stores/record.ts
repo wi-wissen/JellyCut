@@ -1,11 +1,31 @@
 import { defineStore } from 'pinia'
 import { withTimeout } from '../../core/async/timeout'
-import { friendlyRecordError, type RecordKind, type RecordLocale } from '../../core/record/record'
+import { formatDiagnostics } from '../../core/record/diagnostics'
+import { friendlyMicNotice, friendlyRecordError, type RecordKind, type RecordLocale } from '../../core/record/record'
 import { Recorder, detectRecordCapabilities, RecordingError } from '../../engine/record/recorder'
 import { useEditorStore } from './editor'
 import { useMediaStore } from './media'
 
 export type RecordPhase = 'idle' | 'starting' | 'recording' | 'paused' | 'finishing' | 'done' | 'error'
+
+const MIC_PREFERENCE_KEY = 'jellycut.record.microphone'
+
+/** Remembered switch "record my voice"; on by default. Storage can be blocked, so every access is guarded. */
+function loadMicPreference(): boolean {
+  try {
+    return localStorage.getItem(MIC_PREFERENCE_KEY) !== 'off'
+  } catch {
+    return true
+  }
+}
+
+function saveMicPreference(on: boolean): void {
+  try {
+    localStorage.setItem(MIC_PREFERENCE_KEY, on ? 'on' : 'off')
+  } catch {
+    // not remembered; the switch still works for this visit
+  }
+}
 
 const TICK_MS = 250
 const TIME_ANNOUNCE_MS = 10_000
@@ -93,7 +113,13 @@ export const useRecordStore = defineStore('record', {
     assetId: null as string | null,
     /** An error happened after the recording was complete: it can be saved as a file or imported again. */
     hasRawFile: false,
-    capabilities: detectRecordCapabilities()
+    capabilities: detectRecordCapabilities(),
+    /** Screen recordings include the student's voice. */
+    withMicrophone: loadMicPreference(),
+    /** i18n key of a non-blocking notice (microphone could not be added); null when there is none. */
+    noticeKey: null as string | null,
+    /** Technical details of the last recording, shown after a failure. */
+    diagnosticsText: ''
   }),
   getters: {
     active: (state): boolean => ACTIVE_PHASES.includes(state.phase),
@@ -113,12 +139,15 @@ export const useRecordStore = defineStore('record', {
       this.fileName = null
       this.assetId = null
       this.hasRawFile = false
+      this.noticeKey = null
+      this.diagnosticsText = ''
       pendingFile = null
       const next = new Recorder()
       recorder = next
       try {
         await next.start(kind, {
           locale: currentLocale(),
+          withMicrophone: kind === 'screen' && this.withMicrophone,
           onLevel: (level) => {
             this.level = level
           },
@@ -127,10 +156,13 @@ export const useRecordStore = defineStore('record', {
           }
         })
       } catch (e) {
+        this.diagnosticsText = formatDiagnostics(next.diagnostics())
         recorder = null
         this.fail(e)
         return
       }
+      const micError = next.microphoneError
+      this.noticeKey = micError ? friendlyMicNotice(micError) : null
       this.phase = 'recording'
       this.statusKey = 'record.status.started'
       this.startTicker()
@@ -164,9 +196,15 @@ export const useRecordStore = defineStore('record', {
       } catch (e) {
         this.fail(e)
       } finally {
+        this.diagnosticsText = formatDiagnostics(finished.diagnostics())
         if (recorder === finished) recorder = null
         this.level = 0
       }
+    },
+
+    setWithMicrophone(on: boolean): void {
+      this.withMicrophone = on
+      saveMicPreference(on)
     },
 
     /** Discards the recording: no asset is added. */
@@ -196,6 +234,8 @@ export const useRecordStore = defineStore('record', {
       this.fileName = null
       this.assetId = null
       this.hasRawFile = false
+      this.noticeKey = null
+      this.diagnosticsText = ''
       pendingFile = null
       this.statusKey = ''
     },

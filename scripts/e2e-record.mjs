@@ -62,13 +62,25 @@ function mediaStubs(opts) {
     set(fn) {
       if (!fn) return dataDesc.set.call(this, fn)
       dataDesc.set.call(this, (event) =>
-        window.__garbage ? fn({ data: new Blob([new Uint8Array(5000).fill(7)]) }) : fn(event)
+        {
+          if (!window.__garbage && event.data.size > 0) window.__recBlobs.push(event.data)
+          return window.__garbage ? fn({ data: new Blob([new Uint8Array(5000).fill(7)]) }) : fn(event)
+        }
       )
     }
   })
+  window.__recStreams = []
+  window.__recBlobs = []
+  window.__gumCalls = 0
+  const realStart = MediaRecorder.prototype.start
+  MediaRecorder.prototype.start = function (...args) {
+    window.__recStreams.push(this.stream)
+    return realStart.apply(this, args)
+  }
   window.__mode = 'normal'
   const realGetUserMedia = md.getUserMedia.bind(md)
   md.getUserMedia = async (constraints) => {
+    window.__gumCalls++
     if (window.__mode === 'deny') throw new DOMException('Permission denied', 'NotAllowedError')
     if (window.__mode === 'missing') throw new DOMException('Requested device not found', 'NotFoundError')
     const stream = await realGetUserMedia(constraints)
@@ -79,6 +91,19 @@ function mediaStubs(opts) {
     Object.defineProperty(md, 'getDisplayMedia', { value: undefined, configurable: true })
   } else {
     md.getDisplayMedia = async () => {
+      if (window.__staticScreen) {
+        // Firefox with a window that does not change: one frame at the start, then nothing.
+        const still = document.createElement('canvas')
+        still.width = 800
+        still.height = 450
+        const sctx = still.getContext('2d')
+        sctx.fillStyle = '#2d6a4f'
+        sctx.fillRect(0, 0, 800, 450)
+        const stillStream = still.captureStream(0)
+        stillStream.getVideoTracks()[0].requestFrame()
+        window.__streams.push(stillStream)
+        return stillStream
+      }
       const canvas = document.createElement('canvas')
       canvas.width = 640
       canvas.height = 360
@@ -421,7 +446,7 @@ for (const scheme of ['light', 'dark']) {
     await stopButton(page).waitFor()
     await page.waitForTimeout(1200)
     await page.evaluate(() => {
-      const track = window.__streams.at(-1).getVideoTracks()[0]
+      const track = window.__streams.findLast((s) => s.getVideoTracks().length > 0).getVideoTracks()[0]
       track.dispatchEvent(new Event('ended'))
     })
     await addButton(page).waitFor({ timeout: 15000 })
@@ -430,6 +455,161 @@ for (const scheme of ['light', 'dark']) {
     assert(asset, `no screen asset; names: ${proj.assets.map((a) => a.name).join(', ')}`)
     assert(asset.kind === 'video' && asset.width > 0, `screen asset ${asset.kind} ${asset.width}`)
     assert(await tracksEnded(page), 'screen tracks are still live after the browser ended the share')
+  })
+  await context.close()
+}
+
+// ---------- screen, still content (Firefox delivers no frames for a window that does not change) ----------
+{
+  const { page, context } = await freshPage({ scheme: 'light' })
+  await check('screen: a still share is recorded through the canvas pipeline and keeps its length', async () => {
+    const before = await assetIds(page)
+    await page.evaluate(() => (window.__staticScreen = true))
+    await sourceButton(page, 'screen').click()
+    await stopButton(page).waitFor()
+    await page.waitForTimeout(2500)
+    const recorded = await page.evaluate(() => {
+      const track = window.__recStreams.at(-1).getVideoTracks()[0]
+      return { canvasTrack: typeof track.requestFrame === 'function' }
+    })
+    assert(recorded.canvasTrack, 'the recorder got the raw display stream, not the canvas stream')
+    const asset = await stopAndWaitForAsset(page, 'screen', before)
+    assert(asset.kind === 'video' && asset.width > 0, `screen asset ${asset.kind} ${asset.width}`)
+    assert(asset.width % 2 === 0 && asset.height % 2 === 0, `odd size ${asset.width}x${asset.height}`)
+    assert(asset.duration / 1e6 >= 1.5, `still screen clip lasts ${(asset.duration / 1e6).toFixed(2)} s, expected >= 1.5`)
+    assert(await tracksEnded(page), 'tracks still live after the still recording')
+  })
+  await check('screen: a short still recording stopped right away still flushes its data', async () => {
+    await page.getByRole('button', { name: 'Record again', exact: true }).click()
+    const before = await assetIds(page)
+    await sourceButton(page, 'screen').click()
+    await stopButton(page).waitFor()
+    await page.waitForTimeout(1200)
+    const asset = await stopAndWaitForAsset(page, 'screen', before)
+    assert(asset.duration / 1e6 >= 0.5, `clip lasts ${(asset.duration / 1e6).toFixed(2)} s`)
+    assert(await tracksEnded(page), 'tracks still live')
+  })
+  await check('screen: pausing a still recording and resuming it keeps working', async () => {
+    await page.getByRole('button', { name: 'Record again', exact: true }).click()
+    const before = await assetIds(page)
+    await sourceButton(page, 'screen').click()
+    await stopButton(page).waitFor()
+    await page.waitForTimeout(700)
+    await page.getByRole('button', { name: 'Pause', exact: true }).click()
+    await page.waitForTimeout(500)
+    await page.getByRole('button', { name: 'Resume', exact: true }).click()
+    await page.waitForTimeout(900)
+    const asset = await stopAndWaitForAsset(page, 'screen', before)
+    assert(asset.duration / 1e6 >= 1, `clip lasts ${(asset.duration / 1e6).toFixed(2)} s`)
+  })
+  await context.close()
+}
+
+// ---------- screen with the student's voice ----------
+const micSwitch = (page) => page.locator('[data-role="mic-switch"]')
+{
+  const { page, context } = await freshPage({ scheme: 'light' })
+  await check('screen: the voice switch is on by default, explained, and has a 44px target', async () => {
+    assert(await micSwitch(page).isChecked(), 'switch is off by default')
+    const text = await bodyText(page)
+    assert(/Record my voice/.test(text) && /headphones avoid echo/.test(text), 'switch label or help text missing')
+    const box = await micSwitch(page).locator('xpath=ancestor::label').boundingBox()
+    assert(box && box.height >= 44, `switch row height ${box?.height}`)
+  })
+  await check('screen + voice: one video and one audio track are recorded, the clip has audible sound and a waveform', async () => {
+    const before = await assetIds(page)
+    await page.evaluate(() => (window.__recBlobs.length = 0))
+    await sourceButton(page, 'screen').click()
+    await stopButton(page).waitFor()
+    await page.waitForTimeout(2500)
+    const level = await page.locator('[data-role="mic-level"]').count()
+    assert(level === 1, 'no level meter for screen + voice')
+    const tracks = await page.evaluate(() => {
+      const s = window.__recStreams.at(-1)
+      return { video: s.getVideoTracks().length, audio: s.getAudioTracks().length }
+    })
+    assert(tracks.video === 1 && tracks.audio === 1, `recorded tracks ${JSON.stringify(tracks)}`)
+    const asset = await stopAndWaitForAsset(page, 'screen', before)
+    assert(asset.hasAudio === true, `hasAudio ${asset.hasAudio}`)
+    assert(asset.duration / 1e6 >= 1.5, `duration ${(asset.duration / 1e6).toFixed(2)} s`)
+    assert(await tracksEnded(page), 'tracks (screen and microphone) still live after stop')
+    const peak = await page.evaluate(async () => {
+      const { computeWaveform } = await import('/src/engine/audio/waveform.ts')
+      const { peaksForRange } = await import('/src/core/audio/peaks.ts')
+      const file = new File(window.__recBlobs, 'rec.webm', { type: 'video/webm' })
+      const wave = await computeWaveform(file)
+      if (!wave) return -1
+      return Math.max(...peaksForRange(wave, 0, 1_500_000, 16))
+    })
+    assert(peak > 0.01, `recorded sound is silent or has no waveform (peak ${peak})`)
+  })
+  await check('screen: the switch choice is remembered', async () => {
+    await page.getByRole('button', { name: 'Record again', exact: true }).click()
+    await micSwitch(page).uncheck()
+    await page.reload()
+    await page.getByRole('button', { name: 'Record', exact: true }).click()
+    assert(!(await micSwitch(page).isChecked()), 'switch is on again after reload')
+    await micSwitch(page).check()
+  })
+  await context.close()
+}
+{
+  const { page, context } = await freshPage({ scheme: 'light' })
+  await check('screen with the voice switched off: no microphone is requested and the file has no audio', async () => {
+    const before = await assetIds(page)
+    await micSwitch(page).uncheck()
+    await sourceButton(page, 'screen').click()
+    await stopButton(page).waitFor()
+    await page.waitForTimeout(1500)
+    const info = await page.evaluate(() => ({
+      audio: window.__recStreams.at(-1).getAudioTracks().length,
+      gum: window.__gumCalls
+    }))
+    assert(info.audio === 0 && info.gum === 0, `audio tracks ${info.audio}, getUserMedia calls ${info.gum}`)
+    const asset = await stopAndWaitForAsset(page, 'screen', before)
+    assert(asset.hasAudio !== true, 'clip has audio although the switch was off')
+  })
+  await context.close()
+}
+{
+  const { page, context } = await freshPage({ scheme: 'light' })
+  await check('screen with a refused microphone: records anyway and shows a calm notice', async () => {
+    const before = await assetIds(page)
+    await page.evaluate(() => (window.__mode = 'deny'))
+    await sourceButton(page, 'screen').click()
+    await stopButton(page).waitFor()
+    const notice = page.locator('[data-role="mic-notice"]')
+    await notice.waitFor()
+    assert(/Recorded without microphone: access was not allowed/.test(await notice.textContent()), 'notice text')
+    assert((await page.getByRole('alert').count()) === 0, 'an alert blocks the recording')
+    await page.waitForTimeout(1500)
+    const asset = await stopAndWaitForAsset(page, 'screen', before)
+    assert(asset.kind === 'video', 'no video asset')
+    assert((await page.locator('[data-role="mic-notice"]').count()) === 1, 'notice vanished after recording')
+  })
+  await context.close()
+}
+
+// ---------- diagnostics after a failed recording ----------
+{
+  const { page, context } = await freshPage({ scheme: 'light' })
+  await check('an empty/failed screen recording offers collapsed technical details with a copy button', async () => {
+    await page.evaluate(() => (window.__garbage = true))
+    await sourceButton(page, 'screen').click()
+    await stopButton(page).waitFor()
+    await page.waitForTimeout(1200)
+    await stopButton(page).click()
+    await page.getByRole('alert').waitFor({ timeout: 20000 })
+    const details = page.locator('[data-role="record-details"]')
+    assert((await details.count()) === 1, 'no details box')
+    assert(!(await details.evaluate((d) => d.open)), 'details are not collapsed')
+    await details.locator('summary').click()
+    const text = await details.locator('textarea').inputValue()
+    assert(/Chunks:/.test(text) && /Events:/.test(text) && /timer=/.test(text), `details text: ${text.slice(0, 200)}`)
+    assert(!/localhost|http/.test(text.replace(/Mozilla[^\n]*/, '')), 'details contain an address')
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: `http://localhost:${PORT}` }).catch(() => undefined)
+    await details.getByRole('button', { name: 'Copy', exact: true }).click()
+    await details.getByRole('button', { name: 'Copied', exact: true }).waitFor({ timeout: 3000 })
   })
   await context.close()
 }
@@ -444,7 +624,8 @@ for (const scheme of ['light', 'dark']) {
     await stopButton(page).waitFor()
     await page.waitForTimeout(2000)
     await stopButton(page).click()
-    await waitUntil(() => tracksEnded(page), 1000, 'tracks were not stopped right after Stop')
+    // Tracks are stopped after the bounded wait for the recorder (4 s), never before its last data.
+    await waitUntil(() => tracksEnded(page), 8000, 'tracks were not stopped after the wait for the recorder')
     await addButton(page).waitFor({ timeout: 20000 })
     const proj = await project(page)
     const asset = proj.assets.find((a) => !before.includes(a.id) && NAME_PATTERN.screen.test(a.name))

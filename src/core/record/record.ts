@@ -44,6 +44,11 @@ export function formatRecordTime(ms: number): string {
   return `${Math.floor(totalSeconds / 60)}:${pad(totalSeconds % 60)}`
 }
 
+/** The container and codec candidates for a kind, in order of preference. */
+export function mimeCandidates(kind: RecordKind): readonly string[] {
+  return MIME_PREFERENCES[kind === 'microphone' ? 'audio' : 'video']
+}
+
 /** First supported container and codec for the kind, or null when the browser can record none of them. */
 export function pickMimeType(kind: RecordKind, isTypeSupported: (type: string) => boolean): string | null {
   const candidates = MIME_PREFERENCES[kind === 'microphone' ? 'audio' : 'video']
@@ -87,6 +92,15 @@ export function friendlyRecordError(errorName: string): RecordErrorKey {
     default:
       return 'record.error.generic'
   }
+}
+
+export type MicNoticeKey = 'record.mic.denied' | 'record.mic.missing' | 'record.mic.failed'
+
+/** Calm notice for a microphone that could not be added to a screen recording. */
+export function friendlyMicNotice(errorName: string): MicNoticeKey {
+  if (errorName === 'NotAllowedError' || errorName === 'SecurityError') return 'record.mic.denied'
+  if (errorName === 'NotFoundError' || errorName === 'OverconstrainedError') return 'record.mic.missing'
+  return 'record.mic.failed'
 }
 
 /** Screen capture is missing on iPads and phones; the button is hidden there instead of failing later. */

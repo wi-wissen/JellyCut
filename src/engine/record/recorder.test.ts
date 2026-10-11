@@ -62,6 +62,10 @@ class FakeMediaRecorder {
   resume() {
     this.state = 'recording'
   }
+  requestDataCalls = 0
+  requestData() {
+    this.requestDataCalls++
+  }
   stop() {
     this.state = 'inactive'
     if (!FakeMediaRecorder.deliverNothing) this.ondataavailable?.({ data: new Blob([new Uint8Array(512)]) })
@@ -95,6 +99,15 @@ beforeEach(() => {
   getDisplayMedia = vi.fn(async () => mediaStream(2))
   vi.stubGlobal('navigator', { mediaDevices: { getUserMedia, getDisplayMedia } })
   vi.stubGlobal('MediaRecorder', FakeMediaRecorder)
+  vi.stubGlobal('MediaStream', class {
+    constructor(readonly list: unknown[]) {}
+    getTracks() {
+      return this.list
+    }
+    getVideoTracks() {
+      return this.list
+    }
+  })
 })
 
 afterEach(() => {
@@ -215,15 +228,34 @@ describe('Recorder', () => {
     }
   })
 
-  it('stops the tracks the moment stop() is called, before the recorder has answered', async () => {
+  it('keeps the tracks alive until the recorder has delivered its last data, then stops them', async () => {
+    const recorder = new Recorder()
+    await recorder.start('screen', options())
+    tick(1000)
+    const media = FakeMediaRecorder.instances[0]!
+    let liveWhenFlushed = false
+    const realStop = media.stop.bind(media)
+    media.stop = () => {
+      liveWhenFlushed = tracks[0]!.every((t) => t.readyState === 'live')
+      realStop()
+    }
+    await recorder.stop()
+    expect(media.requestDataCalls).toBe(1)
+    expect(liveWhenFlushed).toBe(true)
+    expect(tracks[0]!.every((t) => t.readyState === 'ended')).toBe(true)
+  })
+
+  it('stops the tracks only after the bounded wait when the recorder never answers', async () => {
     FakeMediaRecorder.silentStop = true
     const recorder = new Recorder()
     await recorder.start('screen', options())
     tick(1000)
     const result = recorder.stop()
-    expect(tracks[0]!.every((t) => t.readyState === 'ended')).toBe(true)
-    await vi.advanceTimersByTimeAsync(STOP_EVENT_TIMEOUT_MS)
+    await vi.advanceTimersByTimeAsync(STOP_EVENT_TIMEOUT_MS - 100)
+    expect(tracks[0]!.every((t) => t.readyState === 'live')).toBe(true)
+    await vi.advanceTimersByTimeAsync(200)
     await result
+    expect(tracks[0]!.every((t) => t.readyState === 'ended')).toBe(true)
   })
 
   it('does not hang when the recorder never fires stop: the recording is returned after the time limit', async () => {
@@ -248,5 +280,61 @@ describe('Recorder', () => {
     await vi.advanceTimersByTimeAsync(STOP_EVENT_TIMEOUT_MS)
     await assertion
     expect(tracks[0]!.every((t) => t.readyState === 'ended')).toBe(true)
+  })
+
+  it('asks for the microphone after the screen and records both, then stops both', async () => {
+    const calls: string[] = []
+    getDisplayMedia.mockImplementationOnce(async () => {
+      calls.push('screen')
+      const list = [new FakeTrack(), new FakeTrack()]
+      tracks.push(list)
+      return new FakeStream(list)
+    })
+    getUserMedia.mockImplementationOnce(async () => {
+      calls.push('microphone')
+      const list = [new FakeTrack()]
+      tracks.push(list)
+      return new FakeStream(list)
+    })
+    const recorder = new Recorder()
+    await recorder.start('screen', options({ withMicrophone: true }))
+    expect(calls).toEqual(['screen', 'microphone'])
+    expect(getUserMedia).toHaveBeenCalledWith({ audio: { echoCancellation: true, noiseSuppression: true }, video: false })
+    expect(recorder.microphoneError).toBeNull()
+    tick(500)
+    await recorder.stop()
+    expect(tracks.flat().every((t) => t.readyState === 'ended')).toBe(true)
+  })
+
+  it('continues with the screen alone when the microphone is refused, and says why', async () => {
+    getUserMedia.mockImplementationOnce(async () => {
+      throw new DOMException('denied', 'NotAllowedError')
+    })
+    const recorder = new Recorder()
+    await recorder.start('screen', options({ withMicrophone: true }))
+    expect(recorder.microphoneError).toBe('NotAllowedError')
+    tick(500)
+    const file = await recorder.stop()
+    expect(file.size).toBeGreaterThan(0)
+  })
+
+  it('does not ask for the microphone when the switch is off or for other sources', async () => {
+    const recorder = new Recorder()
+    await recorder.start('screen', options({ withMicrophone: false }))
+    expect(getUserMedia).not.toHaveBeenCalled()
+    recorder.cancel()
+  })
+
+  it('collects diagnostics: format support, chunks, events and track states', async () => {
+    const recorder = new Recorder()
+    await recorder.start('screen', options())
+    tick(1000)
+    await recorder.stop()
+    const d = recorder.diagnostics()
+    expect(d.mimeType).toBe('video/webm;codecs=vp9,opus')
+    expect(d.mimeSupport['video/webm;codecs=vp9,opus']).toBe(true)
+    expect(d.chunkSizes).toEqual([512])
+    expect(d.events.map((e) => e.what.split(/[ ,]/)[0])).toEqual(expect.arrayContaining(['start', 'stop', 'data', 'requestData']))
+    expect(d.tracksAtStop.every((t) => t.readyState === 'live')).toBe(true)
   })
 })

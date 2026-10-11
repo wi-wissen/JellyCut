@@ -15,6 +15,10 @@ vi.mock('../../engine/record/recorder', () => ({
   detectRecordCapabilities: () => ({ userMedia: true, displayMedia: true, mediaRecorder: true }),
   Recorder: class {
     liveStream = null
+    microphoneError = null
+    diagnostics() {
+      return { version: '', userAgent: '', kind: '', mimeType: '', mimeSupport: {}, tracks: [], pipeline: null, chunkSizes: [], events: [], errors: [], tracksAtStop: [], tracksAtEnd: [], elapsedMs: 0 }
+    }
     async start() {}
     elapsedMs() {
       return 2000

@@ -3,6 +3,7 @@ import {
   canRecordKind,
   extensionForMime,
   formatRecordTime,
+  friendlyMicNotice,
   friendlyRecordError,
   isEmptyRecording,
   pickMimeType,
@@ -137,5 +138,14 @@ describe('isEmptyRecording', () => {
 
   it('accepts a recording with bytes and at least 100 ms', () => {
     expect(isEmptyRecording(4096, 100)).toBe(false)
+  })
+})
+
+describe('friendlyMicNotice', () => {
+  it('maps browser errors to a calm notice', () => {
+    expect(friendlyMicNotice('NotAllowedError')).toBe('record.mic.denied')
+    expect(friendlyMicNotice('NotFoundError')).toBe('record.mic.missing')
+    expect(friendlyMicNotice('NotReadableError')).toBe('record.mic.failed')
+    expect(friendlyMicNotice('')).toBe('record.mic.failed')
   })
 })

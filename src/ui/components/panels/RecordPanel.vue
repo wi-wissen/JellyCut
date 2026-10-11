@@ -10,8 +10,11 @@ const ICON_FOR_KIND: Record<RecordKind, string> = { microphone: 'mic', camera: '
 export default defineComponent({
   name: 'RecordPanel',
   components: { Icon },
+  data() {
+    return { copied: false }
+  },
   computed: {
-    ...mapState(useRecordStore, ['phase', 'kind', 'elapsedMs', 'level', 'announcedTens', 'statusKey', 'errorKey', 'fileName', 'hasRawFile', 'capabilities', 'live']),
+    ...mapState(useRecordStore, ['phase', 'kind', 'elapsedMs', 'level', 'announcedTens', 'statusKey', 'errorKey', 'fileName', 'hasRawFile', 'capabilities', 'live', 'withMicrophone', 'noticeKey', 'diagnosticsText']),
     sources(): RecordKind[] {
       return RECORD_KINDS.filter((kind) => canRecordKind(kind, this.capabilities))
     },
@@ -38,7 +41,7 @@ export default defineComponent({
     void this.$nextTick(() => this.onPhase(this.phase))
   },
   methods: {
-    ...mapActions(useRecordStore, ['start', 'stop', 'cancel', 'pause', 'resume', 'addToTimeline', 'reset', 'retry', 'saveRecording', 'importAgain']),
+    ...mapActions(useRecordStore, ['start', 'stop', 'cancel', 'pause', 'resume', 'addToTimeline', 'reset', 'retry', 'saveRecording', 'importAgain', 'setWithMicrophone']),
     iconFor(kind: RecordKind): string {
       return ICON_FOR_KIND[kind]
     },
@@ -55,6 +58,25 @@ export default defineComponent({
       const stream = livePreviewStream()
       if (video.srcObject !== stream) video.srcObject = stream
       void video.play().catch(() => undefined)
+    },
+    onMicSwitch(event: Event): void {
+      this.setWithMicrophone((event.target as HTMLInputElement).checked)
+    },
+    /** Clipboard where allowed; otherwise the text is selected so Ctrl+C works. */
+    async copyDiagnostics(): Promise<void> {
+      const box = this.$refs.diagnostics as HTMLTextAreaElement | undefined
+      try {
+        await navigator.clipboard.writeText(this.diagnosticsText)
+        this.copied = true
+      } catch {
+        box?.focus()
+        box?.select()
+        try {
+          this.copied = document.execCommand('copy')
+        } catch {
+          this.copied = false
+        }
+      }
     },
     focusRef(name: string): void {
       const element = this.$refs[name] as HTMLElement | undefined
@@ -113,6 +135,36 @@ export default defineComponent({
         >
           {{ $t('record.tryAgain') }}
         </button>
+        <details v-if="diagnosticsText" data-role="record-details" class="text-xs">
+          <summary class="flex min-h-11 cursor-pointer items-center font-semibold">{{ $t('record.details.title') }}</summary>
+          <p class="mb-2 text-muted">{{ $t('record.details.hint') }}</p>
+          <textarea
+            ref="diagnostics"
+            readonly
+            rows="8"
+            :aria-label="$t('record.details.title')"
+            class="w-full rounded-lg border border-line bg-bg p-2 font-mono text-[11px]"
+            :value="diagnosticsText"
+          />
+          <button type="button" class="mt-2 min-h-11 rounded-lg border border-line px-4 font-semibold hover:bg-panel" @click="copyDiagnostics">
+            {{ copied ? $t('record.details.copied') : $t('record.details.copy') }}
+          </button>
+        </details>
+      </div>
+
+      <div v-if="sources.includes('screen')" class="rounded-xl border border-line bg-panel2 px-3 py-1">
+        <label class="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold">
+          <input
+            type="checkbox"
+            role="switch"
+            data-role="mic-switch"
+            class="size-5 shrink-0 accent-[var(--jc-fill)]"
+            :checked="withMicrophone"
+            @change="onMicSwitch"
+          />
+          {{ $t('record.micSwitch') }}
+        </label>
+        <p class="pb-2 text-xs text-muted">{{ $t('record.micHelp') }}</p>
       </div>
 
       <div class="flex flex-col gap-2.5">
@@ -163,6 +215,13 @@ export default defineComponent({
         </div>
       </div>
 
+      <div v-if="kind === 'screen' && withMicrophone && !noticeKey" class="flex items-center gap-2 text-xs font-semibold" data-role="mic-level">
+        <Icon name="mic" class="size-4 shrink-0" />
+        <div class="h-2 flex-1 overflow-hidden rounded-full bg-panel2" aria-hidden="true">
+          <div class="h-full rounded-full bg-signal transition-[width] duration-100" :style="{ width: levelPercent }" />
+        </div>
+      </div>
+      <p v-if="noticeKey" data-role="mic-notice" class="rounded-lg bg-panel2 px-3 py-2 text-xs text-muted">{{ $t(noticeKey) }}</p>
       <button
         ref="stopButton"
         type="button"
@@ -209,6 +268,7 @@ export default defineComponent({
       <p class="text-sm font-bold">{{ $t('record.doneTitle') }}</p>
       <p class="break-words font-mono text-xs text-muted">{{ fileName }}</p>
       <p class="text-xs text-muted">{{ $t('record.doneText') }}</p>
+      <p v-if="noticeKey" data-role="mic-notice" class="text-xs text-muted">{{ $t(noticeKey) }}</p>
       <button
         ref="addButton"
         type="button"
