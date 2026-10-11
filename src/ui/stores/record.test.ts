@@ -7,7 +7,9 @@ const h = vi.hoisted(() => ({
   tracksStopped: 0,
   importImpl: null as null | (() => Promise<void>),
   assets: [] as { id: string; name: string }[],
-  statusValue: 'ready'
+  statusValue: 'ready',
+  check: null as null | object,
+  health: { strategy: 'raw', problem: null as null | string, expectedAudio: true, micSilent: false, systemSoundDropped: false }
 }))
 
 vi.mock('../../engine/record/recorder', () => ({
@@ -17,8 +19,15 @@ vi.mock('../../engine/record/recorder', () => ({
     liveStream = null
     microphoneError = null
     diagnostics() {
-      return { version: '', userAgent: '', kind: '', mimeType: '', mimeSupport: {}, tracks: [], pipeline: null, chunkSizes: [], events: [], errors: [], tracksAtStop: [], tracksAtEnd: [], elapsedMs: 0 }
+      return {
+        version: '', userAgent: '', kind: '', mimeType: '', mimeSupport: {}, tracks: [], pipeline: null, chunkSizes: [], events: [], errors: [], tracksAtStop: [], tracksAtEnd: [], elapsedMs: 0,
+        capture: { videoPath: '', videoPathReason: '', videoProblem: '', audioPath: 'none', audioContext: [], contextSampleRate: null, micTrackSampleRate: null, micLevel: null, micSilentWarning: false, micDevices: null, micDeviceRemembered: false, luma: null, framesSeen: null, post: null }
+      }
     }
+    health() {
+      return h.health
+    }
+    setFileCheck() {}
     async start() {}
     elapsedMs() {
       return 2000
@@ -29,6 +38,7 @@ vi.mock('../../engine/record/recorder', () => ({
     cancel() {}
   }
 }))
+vi.mock('../../engine/record/postCheck', () => ({ checkRecording: async () => h.check }))
 vi.mock('./media', () => ({
   useMediaStore: () => ({
     importFiles: (list: File[]) => h.importImpl!().then(() => h.assets.push({ id: 'asset-1', name: list[0]!.name })),
@@ -39,6 +49,7 @@ vi.mock('./editor', () => ({ useEditorStore: () => ({ project: { get assets() { 
 
 import { IMPORT_TIMEOUT_MS, useRecordStore } from './record'
 
+const stored = new Map<string, string>()
 const file = () => new File([new Uint8Array(10)], 'Screen 2026-10-11 10-00-00.webm', { type: 'video/webm' })
 
 beforeEach(() => {
@@ -50,6 +61,14 @@ beforeEach(() => {
   h.importImpl = async () => undefined
   vi.stubGlobal('document', { documentElement: { lang: 'de' } })
   vi.stubGlobal('window', { addEventListener: () => undefined })
+  h.check = null
+  h.health = { strategy: 'raw', problem: null, expectedAudio: true, micSilent: false, systemSoundDropped: false }
+  stored.clear()
+  vi.stubGlobal('localStorage', {
+    getItem: (k: string) => stored.get(k) ?? null,
+    setItem: (k: string, v: string) => void stored.set(k, v),
+    removeItem: (k: string) => void stored.delete(k)
+  })
 })
 afterEach(() => {
   vi.useRealTimers()
@@ -122,5 +141,41 @@ describe('record store: taking the recording into the library', () => {
     store.saveRecording()
     expect(link.click).toHaveBeenCalled()
     expect(link.download).toBe('Screen 2026-10-11 10-00-00.webm')
+  })
+
+  it('a silent file raises the "no sound" finding and keeps the details for the owner', async () => {
+    h.check = { hasAudioTrack: true, audioPeak: 0, audioRms: 0, audioSeconds: 3, hasVideoTrack: true, frameLuma: [80] }
+    const { store, stopped } = await recordAndStop()
+    await stopped
+    expect(store.phase).toBe('done')
+    expect(store.checkKeys).toEqual(['record.check.silentAudio'])
+  })
+
+  it('a black picture switches the next screen recording to the canvas way, once, and tells the user', async () => {
+    h.check = { hasAudioTrack: true, audioPeak: 0.3, audioRms: 0.1, audioSeconds: 3, hasVideoTrack: true, frameLuma: [0, 0.2] }
+    const { store, stopped } = await recordAndStop()
+    await stopped
+    expect(store.checkKeys).toEqual(['record.check.blackPicture'])
+    expect(JSON.parse(stored.get('jellycut.record.strategy')!)).toEqual({ strategy: 'canvas', lastProblem: 'black' })
+    expect(store.extraNoticeKeys).toContain('record.notice.otherWay')
+  })
+
+  it('a healthy recording keeps the way and clears the problem', async () => {
+    stored.set('jellycut.record.strategy', JSON.stringify({ strategy: 'canvas', lastProblem: 'black' }))
+    h.health = { ...h.health, strategy: 'canvas' }
+    h.check = { hasAudioTrack: true, audioPeak: 0.3, audioRms: 0.1, audioSeconds: 3, hasVideoTrack: true, frameLuma: [90] }
+    const { store, stopped } = await recordAndStop()
+    await stopped
+    expect(store.checkKeys).toEqual([])
+    expect(JSON.parse(stored.get('jellycut.record.strategy')!)).toEqual({ strategy: 'canvas', lastProblem: null })
+  })
+
+  it('live warnings come and go by kind', () => {
+    const store = useRecordStore()
+    store.applyWarning({ kind: 'noMic', active: true })
+    store.applyWarning({ kind: 'black', active: true })
+    expect(store.warningKeys).toEqual(['record.warn.noMic', 'record.warn.black'])
+    store.applyWarning({ kind: 'noMic', active: false })
+    expect(store.warningKeys).toEqual(['record.warn.black'])
   })
 })

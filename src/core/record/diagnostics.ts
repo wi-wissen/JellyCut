@@ -22,8 +22,54 @@ export interface PipelineInfo {
   canvasWidth: number
   canvasHeight: number
   framesDrawn: number
-  /** Video frames the hidden <video> presented (requestVideoFrameCallback); null where the browser has no such API. */
-  videoFrames: { total: number; firstSecond: number; lastSecond: number } | null
+  /** True when frames are pushed with requestFrame(); false when the canvas stream captures every change. */
+  manualFrames: boolean
+}
+
+/** What the recorder measured while recording and what the finished file measured afterwards. */
+export interface CaptureDiagnostics {
+  /** 'raw' (display track recorded directly) or 'canvas' (re-drawn); '' for sources without a screen. */
+  videoPath: string
+  /** Why this path: 'default', 'remembered after black picture', ... */
+  videoPathReason: string
+  /** 'noFrames' | 'black' | '' as seen while recording. */
+  videoProblem: string
+  /** How the sound got into the file: none, camera, microphone (direct), system (direct) or mix (Web Audio). */
+  audioPath: string
+  /** AudioContext states with the time they were seen, e.g. "running@0". Empty when no context was used. */
+  audioContext: string[]
+  contextSampleRate: number | null
+  micTrackSampleRate: number | null
+  /** Microphone RMS while recording; null when the meter never ran. */
+  micLevel: { min: number; max: number; samples: number } | null
+  micSilentWarning: boolean
+  micDevices: number | null
+  micDeviceRemembered: boolean
+  /** Mean luma (0..255) of the sampled display pictures while recording; null without samples. */
+  luma: { min: number; max: number; samples: number } | null
+  /** Pictures the display track delivered to the monitor video; null where the browser cannot count. */
+  framesSeen: number | null
+  /** Measured on the finished file; null when the check did not run. */
+  post: { audioTrack: boolean; audioPeak: number; audioRms: number; audioSeconds: number; frameLuma: number[] } | null
+}
+
+export function emptyCapture(): CaptureDiagnostics {
+  return {
+    videoPath: '',
+    videoPathReason: '',
+    videoProblem: '',
+    audioPath: 'none',
+    audioContext: [],
+    contextSampleRate: null,
+    micTrackSampleRate: null,
+    micLevel: null,
+    micSilentWarning: false,
+    micDevices: null,
+    micDeviceRemembered: false,
+    luma: null,
+    framesSeen: null,
+    post: null
+  }
 }
 
 export interface RecordDiagnostics {
@@ -40,6 +86,7 @@ export interface RecordDiagnostics {
   tracksAtStop: TrackSettingsInfo[]
   tracksAtEnd: TrackSettingsInfo[]
   elapsedMs: number
+  capture: CaptureDiagnostics
 }
 
 const MAX_EVENTS = 80
@@ -59,7 +106,8 @@ export function emptyDiagnostics(): RecordDiagnostics {
     errors: [],
     tracksAtStop: [],
     tracksAtEnd: [],
-    elapsedMs: 0
+    elapsedMs: 0,
+    capture: emptyCapture()
   }
 }
 
@@ -90,15 +138,11 @@ export function formatDiagnostics(d: RecordDiagnostics): string {
   for (const track of d.tracks) lines.push(`Track: ${formatTrack(track)}`)
   if (d.pipeline) {
     const p = d.pipeline
-    lines.push(`Canvas: ${p.canvasWidth}x${p.canvasHeight}, timer=${p.ticker}, frames drawn=${p.framesDrawn}`)
-    lines.push(
-      p.videoFrames
-        ? `Video frames seen: total=${p.videoFrames.total} first second=${p.videoFrames.firstSecond} last second=${p.videoFrames.lastSecond}`
-        : 'Video frames seen: not measurable'
-    )
+    lines.push(`Canvas: ${p.canvasWidth}x${p.canvasHeight}, timer=${p.ticker}, frames drawn=${p.framesDrawn}, requestFrame=${p.manualFrames ? 'yes' : 'no'}`)
   } else {
     lines.push('Canvas: not used (direct recording)')
   }
+  lines.push(...formatCapture(d.capture))
   const total = d.chunkSizes.reduce((sum, size) => sum + size, 0)
   const listed = d.chunkSizes.slice(0, MAX_CHUNKS_LISTED).join(',')
   const more = d.chunkSizes.length > MAX_CHUNKS_LISTED ? ',...' : ''
@@ -111,4 +155,30 @@ export function formatDiagnostics(d: RecordDiagnostics): string {
     for (const event of d.events) lines.push(`  ${event.t} ms ${event.what}`)
   }
   return lines.join('\n')
+}
+
+const fixed = (value: number, digits = 4): string => value.toFixed(digits)
+
+function formatCapture(c: CaptureDiagnostics): string[] {
+  const lines: string[] = []
+  if (c.videoPath) {
+    const problem = c.videoProblem || 'none'
+    lines.push(`Video path: ${c.videoPath} (${c.videoPathReason || '-'}), problem=${problem}, frames seen=${c.framesSeen ?? 'n/a'}`)
+    lines.push(c.luma ? `Picture luma: min=${fixed(c.luma.min, 1)} max=${fixed(c.luma.max, 1)} samples=${c.luma.samples}` : 'Picture luma: not sampled')
+  }
+  lines.push(`Audio path: ${c.audioPath}`)
+  if (c.audioContext.length > 0) {
+    lines.push(`AudioContext: ${c.audioContext.join(' ')} rate=${c.contextSampleRate ?? '-'} micTrackRate=${c.micTrackSampleRate ?? '-'}`)
+  }
+  if (c.micDevices !== null) lines.push(`Microphones: ${c.micDevices}, remembered choice used=${c.micDeviceRemembered ? 'yes' : 'no'}`)
+  if (c.micLevel) {
+    lines.push(`Mic level: min=${fixed(c.micLevel.min)} max=${fixed(c.micLevel.max)} samples=${c.micLevel.samples} no-signal warning=${c.micSilentWarning ? 'yes' : 'no'}`)
+  }
+  if (c.post) {
+    const p = c.post
+    lines.push(
+      `File check: audio track=${p.audioTrack ? 'yes' : 'no'} peak=${fixed(p.audioPeak)} rms=${fixed(p.audioRms)} over ${fixed(p.audioSeconds, 1)} s, frame luma=[${p.frameLuma.map((v) => fixed(v, 1)).join(',')}]`
+    )
+  }
+  return lines
 }

@@ -47,6 +47,13 @@ describe('formatRecordTime', () => {
   })
 })
 
+describe('pickMimeType without sound', () => {
+  it('does not announce opus when the stream has no audio track', () => {
+    expect(pickMimeType('screen', () => true, false)).toBe('video/webm;codecs=vp9')
+    expect(pickMimeType('screen', () => true, true)).toBe('video/webm;codecs=vp9,opus')
+  })
+})
+
 describe('pickMimeType', () => {
   const only = (...types: string[]) => (type: string) => types.includes(type)
 

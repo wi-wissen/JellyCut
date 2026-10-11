@@ -22,9 +22,11 @@ const KIND_NAMES: Record<RecordLocale, Record<RecordKind, string>> = {
   en: { microphone: 'Microphone', camera: 'Camera', screen: 'Screen' }
 }
 
-const MIME_PREFERENCES: Record<'audio' | 'video', readonly string[]> = {
+const MIME_PREFERENCES: Record<'audio' | 'video' | 'videoOnly', readonly string[]> = {
   audio: ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'],
-  video: ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4']
+  video: ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'],
+  // A stream without an audio track must not announce opus: Firefox then writes an unplayable file.
+  videoOnly: ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4']
 }
 
 const KNOWN_EXTENSIONS = new Set(['webm', 'mp4', 'ogg'])
@@ -46,12 +48,13 @@ export function formatRecordTime(ms: number): string {
 
 /** The container and codec candidates for a kind, in order of preference. */
 export function mimeCandidates(kind: RecordKind): readonly string[] {
-  return MIME_PREFERENCES[kind === 'microphone' ? 'audio' : 'video']
+  if (kind === 'microphone') return MIME_PREFERENCES.audio
+  return [...new Set([...MIME_PREFERENCES.video, ...MIME_PREFERENCES.videoOnly])]
 }
 
 /** First supported container and codec for the kind, or null when the browser can record none of them. */
-export function pickMimeType(kind: RecordKind, isTypeSupported: (type: string) => boolean): string | null {
-  const candidates = MIME_PREFERENCES[kind === 'microphone' ? 'audio' : 'video']
+export function pickMimeType(kind: RecordKind, isTypeSupported: (type: string) => boolean, hasAudio = true): string | null {
+  const candidates = MIME_PREFERENCES[kind === 'microphone' ? 'audio' : hasAudio ? 'video' : 'videoOnly']
   return candidates.find((type) => isTypeSupported(type)) ?? null
 }
 

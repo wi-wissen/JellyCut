@@ -89,7 +89,7 @@ These cannot be run in the test Chromium. Each needs a person with the device, a
 - [ ] Hardware H.264 on a school PC (Chrome or Edge): H.264 MP4 import (decode) and export (encode) with AAC audio; the export time estimate after one export.
 - [ ] 4K source (for example 3840 x 2160 H.264): import, preview playback and export to 1080p; check the time against [`performance.md`](performance.md).
 - [ ] File System Access dialogs (Chrome, Edge): open and save a project, choose a work folder, cancel a picker, grant access again after a restart.
-- [ ] Screen capture (Record tab): screen recording with the system dialog, and a browser without screen capture (the button must be hidden).
+- [ ] Screen capture (Record tab): screen recording with the system dialog in Chrome/Edge and Firefox (whole screen, a window, a tab): picture not black, own voice audible in the editor and in the export, microphone test shows a level; a browser without screen capture (the button must be hidden). If something fails, copy the "Technical details".
 
 ## 7. Known limitations
 

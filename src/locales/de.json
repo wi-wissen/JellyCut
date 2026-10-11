@@ -310,8 +310,31 @@
       "camera": "Bild und Ton",
       "screen": "Bildschirm, mit Ton wenn möglich"
     },
-    "micSwitch": "Mikrofon mitsprechen",
-    "micHelp": "Dein Ton wird zusammen mit dem Bildschirm aufgenommen. Laut genug sprechen, Kopfhörer vermeiden Echo.",
+    "micLabel": "Mikrofon",
+    "micSystemDefault": "Standard-Mikrofon",
+    "micDefaultSuffix": "{name} (Standard)",
+    "micUnnamed": "Mikrofon {n}",
+    "micTest": "Mikrofon testen",
+    "micTestStop": "Test beenden",
+    "micTestOff": "Teste das Mikrofon und sieh sofort, ob es Ton liefert.",
+    "micTestStarting": "Bitte erlaube das Mikrofon im Browser …",
+    "micTestOn": "Sprich etwas: der Balken muss ausschlagen.",
+    "micTestDenied": "Das Mikrofon wurde nicht erlaubt. Erlaube es in der Adressleiste des Browsers.",
+    "micTestFailed": "Dieses Mikrofon konnte nicht geöffnet werden. Wähle ein anderes.",
+    "micHelp": "Jede Aufnahme enthält dein Mikrofon. Willst du die Stimme nicht, schalte den Clip danach stumm.",
+    "warn": {
+      "noMic": "Kein Mikrofonsignal: prüfe in den Windows-/Mac-Einstellungen das Eingabegerät oder wähle ein anderes Mikrofon.",
+      "black": "Der Bildschirm wird schwarz aufgenommen. Das passiert bei geschützten Inhalten und manchen Fenstern (Hardwarebeschleunigung). Teile stattdessen den ganzen Bildschirm oder einen Tab.",
+      "noFrames": "Der geteilte Bildschirm liefert kein Bild. Teile stattdessen den ganzen Bildschirm oder einen Tab."
+    },
+    "check": {
+      "silentAudio": "In dieser Aufnahme ist kein Ton zu hören. Mögliche Ursachen: falsches oder stummes Mikrofon in den Systemeinstellungen, oder der Browser blockiert es. Wähle beim nächsten Mal ein anderes Mikrofon und teste es vorher.",
+      "blackPicture": "Das Bild dieser Aufnahme ist schwarz. Die nächste Aufnahme nutzt ein anderes Verfahren für den Bildschirm. Meist hilft es, den ganzen Bildschirm oder einen Tab zu teilen."
+    },
+    "notice": {
+      "otherWay": "Die nächste Bildschirmaufnahme nimmt das Bild auf einem anderen Weg auf.",
+      "systemSound": "Der Ton des geteilten Bildschirms konnte nicht aufgenommen werden, deine Stimme ist dabei."
+    },
     "mic": {
       "denied": "Ohne Mikrofon aufgenommen: Zugriff nicht erlaubt",
       "missing": "Ohne Mikrofon aufgenommen: kein Mikrofon gefunden",

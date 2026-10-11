@@ -310,8 +310,31 @@
       "camera": "Picture and sound",
       "screen": "Screen, with sound if possible"
     },
-    "micSwitch": "Record my voice",
-    "micHelp": "Your voice is recorded together with the screen. Speak loud enough; headphones avoid echo.",
+    "micLabel": "Microphone",
+    "micSystemDefault": "Default microphone",
+    "micDefaultSuffix": "{name} (default)",
+    "micUnnamed": "Microphone {n}",
+    "micTest": "Test microphone",
+    "micTestStop": "Stop test",
+    "micTestOff": "Test the microphone to see right away whether it delivers sound.",
+    "micTestStarting": "Please allow the microphone in the browser …",
+    "micTestOn": "Say something: the bar has to move.",
+    "micTestDenied": "The microphone was not allowed. Allow it in the browser's address bar.",
+    "micTestFailed": "This microphone could not be opened. Choose another one.",
+    "micHelp": "Every recording includes your microphone. If you do not want the voice, mute the clip afterwards.",
+    "warn": {
+      "noMic": "No microphone signal: check the input device in the Windows or Mac settings, or choose another microphone.",
+      "black": "The screen is recorded black. This happens with protected content and some windows (hardware acceleration). Share the whole screen or a tab instead.",
+      "noFrames": "The shared screen delivers no picture. Share the whole screen or a tab instead."
+    },
+    "check": {
+      "silentAudio": "No sound can be heard in this recording. Likely causes: a wrong or muted microphone in the system settings, or the browser blocks it. Next time choose another microphone and test it first.",
+      "blackPicture": "The picture of this recording is black. The next recording uses another way to record the screen. Sharing the whole screen or a tab usually helps."
+    },
+    "notice": {
+      "otherWay": "The next screen recording uses another way to record the picture.",
+      "systemSound": "The sound of the shared screen could not be recorded, your voice is included."
+    },
     "mic": {
       "denied": "Recorded without microphone: access was not allowed",
       "missing": "Recorded without microphone: no microphone was found",

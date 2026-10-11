@@ -3,24 +3,26 @@ import { FRAME_INTERVAL_MS, FrameGate, captureSize, sameSize, type CaptureSize }
 import type { TickIn } from './tick.worker'
 
 /**
- * Why screen capture is re-drawn onto a canvas instead of recording the share directly: Firefox delivers display
- * frames only when the shared content changes, so a still window yields no frames at all and MediaRecorder never
- * produces data. A canvas stream with one requestFrame() per tick has a constant frame rate for any content.
+ * The fallback way for a screen share: the picture is re-drawn onto a canvas at a constant 30 fps and the canvas
+ * stream is recorded. Slower and heavier than recording the display track itself (see recorder.ts), so it is only
+ * used after a recording showed that the direct way delivers no pictures or only black ones.
  */
 
 export interface ScreenPipeline {
-  /** The canvas video track only; the recorder adds the (mixed) audio. */
+  /** The canvas video track only; the recorder adds the audio. */
   stream: MediaStream
   info(): PipelineInfo
   /** Draws one frame right now (used before the recorder is flushed so even a still picture has a frame). */
   drawNow(): void
   pause(): void
   resume(): void
-  /** Stops ticking and releases the helper video and the canvas tracks. The share's own tracks are not touched. */
+  /** Stops ticking and releases the canvas tracks. The share's own tracks and the source video are not touched. */
   stop(): void
 }
 
+/** Firefox has requestFrame() on the stream only, Chromium on the track only. */
 type FrameTrack = MediaStreamTrack & { requestFrame?: () => void }
+type FrameStream = MediaStream & { requestFrame?: () => void }
 
 /** Ticks from a worker; falls back to setInterval where workers are unavailable (it is throttled in background tabs). */
 export function startTicker(onTick: () => void, intervalMs = FRAME_INTERVAL_MS): { stop: () => void; kind: 'worker' | 'interval' } {
@@ -50,51 +52,41 @@ export function canCreateScreenPipeline(): boolean {
   return typeof HTMLCanvasElement !== 'undefined' && typeof HTMLCanvasElement.prototype.captureStream === 'function'
 }
 
-export function createScreenPipeline(display: MediaStream): ScreenPipeline | null {
+/** `video` plays the display track and stays owned by the caller. */
+export function createScreenPipeline(video: HTMLVideoElement, displayTrack: MediaStreamTrack): ScreenPipeline | null {
   if (!canCreateScreenPipeline()) return null
   const canvas = document.createElement('canvas')
   const context = canvas.getContext('2d', { alpha: false })
   if (!context) return null
 
-  const settings = display.getVideoTracks()[0]?.getSettings()
-  let size: CaptureSize = captureSize(settings?.width ?? 0, settings?.height ?? 0)
+  const settings = displayTrack.getSettings()
+  let size: CaptureSize = captureSize(video.videoWidth || settings.width || 0, video.videoHeight || settings.height || 0)
   canvas.width = size.width
   canvas.height = size.height
   context.fillStyle = '#000'
   context.fillRect(0, 0, size.width, size.height)
 
-  const canvasStream = canvas.captureStream(0)
-  const canvasTrack = canvasStream.getVideoTracks()[0] as FrameTrack | undefined
+  // Manual capture (frame rate 0 + requestFrame) when this browser offers requestFrame on the track or the stream.
+  // Without it a frame-rate-0 stream would never capture anything, so the stream captures every canvas change instead.
+  let canvasStream = canvas.captureStream(0) as FrameStream
+  let canvasTrack = canvasStream.getVideoTracks()[0] as FrameTrack | undefined
   if (!canvasTrack) return null
-  // Without requestFrame the stream captures on every canvas change, which the per-tick draw provides as well.
-  const manual = typeof canvasTrack.requestFrame === 'function'
+  let requestFrame: (() => void) | null =
+    typeof canvasTrack.requestFrame === 'function'
+      ? () => (canvasTrack as FrameTrack).requestFrame?.()
+      : typeof canvasStream.requestFrame === 'function'
+        ? () => (canvasStream as FrameStream).requestFrame?.()
+        : null
+  if (!requestFrame) {
+    canvasTrack.stop()
+    canvasStream = canvas.captureStream() as FrameStream
+    canvasTrack = canvasStream.getVideoTracks()[0] as FrameTrack | undefined
+    if (!canvasTrack) return null
+    requestFrame = null
+  }
   const stream = new MediaStream([canvasTrack])
 
-  const video = document.createElement('video')
-  video.muted = true
-  video.playsInline = true
-  video.srcObject = new MediaStream(display.getVideoTracks())
-  void video.play().catch(() => undefined)
-
-  // Counts the pictures the share really delivered, to tell "no frames from the browser" from "no data from the recorder".
-  const startedAt = performance.now()
-  const seen: number[] = []
-  let seenTotal = 0
-  let seenFirstSecond = 0
-  const frameApi = typeof video.requestVideoFrameCallback === 'function'
-  const watchFrames = (): void => {
-    if (!frameApi) return
-    video.requestVideoFrameCallback(() => {
-      const now = performance.now()
-      seenTotal++
-      if (now - startedAt < 1000) seenFirstSecond++
-      seen.push(now)
-      if (seen.length > 200) seen.shift()
-      if (running) watchFrames()
-    })
-  }
   let framesDrawn = 0
-
   const gate = new FrameGate()
   let running = true
   let paused = false
@@ -111,10 +103,9 @@ export function createScreenPipeline(display: MediaStream): ScreenPipeline | nul
       context.drawImage(video, 0, 0, size.width, size.height)
     }
     framesDrawn++
-    if (manual) canvasTrack.requestFrame?.()
+    requestFrame?.()
   }
 
-  watchFrames()
   const ticker = startTicker(() => {
     if (!paused && gate.due(performance.now())) draw()
   })
@@ -127,9 +118,7 @@ export function createScreenPipeline(display: MediaStream): ScreenPipeline | nul
       canvasWidth: size.width,
       canvasHeight: size.height,
       framesDrawn,
-      videoFrames: frameApi
-        ? { total: seenTotal, firstSecond: seenFirstSecond, lastSecond: seen.filter((t) => t > performance.now() - 1000).length }
-        : null
+      manualFrames: requestFrame !== null
     }),
     drawNow: draw,
     pause() {
@@ -142,8 +131,6 @@ export function createScreenPipeline(display: MediaStream): ScreenPipeline | nul
     stop() {
       running = false
       ticker.stop()
-      video.pause()
-      video.srcObject = null
       canvasStream.getTracks().forEach((track) => track.stop())
     }
   }

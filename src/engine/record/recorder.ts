@@ -16,8 +16,12 @@ import {
   type RecordDiagnostics,
   type TrackSettingsInfo
 } from '../../core/record/diagnostics'
-import { createAudioMix, type AudioMix } from './audioMix'
-import { createScreenPipeline, type ScreenPipeline } from './screenPipeline'
+import { NO_SIGNAL_LEVEL, QuietWatch, BLACK_LUMA, WARN_AFTER_MS, type RecordingCheck } from '../../core/record/signal'
+import type { CaptureStrategy, VideoProblem } from '../../core/record/strategy'
+import { createAudioMix, createRecordingContext, startLevelMeter, type AudioMix, type Meter, type RecordingContext } from './audioMix'
+import { createDisplayMonitor, type DisplayMonitor } from './displayMonitor'
+import { AUDIO_CONSTRAINTS, microphoneConstraints } from './micTest'
+import { canCreateScreenPipeline, createScreenPipeline, type ScreenPipeline } from './screenPipeline'
 
 /** Chunks are flushed once a second, so a crash loses at most that much. */
 const TIMESLICE_MS = 1000
@@ -31,7 +35,28 @@ export const STOP_EVENT_TIMEOUT_MS = 4000
 /** A recorder that already went inactive (its source ended) only needs a moment to deliver its last chunk. */
 const INACTIVE_GRACE_MS = 300
 
-const AUDIO_CONSTRAINTS: MediaTrackConstraints = { echoCancellation: true, noiseSuppression: true }
+/** How long a mix may take to start before the recorder gives up on it and records the voice alone. */
+const MIX_START_WAIT_MS = 800
+const HEALTH_CHECK_MS = 250
+
+/** Live findings while recording: shown as calm warnings in the panel and cleared when the signal returns. */
+export interface LiveWarning {
+  kind: 'noMic' | 'black' | 'noFrames'
+  active: boolean
+}
+
+/** What happened to the recording's sources; the store turns this into the next strategy and into notices. */
+export interface RecordHealth {
+  /** Screen only: the way the picture was recorded. */
+  strategy: CaptureStrategy | null
+  problem: VideoProblem | null
+  /** A sound source was part of the recording. */
+  expectedAudio: boolean
+  /** The microphone meter stayed at digital silence for the whole recording. */
+  micSilent: boolean
+  /** The share's own sound could not be mixed in (the audio context did not start). */
+  systemSoundDropped: boolean
+}
 
 export interface RecorderOptions {
   locale?: RecordLocale
@@ -44,8 +69,14 @@ export interface RecorderOptions {
    */
   onAutoStop?: (reason: 'ended' | 'limit') => void
   now?: () => number
-  /** Screen only: also record the student's voice. If the microphone is refused the recording continues without it. */
-  withMicrophone?: boolean
+  /** Screen only: the way the picture is recorded. Default 'raw'. */
+  strategy?: CaptureStrategy
+  strategyReason?: string
+  /** Chosen microphone; when it is gone the default one is used. */
+  microphoneDeviceId?: string | null
+  onWarning?: (warning: LiveWarning) => void
+  /** Called with the microphone devices count after the permission: for the diagnostics. */
+  microphoneCount?: number
 }
 
 /** Errors carry the name the UI maps with friendlyRecordError(); browser errors keep their own DOMException name. */
@@ -70,32 +101,77 @@ interface Acquired {
   microphone: MediaStream | null
   /** Error name when the microphone was wanted but could not be opened. */
   microphoneError: string | null
+  /** The remembered microphone was unusable and the default one was opened instead. */
+  deviceFellBack: boolean
+}
+
+const errorNameOf = (e: unknown): string => (e instanceof Error && e.name ? e.name : 'UnknownError')
+
+/** Opens the chosen microphone; when that device is gone or refused, the default one. Throws the last error. */
+async function openMicrophone(deviceId: string | null): Promise<{ stream: MediaStream; deviceFellBack: boolean }> {
+  const devices = navigator.mediaDevices
+  if (deviceId) {
+    try {
+      return { stream: await devices.getUserMedia({ audio: microphoneConstraints(deviceId), video: false }), deviceFellBack: false }
+    } catch (e) {
+      if (errorNameOf(e) === 'NotAllowedError') throw e
+    }
+    return { stream: await devices.getUserMedia({ audio: AUDIO_CONSTRAINTS, video: false }), deviceFellBack: true }
+  }
+  return { stream: await devices.getUserMedia({ audio: AUDIO_CONSTRAINTS, video: false }), deviceFellBack: false }
+}
+
+/** The camera with sound. Without a usable microphone the picture is still recorded and the reason is reported. */
+async function openCamera(deviceId: string | null): Promise<Acquired> {
+  const devices = navigator.mediaDevices
+  const video = { width: { ideal: 1280 }, height: { ideal: 720 } }
+  let firstError: string | null = null
+  let deviceFellBack = false
+  if (deviceId) {
+    try {
+      const stream = await devices.getUserMedia({ audio: microphoneConstraints(deviceId), video })
+      return { stream, microphone: null, microphoneError: null, deviceFellBack: false }
+    } catch (e) {
+      if (errorNameOf(e) !== 'NotAllowedError') deviceFellBack = true
+      else firstError = 'NotAllowedError'
+    }
+  }
+  if (firstError === null) {
+    try {
+      const stream = await devices.getUserMedia({ audio: AUDIO_CONSTRAINTS, video })
+      return { stream, microphone: null, microphoneError: null, deviceFellBack }
+    } catch (e) {
+      firstError = errorNameOf(e)
+    }
+  }
+  // Camera alone: if that fails too the camera is the problem and its error is the one to show.
+  const stream = await devices.getUserMedia({ audio: false, video })
+  return { stream, microphone: null, microphoneError: firstError, deviceFellBack: false }
 }
 
 /**
  * Screen first, microphone second: the screen picker needs the click's user activation, which a long microphone
  * permission prompt would use up. The microphone call needs no activation.
  */
-async function acquireWithMicrophone(kind: RecordKind, withMicrophone: boolean): Promise<Acquired> {
-  const stream = await acquire(kind)
-  if (kind !== 'screen' || !withMicrophone) return { stream, microphone: null, microphoneError: null }
-  try {
-    const microphone = await navigator.mediaDevices.getUserMedia({ audio: AUDIO_CONSTRAINTS, video: false })
-    return { stream, microphone, microphoneError: null }
-  } catch (e) {
-    return { stream, microphone: null, microphoneError: e instanceof Error && e.name ? e.name : 'UnknownError' }
-  }
-}
-
-async function acquire(kind: RecordKind): Promise<MediaStream> {
+async function acquireSources(kind: RecordKind, deviceId: string | null): Promise<Acquired> {
   const devices = navigator.mediaDevices
   if (!devices) throw new RecordingError('UnsupportedRecordingError', 'media devices are not available')
   if (kind === 'microphone') {
-    return devices.getUserMedia({ audio: AUDIO_CONSTRAINTS, video: false })
+    const { stream, deviceFellBack } = await openMicrophone(deviceId)
+    return { stream, microphone: null, microphoneError: null, deviceFellBack }
   }
-  if (kind === 'camera') {
-    return devices.getUserMedia({ audio: AUDIO_CONSTRAINTS, video: { width: { ideal: 1280 }, height: { ideal: 720 } } })
+  if (kind === 'camera') return openCamera(deviceId)
+  const stream = await acquireDisplay()
+  try {
+    const { stream: microphone, deviceFellBack } = await openMicrophone(deviceId)
+    return { stream, microphone, microphoneError: null, deviceFellBack }
+  } catch (e) {
+    return { stream, microphone: null, microphoneError: errorNameOf(e), deviceFellBack: false }
   }
+}
+
+async function acquireDisplay(): Promise<MediaStream> {
+  const devices = navigator.mediaDevices
   if (typeof devices.getDisplayMedia !== 'function') {
     throw new RecordingError('UnsupportedRecordingError', 'screen capture is not available')
   }
@@ -129,8 +205,12 @@ type Phase = 'idle' | 'recording' | 'paused' | 'stopping' | 'done'
 
 /**
  * Records one microphone, camera or screen source with MediaRecorder. One instance per recording.
- * All tracks are stopped when the recording ends, however it ends. The screen goes through a canvas
- * (see screenPipeline.ts) so a still picture still produces frames.
+ * All tracks are stopped when the recording ends, however it ends.
+ *
+ * Design (see docs/decisions.md): the tracks the browser hands out are recorded as they are. The screen picture
+ * is the display track itself (a canvas re-draw is only the fallback when a recording showed that the direct way
+ * delivers nothing); the sound is the microphone track itself. Web Audio mixes only when two sound sources exist
+ * (voice + the share's own sound), and falls back to the voice alone when its context does not run.
  */
 export class Recorder {
   private phase: Phase = 'idle'
@@ -141,8 +221,18 @@ export class Recorder {
   private stream: MediaStream | null = null
   private media: MediaRecorder | null = null
   private pipeline: ScreenPipeline | null = null
+  private monitor: DisplayMonitor | null = null
   private microphone: MediaStream | null = null
   private mix: AudioMix | null = null
+  private audioContext: RecordingContext | null = null
+  private meter: Meter | null = null
+  private micWatch = new QuietWatch(NO_SIGNAL_LEVEL)
+  private lumaWatch = new QuietWatch(BLACK_LUMA)
+  private micWarned = false
+  private blackWarned = false
+  private noFramesWarned = false
+  private systemSoundDropped = false
+  private usedStrategy: CaptureStrategy | null = null
   private diag: RecordDiagnostics = emptyDiagnostics()
   private diagStart = 0
   private micError: string | null = null
@@ -153,7 +243,7 @@ export class Recorder {
   private segmentStart = 0
   private finalizing: Promise<File> | null = null
   private limitTimer: ReturnType<typeof setInterval> | null = null
-  private meter: { context: AudioContext; analyser: AnalyserNode; samples: Float32Array; frame: number } | null = null
+  private released = false
   private options: RecorderOptions = {}
 
   /** Error name of a microphone that was asked for but could not be used (the recording went on without it); else null. */
@@ -161,14 +251,39 @@ export class Recorder {
     return this.micError
   }
 
-  /** Technical facts about this recording, for the details box after a failure. */
+  /** Technical facts about this recording, for the details box. */
   diagnostics(): RecordDiagnostics {
-    return { ...this.diag, elapsedMs: this.accumulatedMs || this.elapsedMs() }
+    this.refreshCapture()
+    return { ...this.diag, capture: { ...this.diag.capture }, elapsedMs: this.accumulatedMs || this.elapsedMs() }
   }
 
   /** The live stream for the preview (camera and screen); null when not recording. */
   get liveStream(): MediaStream | null {
     return this.stream
+  }
+
+  /** Findings about the sources so far; final after stop(). */
+  health(): RecordHealth {
+    return {
+      strategy: this.usedStrategy,
+      problem: this.videoProblem(),
+      expectedAudio: this.diag.capture.audioPath !== 'none',
+      micSilent: this.micSilentOverall(),
+      systemSoundDropped: this.systemSoundDropped
+    }
+  }
+
+  /** The measurement of the finished file (see postCheck.ts), kept with the other details. */
+  setFileCheck(check: RecordingCheck | null): void {
+    this.diag.capture.post = check
+      ? {
+          audioTrack: check.hasAudioTrack,
+          audioPeak: check.audioPeak,
+          audioRms: check.audioRms,
+          audioSeconds: check.audioSeconds,
+          frameLuma: check.frameLuma
+        }
+      : null
   }
 
   async start(kind: RecordKind, options: RecorderOptions = {}): Promise<void> {
@@ -192,25 +307,29 @@ export class Recorder {
     this.diag.userAgent = typeof navigator === 'undefined' ? '' : (navigator.userAgent ?? '')
     this.diag.kind = kind
     this.diag.mimeType = mimeType
+    this.diag.capture.micDevices = options.microphoneCount ?? null
     for (const type of mimeCandidates(kind)) this.diag.mimeSupport[type] = MediaRecorder.isTypeSupported(type)
 
-    const { stream, microphone, microphoneError } = await acquireWithMicrophone(kind, options.withMicrophone === true)
-    this.micError = microphoneError
+    // Everything up to here is synchronous, so the click that started the recording still counts as the user
+    // gesture: an AudioContext created now starts running; one created after the permission prompts may stay suspended.
+    this.audioContext = kind === 'screen' || options.onLevel ? createRecordingContext(this.now) : null
+
+    const acquired = await acquireSources(kind, options.microphoneDeviceId ?? null)
+    const { stream, microphone } = acquired
+    this.micError = acquired.microphoneError
     this.microphone = microphone
-    if (microphoneError) this.note(`microphone refused: ${microphoneError}`)
+    this.diag.capture.micDeviceRemembered = (options.microphoneDeviceId ?? null) !== null && !acquired.deviceFellBack
+    if (acquired.deviceFellBack) this.note('chosen microphone unavailable, default used')
+    if (acquired.microphoneError) this.note(`microphone refused: ${acquired.microphoneError}`)
     try {
       this.diag.tracks = [...stream.getTracks(), ...(microphone?.getTracks() ?? [])].map(describeTrack)
-      this.pipeline = kind === 'screen' ? createScreenPipeline(stream) : null
-      let recorded: MediaStream = this.pipeline?.stream ?? stream
-      if (kind === 'screen' && microphone) {
-        // One audio track in the file: the voice, plus the share's own sound when the browser gives it.
-        this.mix = createAudioMix(microphone, stream.getAudioTracks())
-        const audio = this.mix ? [this.mix.track] : microphone.getAudioTracks().slice(0, 1)
-        recorded = new MediaStream([...(this.pipeline ? this.pipeline.stream : stream).getVideoTracks(), ...audio])
-      } else if (this.pipeline) {
-        recorded = new MediaStream([...this.pipeline.stream.getVideoTracks(), ...stream.getAudioTracks()])
+      const recorded = await this.compose(kind, stream, microphone, options)
+      const hasAudio = recorded.getAudioTracks().length > 0
+      if (kind !== 'microphone' && !hasAudio) {
+        this.mimeType = pickMimeType(kind, (type) => MediaRecorder.isTypeSupported(type), false) ?? this.mimeType
+        this.diag.mimeType = this.mimeType
       }
-      const media = new MediaRecorder(recorded, { mimeType })
+      const media = new MediaRecorder(recorded, { mimeType: this.mimeType })
       media.ondataavailable = (event) => {
         this.diag.chunkSizes.push(event.data.size)
         this.note(`data ${event.data.size} bytes`)
@@ -220,7 +339,6 @@ export class Recorder {
       this.stream = stream
       this.media = media
       for (const track of stream.getTracks()) track.addEventListener('ended', this.onTrackEnded)
-      this.startMeter(microphone ?? stream)
       this.chunks = []
       this.startedAt = new Date()
       media.start(TIMESLICE_MS)
@@ -230,7 +348,8 @@ export class Recorder {
       this.phase = 'recording'
       this.limitTimer = setInterval(() => {
         if (this.elapsedMs() >= this.limitMs) this.autoStop('limit')
-      }, LIMIT_CHECK_MS)
+        this.checkHealth()
+      }, HEALTH_CHECK_MS)
     } catch (e) {
       stream.getTracks().forEach((track) => track.stop())
       this.release()
@@ -238,7 +357,76 @@ export class Recorder {
     }
   }
 
-  /** Recorded time without paused stretches. */
+  /** Builds the stream that is recorded: the picture track and at most one sound track, as direct as possible. */
+  private async compose(kind: RecordKind, stream: MediaStream, microphone: MediaStream | null, options: RecorderOptions): Promise<MediaStream> {
+    if (kind === 'microphone') {
+      this.setAudioPath('microphone')
+      this.startMeter(stream.getAudioTracks()[0])
+      return stream
+    }
+    if (kind === 'camera') {
+      if (stream.getAudioTracks().length > 0) this.setAudioPath('camera')
+      this.startMeter(stream.getAudioTracks()[0])
+      return stream
+    }
+
+    const displayVideo = stream.getVideoTracks()[0]
+    let video: MediaStreamTrack | undefined = displayVideo
+    if (displayVideo) {
+      this.monitor = createDisplayMonitor(displayVideo)
+      if (this.monitor) {
+        this.monitor.onLuma((t, luma) => this.lumaWatch.push(t, luma))
+        await this.monitor.ready
+      }
+    }
+    const wanted: CaptureStrategy = options.strategy ?? 'raw'
+    this.usedStrategy = 'raw'
+    this.diag.capture.videoPathReason = options.strategyReason ?? 'default'
+    if (wanted === 'canvas') {
+      if (this.monitor && displayVideo && canCreateScreenPipeline()) {
+        this.pipeline = createScreenPipeline(this.monitor.video, displayVideo)
+      }
+      if (this.pipeline) {
+        this.usedStrategy = 'canvas'
+        video = this.pipeline.stream.getVideoTracks()[0]
+      } else {
+        this.diag.capture.videoPathReason += ', canvas unavailable'
+      }
+    }
+    this.diag.capture.videoPath = this.usedStrategy
+
+    const voice = microphone?.getAudioTracks()[0] ?? null
+    const system = stream.getAudioTracks()
+    let audio: MediaStreamTrack | null = null
+    if (voice && system.length > 0 && this.audioContext) {
+      const mix = createAudioMix(this.audioContext.context, voice, system)
+      if (mix && (await this.audioContext.whenRunning(MIX_START_WAIT_MS))) {
+        this.mix = mix
+        audio = mix.track
+        this.setAudioPath('mix')
+      } else {
+        mix?.close()
+        this.systemSoundDropped = true
+        this.note('audio context did not start: recording the voice without the share sound')
+      }
+    }
+    if (!audio && voice) {
+      audio = voice
+      this.setAudioPath('microphone')
+    } else if (!audio && system.length > 0) {
+      audio = system[0]!
+      this.setAudioPath('system')
+    }
+    if (voice) this.startMeter(voice)
+    return new MediaStream([...(video ? [video] : []), ...(audio ? [audio] : [])])
+  }
+
+  private setAudioPath(path: string): void {
+    this.diag.capture.audioPath = path
+    if (path !== 'none') this.note(`audio path ${path}`)
+  }
+
+  /** Elapsed recording time without paused stretches. */
   elapsedMs(): number {
     if (this.phase === 'idle' || this.phase === 'done') return 0
     const live = this.phase === 'recording' ? this.now() - this.segmentStart : 0
@@ -258,7 +446,6 @@ export class Recorder {
     if (this.phase !== 'paused' || !this.media) return
     this.media.resume()
     this.pipeline?.resume()
-    this.mix?.resume()
     this.note('resume')
     this.segmentStart = this.now()
     this.phase = 'recording'
@@ -371,49 +558,91 @@ export class Recorder {
     this.options.onAutoStop?.(reason)
   }
 
-  private startMeter(stream: MediaStream): void {
+  private startMeter(track: MediaStreamTrack | undefined): void {
     const onLevel = this.options.onLevel
-    if (!onLevel || stream.getAudioTracks().length === 0 || typeof AudioContext === 'undefined') return
-    try {
-      const context = new AudioContext()
-      const analyser = context.createAnalyser()
-      analyser.fftSize = 2048
-      context.createMediaStreamSource(stream).connect(analyser)
-      void context.resume().catch(() => undefined)
-      const samples = new Float32Array(analyser.fftSize)
-      this.meter = { context, analyser, samples, frame: 0 }
-      const sample = (): void => {
-        if (!this.meter) return
-        analyser.getFloatTimeDomainData(samples)
-        let sum = 0
-        for (const value of samples) sum += value * value
-        onLevel(Math.min(1, Math.sqrt(sum / samples.length)))
-        this.meter.frame = requestAnimationFrame(sample)
-      }
-      this.meter.frame = requestAnimationFrame(sample)
-    } catch {
-      this.meter = null
+    if (!track) return
+    this.diag.capture.micTrackSampleRate = (typeof track.getSettings === 'function' ? track.getSettings().sampleRate : undefined) ?? null
+    if (!onLevel || !this.audioContext) return
+    const context = this.audioContext
+    this.diag.capture.contextSampleRate = context.context.sampleRate
+    this.meter = startLevelMeter(context.context, track, (level) => {
+      onLevel(level)
+      // A suspended context reads as silence; that says nothing about the microphone, so it is not counted.
+      if (context.context.state === 'running' && this.phase === 'recording') this.micWatch.push(this.now() - this.diagStart, level)
+    })
+  }
+
+  private micSilentOverall(): boolean {
+    const range = this.micWatch.range()
+    return !!range && range.samples >= 20 && range.max < NO_SIGNAL_LEVEL
+  }
+
+  private videoProblem(): VideoProblem | null {
+    if (this.kind !== 'screen') return null
+    if (this.released) return (this.diag.capture.videoProblem as VideoProblem | '') || null
+    const frames = this.monitor?.framesSeen() ?? null
+    const elapsed = this.accumulatedMs || this.elapsedMs()
+    if (this.monitor && elapsed >= WARN_AFTER_MS && !this.monitor.hasPicture() && (frames === null || frames === 0)) return 'noFrames'
+    const luma = this.lumaWatch.range()
+    if (luma && luma.samples >= 3 && luma.max < BLACK_LUMA) return 'black'
+    return null
+  }
+
+  /** Raises or clears the calm warnings; runs every 250 ms while recording. */
+  private checkHealth(): void {
+    if (this.phase !== 'recording') return
+    const warn = this.options.onWarning
+    if (!warn) return
+    const micQuiet = this.audioContext?.context.state === 'running' && this.micWatch.isQuiet()
+    if (micQuiet !== this.micWarned) {
+      this.micWarned = micQuiet
+      if (micQuiet) this.diag.capture.micSilentWarning = true
+      warn({ kind: 'noMic', active: micQuiet })
     }
+    const black = this.lumaWatch.isQuiet()
+    if (black !== this.blackWarned) {
+      this.blackWarned = black
+      warn({ kind: 'black', active: black })
+    }
+    const noFrames = this.monitor !== null && this.elapsedMs() >= WARN_AFTER_MS && !this.monitor.hasPicture()
+    if (noFrames !== this.noFramesWarned) {
+      this.noFramesWarned = noFrames
+      warn({ kind: 'noFrames', active: noFrames })
+    }
+  }
+
+  /** Copies the measured values into the diagnostics. Cheap; called before the sources go away. */
+  private refreshCapture(): void {
+    if (this.released) return
+    const c = this.diag.capture
+    c.audioContext = [...(this.audioContext?.states ?? [])]
+    c.micLevel = this.micWatch.range()
+    c.luma = this.lumaWatch.range()
+    c.framesSeen = this.monitor?.framesSeen() ?? null
+    c.videoProblem = this.videoProblem() ?? ''
   }
 
   private clearTimers(): void {
     if (this.limitTimer !== null) clearInterval(this.limitTimer)
     this.limitTimer = null
-    if (this.meter) {
-      cancelAnimationFrame(this.meter.frame)
-      this.meter.context.close().catch(() => undefined)
-      this.meter = null
-    }
+    this.meter?.stop()
+    this.meter = null
   }
 
   /** Stops the screen pipeline, every track (the browser's sharing indicator goes off) and the meter. Safe to call more than once. */
   private stopTracks(): void {
     this.clearTimers()
+    this.refreshCapture()
+    this.released = true
     if (this.pipeline && !this.diag.pipeline) this.diag.pipeline = this.pipeline.info()
     this.pipeline?.stop()
     this.pipeline = null
+    this.monitor?.stop()
+    this.monitor = null
     this.mix?.close()
     this.mix = null
+    this.audioContext?.close()
+    this.audioContext = null
     this.microphone?.getTracks().forEach((track) => track.stop())
     if (!this.stream) return
     for (const track of this.stream.getTracks()) {

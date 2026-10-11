@@ -1,9 +1,12 @@
-// End-to-end check of the Record tab in a real Chromium with fake devices: microphone, camera and screen
+// End-to-end check of the Record tab in a real browser with fake devices: microphone, camera and screen
 // recordings land in the library, pause/resume, cancel, permission and device errors, hidden screen button,
-// the level meter, track cleanup, shortcut guard, beforeunload, and screenshots (light and dark).
-// Usage: node scripts/e2e-record.mjs   (env SHOT_DIR overrides the screenshot folder)
-// Headless Chromium cannot show the screen picker, so the screen source is a canvas stream (see mediaStubs).
-import { chromium } from 'playwright-core'
+// the level meter, the microphone picker and test, track cleanup, shortcut guard, beforeunload, the self-healing
+// decisions (silent microphone, black screen, suspended audio context, remembered fallback), and checks on the FINAL
+// file (sound level and picture brightness decoded in the page), its playback flags and its export mix.
+// Usage: node scripts/e2e-record.mjs            (Chromium; env SHOT_DIR overrides the screenshot folder)
+//        BROWSER=firefox node scripts/e2e-record.mjs   (Firefox with fake devices, if installed)
+// Browsers cannot show the screen picker headless, so the screen source is a stub stream (see mediaStubs).
+import { chromium, firefox } from 'playwright-core'
 import { createServer } from 'vite'
 import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
@@ -14,6 +17,7 @@ const APP_URL = `http://localhost:${PORT}/app/`
 const SHOT_DIR =
   process.env.SHOT_DIR ?? '/tmp/claude-0/-home-user-JellyCut/8ac8332d-b077-5711-8558-272fe1bb4e47/scratchpad'
 
+const BROWSER = process.env.BROWSER === 'firefox' ? 'firefox' : 'chromium'
 const outcomes = []
 
 function assert(condition, message) {
@@ -21,14 +25,23 @@ function assert(condition, message) {
 }
 
 async function check(name, fn) {
+  if (process.env.ONLY && !new RegExp(process.env.ONLY).test(name)) return
   try {
     await fn()
     outcomes.push(true)
     console.log(`PASS ${name}`)
   } catch (e) {
     outcomes.push(false)
-    console.log(`FAIL ${name}: ${String(e.message).split('\n')[0]}`)
+    console.log(`FAIL ${name}: ${process.env.E2E_VERBOSE ? e.message : String(e.message).split('\n')[0]}`)
   }
+}
+
+/** The recording alert; Firefox without WebGL2 (CI sandboxes) also shows the preview's own alert. */
+const alertOf = (page) => page.locator('[role="alert"]').filter({ hasNotText: 'WebGL is missing' })
+
+function skip(name, reason) {
+  outcomes.push(true)
+  console.log(`SKIP ${name} (${reason})`)
 }
 
 function findChromium() {
@@ -79,41 +92,96 @@ function mediaStubs(opts) {
   }
   window.__mode = 'normal'
   const realGetUserMedia = md.getUserMedia.bind(md)
+  window.__gumConstraints = []
   md.getUserMedia = async (constraints) => {
     window.__gumCalls++
+    window.__gumConstraints.push(JSON.parse(JSON.stringify(constraints)))
     if (window.__mode === 'deny') throw new DOMException('Permission denied', 'NotAllowedError')
     if (window.__mode === 'missing') throw new DOMException('Requested device not found', 'NotFoundError')
-    const stream = await realGetUserMedia(constraints)
+    let stream = await realGetUserMedia(constraints)
+    if (window.__silentMic && constraints.audio && !constraints.video) {
+      // A microphone that delivers digital silence (muted or wrong device).
+      stream.getTracks().forEach((track) => track.stop())
+      const ctx = new RealAudioContext()
+      const dest = ctx.createMediaStreamDestination()
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      gain.gain.value = 0
+      osc.connect(gain).connect(dest)
+      osc.start()
+      stream = dest.stream
+    }
     window.__streams.push(stream)
     return stream
   }
+
+  // Media elements the preview creates are detached from the page; keep a list so the test can look at them.
+  window.__mediaEls = []
+  const realCreate = document.createElement.bind(document)
+  document.createElement = (name, ...rest) => {
+    const el = realCreate(name, ...rest)
+    if (name === 'video' || name === 'audio') window.__mediaEls.push(el)
+    return el
+  }
+
+  // The app's AudioContext can be made to stay suspended, like Firefox does when no click started it.
+  const RealAudioContext = window.AudioContext
+  window.__realAudioContext = RealAudioContext
+  window.AudioContext = class extends RealAudioContext {
+    get state() {
+      return window.__suspendApp ? 'suspended' : super.state
+    }
+    resume() {
+      return window.__suspendApp ? new Promise(() => undefined) : super.resume()
+    }
+  }
+
   if (opts.noDisplay) {
     Object.defineProperty(md, 'getDisplayMedia', { value: undefined, configurable: true })
   } else {
     md.getDisplayMedia = async () => {
-      if (window.__staticScreen) {
-        // Firefox with a window that does not change: one frame at the start, then nothing.
+      const mode = window.__displayMode ?? 'moving'
+      let stream
+      if (mode === 'still') {
+        // A window that does not change: one frame at the start, then nothing.
         const still = document.createElement('canvas')
         still.width = 800
         still.height = 450
         const sctx = still.getContext('2d')
         sctx.fillStyle = '#2d6a4f'
         sctx.fillRect(0, 0, 800, 450)
-        const stillStream = still.captureStream(0)
-        stillStream.getVideoTracks()[0].requestFrame()
-        window.__streams.push(stillStream)
-        return stillStream
+        stream = still.captureStream(0)
+        const track = stream.getVideoTracks()[0]
+        ;(track.requestFrame ? track : stream).requestFrame()
+      } else if (mode === 'frozen') {
+        // A share that never delivers a picture.
+        const dead = document.createElement('canvas')
+        dead.width = 640
+        dead.height = 360
+        dead.getContext('2d')
+        stream = dead.captureStream(0)
+      } else {
+        const canvas = document.createElement('canvas')
+        canvas.width = 640
+        canvas.height = 360
+        const ctx = canvas.getContext('2d')
+        let frame = 0
+        setInterval(() => {
+          ctx.fillStyle = mode === 'black' ? '#000' : `hsl(${(frame++ * 12) % 360} 70% 45%)`
+          ctx.fillRect(0, 0, 640, 360)
+        }, 67)
+        stream = canvas.captureStream(15)
       }
-      const canvas = document.createElement('canvas')
-      canvas.width = 640
-      canvas.height = 360
-      const ctx = canvas.getContext('2d')
-      let frame = 0
-      setInterval(() => {
-        ctx.fillStyle = `hsl(${(frame++ * 12) % 360} 70% 45%)`
-        ctx.fillRect(0, 0, 640, 360)
-      }, 67)
-      const stream = canvas.captureStream(15)
+      if (window.__systemAudio) {
+        const ctx = new RealAudioContext()
+        const dest = ctx.createMediaStreamDestination()
+        const osc = ctx.createOscillator()
+        osc.frequency.value = 330
+        osc.connect(dest)
+        osc.start()
+        await Promise.race([ctx.resume(), new Promise((r) => setTimeout(r, 300))])
+        stream.addTrack(dest.stream.getAudioTracks()[0])
+      }
       window.__streams.push(stream)
       return stream
     }
@@ -165,26 +233,55 @@ const NAME_PATTERN = {
 
 const server = await createServer({ server: { port: PORT, strictPort: true }, logLevel: 'error' })
 await server.listen()
-const browser = await chromium.launch({
-  executablePath: findChromium(),
-  args: [
-    '--no-sandbox',
-    '--use-fake-device-for-media-stream',
-    '--use-fake-ui-for-media-stream',
-    '--autoplay-policy=no-user-gesture-required'
-  ]
-})
+const browser =
+  BROWSER === 'firefox'
+    ? await firefox.launch({
+        firefoxUserPrefs: {
+          'media.navigator.streams.fake': true,
+          'media.navigator.permission.disabled': true,
+          'media.autoplay.default': 0,
+          'media.autoplay.blocking_policy': 0
+        }
+      })
+    : await chromium.launch({
+        executablePath: findChromium(),
+        args: [
+          '--no-sandbox',
+          '--use-fake-device-for-media-stream',
+          '--use-fake-ui-for-media-stream',
+          '--autoplay-policy=no-user-gesture-required'
+        ]
+      })
 mkdirSync(SHOT_DIR, { recursive: true })
+
+// A sandbox without a sound device leaves every AudioContext suspended (seen in headless Firefox): the checks that
+// need a running context are skipped there, the self-healing path for exactly that case is tested everywhere.
+const CTX_RUNS = await (async () => {
+  const probe = await browser.newPage()
+  try {
+    await probe.goto(`http://localhost:${PORT}/`)
+    return await probe.evaluate(async () => {
+      const ctx = new AudioContext()
+      await Promise.race([ctx.resume(), new Promise((r) => setTimeout(r, 1500))])
+      return ctx.state === 'running'
+    })
+  } finally {
+    await probe.close()
+  }
+})()
+console.log(`AudioContext can run in this browser: ${CTX_RUNS}`)
+const checkWithContext = (name, fn) => (CTX_RUNS ? check(name, fn) : skip(name, 'AudioContext stays suspended in this environment'))
 
 const pageErrors = []
 
-async function freshPage({ scheme = 'light', stubs = {} } = {}) {
+async function freshPage({ scheme = 'light', stubs = {}, init = null } = {}) {
   const context = await browser.newContext({
     locale: 'en-US',
     viewport: { width: 1120, height: 700 },
     colorScheme: scheme
   })
   await context.addInitScript(mediaStubs, stubs)
+  if (init) await context.addInitScript(init)
   const page = await context.newPage()
   page.on('pageerror', (e) => pageErrors.push(e.message))
   await page.goto(APP_URL)
@@ -205,7 +302,7 @@ async function stopAndWaitForAsset(page, kind, before) {
   try {
     await addButton(page).waitFor({ timeout: 15000 })
   } catch (e) {
-    const alert = await page.getByRole('alert').textContent().catch(() => '')
+    const alert = await alertOf(page).textContent().catch(() => '')
     throw new Error(`no "Add to timeline" after stop; alert: "${alert}"`)
   }
   const proj = await project(page)
@@ -270,7 +367,7 @@ const assetIds = async (page) => (await project(page)).assets.map((a) => a.id)
       5000,
       'microphone recording did not reach 2 s'
     )
-    assert(peak > 0.01, `level meter did not move (peak ${peak.toFixed(4)})`)
+    if (CTX_RUNS) assert(peak > 0.01, `level meter did not move (peak ${peak.toFixed(4)})`)
 
     const asset = await stopAndWaitForAsset(page, 'microphone', before)
     assert(asset.kind === 'audio', `kind ${asset.kind}`)
@@ -401,7 +498,7 @@ for (const scheme of ['light', 'dark']) {
   await check('denied permission shows a friendly message and "Try again" works after allowing', async () => {
     await page.evaluate(() => (window.__mode = 'deny'))
     await sourceButton(page, 'camera').click()
-    const alert = page.getByRole('alert')
+    const alert = alertOf(page)
     await alert.waitFor()
     const text = await alert.textContent()
     assert(/Access was not allowed/.test(text), `alert says "${text}"`)
@@ -417,7 +514,7 @@ for (const scheme of ['light', 'dark']) {
     await page.getByRole('button', { name: 'Record again', exact: true }).click()
     await page.evaluate(() => (window.__mode = 'missing'))
     await sourceButton(page, 'microphone').click()
-    const alert = page.getByRole('alert')
+    const alert = alertOf(page)
     await alert.waitFor()
     const text = await alert.textContent()
     assert(/No suitable device was found/.test(text), `alert says "${text}"`)
@@ -440,7 +537,7 @@ for (const scheme of ['light', 'dark']) {
 // ---------- screen: canvas stub, browser stop-sharing finishes the recording ----------
 {
   const { page, context } = await freshPage({ scheme: 'light' })
-  await check('screen: the browser stop-sharing button finishes the recording as a normal asset', async () => {
+  await (BROWSER === 'chromium' ? check : (n) => skip(n, 'Firefox ignores a synthetic ended event on a track'))('screen: the browser stop-sharing button finishes the recording as a normal asset', async () => {
     const before = await assetIds(page)
     await sourceButton(page, 'screen').click()
     await stopButton(page).waitFor()
@@ -449,7 +546,10 @@ for (const scheme of ['light', 'dark']) {
       const track = window.__streams.findLast((s) => s.getVideoTracks().length > 0).getVideoTracks()[0]
       track.dispatchEvent(new Event('ended'))
     })
-    await addButton(page).waitFor({ timeout: 15000 })
+    await addButton(page).waitFor({ timeout: 15000 }).catch(async () => {
+      const s = await page.evaluate(() => { const r = document.querySelector('#app').__vue_app__.config.globalProperties.$pinia.state.value.record; return `${r.phase} ${r.errorKey} ${r.diagnosticsText}` })
+      throw new Error(`no "Add to timeline"; alert: "${await alertOf(page).textContent().catch(() => '')}"; state: ${s}`)
+    })
     const proj = await project(page)
     const asset = proj.assets.find((a) => !before.includes(a.id) && NAME_PATTERN.screen.test(a.name))
     assert(asset, `no screen asset; names: ${proj.assets.map((a) => a.name).join(', ')}`)
@@ -459,24 +559,327 @@ for (const scheme of ['light', 'dark']) {
   await context.close()
 }
 
-// ---------- screen, still content (Firefox delivers no frames for a window that does not change) ----------
+// ---------- helpers for the checks on the final file ----------
+/** Measures the last recording the way the editor reads it: decodes sound and pictures of the recorded file. */
+const fileCheck = (page) =>
+  page.evaluate(async () => {
+    const { checkRecording } = await import('/src/engine/record/postCheck.ts')
+    return checkRecording(new File(window.__recBlobs, 'rec.webm', { type: 'video/webm' }))
+  })
+
+/** Which source tracks reached the MediaRecorder: the display / microphone tracks themselves, or something else. */
+const recordedSources = (page) =>
+  page.evaluate(() => {
+    const rec = window.__recStreams.at(-1)
+    const ids = (streams) => streams.flatMap((s) => s.getTracks().map((t) => t.id))
+    const displayVideo = ids(window.__streams.filter((s) => s.getVideoTracks().length > 0))
+    const micAudio = ids(window.__streams.filter((s) => s.getVideoTracks().length === 0))
+    const video = rec.getVideoTracks().map((t) => t.id)
+    const audio = rec.getAudioTracks().map((t) => t.id)
+    return {
+      video: video.length,
+      audio: audio.length,
+      videoIsDisplayTrack: video.length === 1 && displayVideo.includes(video[0]),
+      audioIsMicTrack: audio.length === 1 && micAudio.includes(audio[0])
+    }
+  })
+
+/** Strength of one frequency (Goertzel) in the first seconds of the last recording's sound. */
+const toneStrength = (page, freq) =>
+  page.evaluate(async (hz) => {
+    const { ALL_FORMATS, Input, BlobSource, AudioSampleSink } = await import('/tests/helpers/mediabunny.ts')
+    const input = new Input({ source: new BlobSource(new File(window.__recBlobs, 'rec.webm')), formats: ALL_FORMATS })
+    const track = await input.getPrimaryAudioTrack()
+    if (!track) return -1
+    const chunks = []
+    let rate = 48000
+    for await (const s of new AudioSampleSink(track).samples(0.3, 2.3)) {
+      const a = new Float32Array(s.numberOfFrames)
+      s.copyTo(a, { planeIndex: 0, format: 'f32-planar' })
+      chunks.push(a)
+      rate = s.sampleRate
+      s.close()
+    }
+    input.dispose()
+    const n = chunks.reduce((sum, c) => sum + c.length, 0)
+    const all = new Float32Array(n)
+    let o = 0
+    for (const c of chunks) {
+      all.set(c, o)
+      o += c.length
+    }
+    const w = (2 * Math.PI * hz) / rate
+    const coeff = 2 * Math.cos(w)
+    let s1 = 0
+    let s2 = 0
+    for (let i = 0; i < n; i++) {
+      const s = all[i] + coeff * s1 - s2
+      s2 = s1
+      s1 = s
+    }
+    return Math.sqrt(s1 * s1 + s2 * s2 - coeff * s1 * s2) / (n / 2)
+  }, freq)
+
+const detailsText = async (page) => {
+  const details = page.locator('[data-role="record-details"]')
+  if (!(await details.evaluate((d) => d.open))) await details.locator('summary').click()
+  return details.locator('textarea').inputValue()
+}
+/** The level test starts by itself where the permission is already granted; otherwise it needs the button. */
+async function ensureMicTest(page) {
+  await page.locator('[data-role="mic-test"]').waitFor()
+  await page.waitForTimeout(600)
+  const button = page.locator('[data-role="mic-test"]')
+  if (/^Test microphone$/.test((await button.textContent()).trim())) await button.click()
+  await page.getByText('Say something: the bar has to move.').waitFor({ timeout: 8000 })
+}
+const micPicker = (page) => page.locator('[data-role="mic-picker"]')
+const memory = (page) => page.evaluate(() => localStorage.getItem('jellycut.record.strategy'))
+
+// ---------- the microphone picker and the test before recording ----------
 {
   const { page, context } = await freshPage({ scheme: 'light' })
-  await check('screen: a still share is recorded through the canvas pipeline and keeps its length', async () => {
+  await check('the voice switch is gone; a compact microphone picker with a test button is shown (44 px targets)', async () => {
+    const text = await bodyText(page)
+    assert(!/Record my voice/.test(text), 'the old voice switch text is still shown')
+    assert((await page.locator('[data-role="mic-switch"]').count()) === 0, 'the voice switch still exists')
+    await micPicker(page).waitFor()
+    for (const selector of ['[data-role="mic-select"]', '[data-role="mic-test"]']) {
+      const box = await page.locator(selector).boundingBox()
+      assert(box && box.height >= 44, `${selector} height ${box?.height}`)
+    }
+    assert(await page.locator('label[for="record-mic-select"]').count() === 1, 'the select has no label')
+  })
+  await check('"Test microphone" shows a live level before recording, lists the devices and marks the default', async () => {
+    await ensureMicTest(page)
+    let peak = 0
+    if (CTX_RUNS) {
+      await waitUntil(
+        async () => {
+          const level = await page.evaluate(() => document.querySelector('#app').__vue_app__.config.globalProperties.$pinia.state.value.record.testLevel)
+          peak = Math.max(peak, level)
+          return peak > 0.01
+        },
+        9000,
+        'the test level never moved'
+      )
+    }
+    const options = await page.locator('[data-role="mic-select"] option').allTextContents()
+    assert(options.length >= 1 && options.every((o) => o.trim() !== ''), `options ${JSON.stringify(options)}`)
+    assert(options.filter((o) => /\(default\)/.test(o)).length === 1, `default marked ${options.filter((o) => /\(default\)/.test(o)).length} times: ${JSON.stringify(options)}`)
+    assert(options.every((o) => !/^Default - /.test(o)), 'a browser "Default - " prefix is shown')
+  })
+  await check('the chosen microphone is remembered, survives a reload and is opened by its exact id', async () => {
+    const select = page.locator('[data-role="mic-select"]')
+    const values = await select.locator('option').evaluateAll((os) => os.map((o) => o.value))
+    if (values.length < 2) return console.log(`  (only ${values.length} microphone in this browser: nothing to choose)`)
+    const target = values[1]
+    await select.selectOption(target)
+    assert((await page.evaluate(() => localStorage.getItem('jellycut.record.microphoneDevice'))) === target, 'choice not stored')
+    await page.reload()
+    await page.getByRole('button', { name: 'Record', exact: true }).click()
+    await waitUntil(async () => (await select.inputValue().catch(() => '')) === target, 6000, 'the choice was not restored after a reload')
+    await page.evaluate(() => (window.__gumConstraints.length = 0))
     const before = await assetIds(page)
-    await page.evaluate(() => (window.__staticScreen = true))
+    await sourceButton(page, 'microphone').click()
+    await stopButton(page).waitFor()
+    await page.waitForTimeout(1200)
+    await stopAndWaitForAsset(page, 'microphone', before)
+    const used = await page.evaluate(() => window.__gumConstraints.map((c) => c.audio?.deviceId?.exact ?? null))
+    assert(used.includes(target), `getUserMedia device ids ${JSON.stringify(used)}`)
+  })
+  await check('a remembered microphone that is no longer there falls back to the default', async () => {
+    await page.evaluate(() => localStorage.setItem('jellycut.record.microphoneDevice', 'unplugged-device'))
+    await page.reload()
+    await page.getByRole('button', { name: 'Record', exact: true }).click()
+    const select = page.locator('[data-role="mic-select"]')
+    const first = (await select.locator('option').evaluateAll((os) => os.map((o) => o.value)))[0]
+    await waitUntil(async () => (await select.inputValue().catch(() => '')) === first, 6000, 'did not fall back to the default microphone')
+  })
+  await check('starting a recording closes the test and it records', async () => {
+    await sourceButton(page, 'microphone').click()
+    await stopButton(page).waitFor()
+    assert((await page.evaluate(() => document.querySelector('#app').__vue_app__.config.globalProperties.$pinia.state.value.record.micTest)) === 'off', 'test still on')
+    await page.waitForTimeout(1200)
+    await stopAndWaitForAsset(page, 'microphone', await assetIds(page))
+  })
+  await context.close()
+}
+{
+  const { page, context } = await freshPage({ scheme: 'light', init: 'window.__silentMic = true' })
+  await checkWithContext('a silent microphone shows the calm "no signal" warning in the test after 3 s', async () => {
+    await ensureMicTest(page)
+    await page.locator('[data-role="mic-warning"]').waitFor({ timeout: 8000 })
+    const text = await page.locator('[data-role="mic-warning"]').textContent()
+    assert(/No microphone signal: check the input device in the Windows or Mac settings/.test(text), text)
+    await page.locator('[data-role="mic-test"]').click()
+  })
+  await checkWithContext('screen + silent microphone: warning while recording, "no sound" finding on the clip, details show the measurements', async () => {
+    const before = await assetIds(page)
+    await page.evaluate(() => (window.__recBlobs.length = 0))
+    await sourceButton(page, 'screen').click()
+    await stopButton(page).waitFor()
+    const warning = page.locator('[data-role="record-warning"]')
+    await warning.waitFor({ timeout: 8000 })
+    assert(/No microphone signal/.test(await warning.first().textContent()), 'warning text')
+    await page.waitForTimeout(500)
+    await stopAndWaitForAsset(page, 'screen', before)
+    const check1 = page.locator('[data-role="record-check"]')
+    await check1.waitFor()
+    assert(/No sound can be heard in this recording/.test(await check1.first().textContent()), 'finding text')
+    const text = await detailsText(page)
+    assert(/Mic level: min=0\.0000 max=0\.0000/.test(text), `details: ${text.split('\n').filter((l) => /Mic level|File check/.test(l)).join(' | ')}`)
+    assert(/no-signal warning=yes/.test(text) && /File check: audio track=yes peak=0\.0000/.test(text), 'details miss the file check')
+  })
+  await context.close()
+}
+
+// ---------- screen + voice: the tracks are recorded directly, the final file is audible and bright ----------
+{
+  const { page, context } = await freshPage({ scheme: 'light' })
+  let assetName = ''
+  await check('screen + voice: the microphone is always requested, picture and sound tracks are recorded as they are', async () => {
+    const before = await assetIds(page)
+    await page.evaluate(() => (window.__recBlobs.length = 0))
     await sourceButton(page, 'screen').click()
     await stopButton(page).waitFor()
     await page.waitForTimeout(2500)
-    const recorded = await page.evaluate(() => {
-      const track = window.__recStreams.at(-1).getVideoTracks()[0]
-      return { canvasTrack: typeof track.requestFrame === 'function' }
+    assert((await page.locator('[data-role="mic-level"]').count()) === 1, 'no level meter for screen + voice')
+    assert((await page.locator('[data-role="record-warning"]').count()) === 0, 'a warning is shown for a healthy recording')
+    const constraints = await page.evaluate(() => window.__gumConstraints)
+    assert(constraints.some((c) => c.audio && !c.video), 'the microphone was not requested')
+    const asset = await stopAndWaitForAsset(page, 'screen', before)
+    assetName = asset.name
+    assert(asset.hasAudio === true, `hasAudio ${asset.hasAudio}`)
+    assert(asset.duration / 1e6 >= 1.5, `duration ${(asset.duration / 1e6).toFixed(2)} s`)
+    assert(await tracksEnded(page), 'tracks (screen and microphone) still live after stop')
+    const src = await recordedSources(page)
+    assert(src.video === 1 && src.audio === 1, `recorded tracks ${JSON.stringify(src)}`)
+    assert(src.videoIsDisplayTrack, 'the screen picture was not recorded directly')
+    assert(src.audioIsMicTrack, 'the sound is not the microphone track itself (Web Audio in between)')
+  })
+  await check('screen + voice: the FINAL FILE has audible sound and a bright picture; no warnings, no Web Audio mix', async () => {
+    const c = await fileCheck(page)
+    assert(c && c.hasAudioTrack && c.hasVideoTrack, `file check ${JSON.stringify(c)}`)
+    assert(c.audioPeak > 0.05 && c.audioRms > 0.003, `sound peak ${c.audioPeak} rms ${c.audioRms}`)
+    assert(c.frameLuma.length > 0 && Math.max(...c.frameLuma) > 20, `frame luma ${c.frameLuma}`)
+    assert((await page.locator('[data-role="record-check"]').count()) === 0, 'a finding is shown for a healthy file')
+    const text = await detailsText(page)
+    assert(/Audio path: microphone/.test(text) && /Video path: raw \(default\), problem=none/.test(text), text.split('\n').filter((l) => /path/.test(l)).join(' | '))
+    assert(/File check: audio track=yes/.test(text), 'details miss the file check')
+    if (CTX_RUNS) assert(/Mic level: min=/.test(text), 'details miss the microphone level')
+  })
+  await (BROWSER === 'chromium' ? check : (n) => skip(n, 'the editor preview needs WebGL2, missing in this Firefox sandbox'))('playback: the clip is unmuted at full volume and its element decodes sound; the export mix contains it', async () => {
+    await addButton(page).click()
+    await waitUntil(async () => (await project(page)).clips.some((c) => c.assetId), 5000, 'no clip was added')
+    const clip = (await project(page)).clips.at(-1)
+    assert(clip.muted === false && clip.volume === 1, `clip muted=${clip.muted} volume=${clip.volume}`)
+    await page.evaluate(() => {
+      const editor = document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('editor')
+      editor.seek?.(0)
+      if (!editor.isPlaying) editor.togglePlaying()
     })
-    assert(recorded.canvasTrack, 'the recorder got the raw display stream, not the canvas stream')
+    await waitUntil(
+      () => page.evaluate(() => window.__mediaEls.some((el) => el.src.startsWith('blob:') && !el.paused && el.currentTime > 0.3)),
+      8000,
+      'no preview element is playing the clip'
+    )
+    const el = await page.evaluate(() => {
+      const e = window.__mediaEls.find((x) => x.src.startsWith('blob:') && !x.paused)
+      return { muted: e.muted, volume: e.volume, decoded: e.webkitAudioDecodedByteCount ?? null }
+    })
+    assert(el.muted === false && el.volume === 1, `element muted=${el.muted} volume=${el.volume}`)
+    if (BROWSER === 'chromium') assert(el.decoded > 0, `the element decoded ${el.decoded} bytes of sound`)
+    await page.evaluate(() => {
+      const editor = document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('editor')
+      if (editor.isPlaying) editor.togglePlaying()
+    })
+
+    const exported = await page.evaluate(async (name) => {
+      const { runExport } = await import('/src/engine/export/exporter.ts')
+      const { ALL_FORMATS, Input, BlobSource, AudioSampleSink } = await import('/tests/helpers/mediabunny.ts')
+      const pinia = document.querySelector('#app').__vue_app__.config.globalProperties.$pinia
+      const proj = JSON.parse(JSON.stringify(pinia.state.value.editor.history.present))
+      const asset = proj.assets.find((a) => a.name === name)
+      const file = new File(window.__recBlobs, name, { type: 'video/webm' })
+      const res = await runExport({ project: proj, files: { [asset.id]: file }, options: { resolution: 480, fps: 30, quality: 'good', format: 'mp4' } }, () => undefined, new AbortController().signal)
+      const input = new Input({ source: new BlobSource(res.blob), formats: ALL_FORMATS })
+      const track = await input.getPrimaryAudioTrack()
+      let peak = 0
+      if (track) {
+        for await (const s of new AudioSampleSink(track).samples(0.2, 2)) {
+          const a = new Float32Array(s.numberOfFrames)
+          s.copyTo(a, { planeIndex: 0, format: 'f32-planar' })
+          for (const v of a) peak = Math.max(peak, Math.abs(v))
+          s.close()
+        }
+      }
+      input.dispose()
+      return { audio: !!track, peak }
+    }, assetName)
+    assert(exported.audio && exported.peak > 0.02, `exported sound ${JSON.stringify(exported)}`)
+  })
+  await context.close()
+}
+
+// ---------- screen with the share's own sound: mixed through Web Audio ----------
+{
+  const { page, context } = await freshPage({ scheme: 'light', init: 'window.__systemAudio = true' })
+  await checkWithContext('screen with share sound: voice and share sound are mixed (running context), the file carries both', async () => {
+    const before = await assetIds(page)
+    await page.evaluate(() => (window.__recBlobs.length = 0))
+    await sourceButton(page, 'screen').click()
+    await stopButton(page).waitFor()
+    await page.waitForTimeout(3000)
+    await stopAndWaitForAsset(page, 'screen', before)
+    const src = await recordedSources(page)
+    assert(src.audio === 1 && !src.audioIsMicTrack, `audio track ${JSON.stringify(src)}`)
+    const c = await fileCheck(page)
+    assert(c.audioPeak > 0.05, `mixed sound peak ${c.audioPeak}`)
+    const share = await toneStrength(page, 330)
+    assert(share > 0.02, `the share's 330 Hz tone is missing in the file (${share})`)
+    const text = await detailsText(page)
+    assert(/Audio path: mix/.test(text) && /AudioContext: running@/.test(text), text.split('\n').filter((l) => /Audio/.test(l)).join(' | '))
+  })
+  await context.close()
+}
+{
+  const { page, context } = await freshPage({ scheme: 'light', init: 'window.__systemAudio = true; window.__suspendApp = true' })
+  await check('screen with share sound and a context that stays suspended (Firefox case): falls back to the voice alone, file still audible', async () => {
+    const before = await assetIds(page)
+    await page.evaluate(() => (window.__recBlobs.length = 0))
+    await sourceButton(page, 'screen').click()
+    await stopButton(page).waitFor({ timeout: 8000 })
+    await page.waitForTimeout(4200)
+    assert((await page.locator('[data-role="record-warning"]').count()) === 0, 'a suspended context raised a false "no microphone signal"')
+    await stopAndWaitForAsset(page, 'screen', before)
+    const src = await recordedSources(page)
+    assert(src.audioIsMicTrack, `the voice was not recorded directly: ${JSON.stringify(src)}`)
+    const c = await fileCheck(page)
+    assert(c.audioPeak > 0.05, `sound peak ${c.audioPeak}`)
+    const notice = page.locator('[data-role="record-notice"]')
+    assert(/sound of the shared screen could not be recorded/.test(await notice.first().textContent()), 'no notice about the dropped share sound')
+    assert(/suspended@0/.test(await detailsText(page)), 'context states missing in the details')
+  })
+  await context.close()
+}
+
+// ---------- still content: the direct way, and the canvas way as the remembered fallback ----------
+{
+  const { page, context } = await freshPage({ scheme: 'light', init: "window.__displayMode = 'still'" })
+  await check('a still share recorded directly keeps its length and a visible picture', async () => {
+    const before = await assetIds(page)
+    await page.evaluate(() => (window.__recBlobs.length = 0))
+    await sourceButton(page, 'screen').click()
+    await stopButton(page).waitFor()
+    await page.waitForTimeout(2500)
     const asset = await stopAndWaitForAsset(page, 'screen', before)
     assert(asset.kind === 'video' && asset.width > 0, `screen asset ${asset.kind} ${asset.width}`)
     assert(asset.width % 2 === 0 && asset.height % 2 === 0, `odd size ${asset.width}x${asset.height}`)
     assert(asset.duration / 1e6 >= 1.5, `still screen clip lasts ${(asset.duration / 1e6).toFixed(2)} s, expected >= 1.5`)
+    assert((await recordedSources(page)).videoIsDisplayTrack, 'the still share was not recorded directly')
+    const c = await fileCheck(page)
+    assert(c.frameLuma.length > 0 && Math.max(...c.frameLuma) > 20, `frame luma ${c.frameLuma}`)
     assert(await tracksEnded(page), 'tracks still live after the still recording')
   })
   await check('screen: a short still recording stopped right away still flushes its data', async () => {
@@ -504,73 +907,79 @@ for (const scheme of ['light', 'dark']) {
   })
   await context.close()
 }
-
-// ---------- screen with the student's voice ----------
-const micSwitch = (page) => page.locator('[data-role="mic-switch"]')
 {
-  const { page, context } = await freshPage({ scheme: 'light' })
-  await check('screen: the voice switch is on by default, explained, and has a 44px target', async () => {
-    assert(await micSwitch(page).isChecked(), 'switch is off by default')
-    const text = await bodyText(page)
-    assert(/Record my voice/.test(text) && /headphones avoid echo/.test(text), 'switch label or help text missing')
-    const box = await micSwitch(page).locator('xpath=ancestor::label').boundingBox()
-    assert(box && box.height >= 44, `switch row height ${box?.height}`)
-  })
-  await check('screen + voice: one video and one audio track are recorded, the clip has audible sound and a waveform', async () => {
+  const remember = `localStorage.setItem('jellycut.record.strategy', JSON.stringify({ strategy: 'canvas', lastProblem: 'black' }))`
+  const { page, context } = await freshPage({ scheme: 'light', init: `window.__displayMode = 'still'; ${remember}` })
+  await check('the remembered canvas way records a still share through the canvas with a visible picture', async () => {
     const before = await assetIds(page)
     await page.evaluate(() => (window.__recBlobs.length = 0))
     await sourceButton(page, 'screen').click()
     await stopButton(page).waitFor()
     await page.waitForTimeout(2500)
-    const level = await page.locator('[data-role="mic-level"]').count()
-    assert(level === 1, 'no level meter for screen + voice')
-    const tracks = await page.evaluate(() => {
-      const s = window.__recStreams.at(-1)
-      return { video: s.getVideoTracks().length, audio: s.getAudioTracks().length }
-    })
-    assert(tracks.video === 1 && tracks.audio === 1, `recorded tracks ${JSON.stringify(tracks)}`)
     const asset = await stopAndWaitForAsset(page, 'screen', before)
-    assert(asset.hasAudio === true, `hasAudio ${asset.hasAudio}`)
-    assert(asset.duration / 1e6 >= 1.5, `duration ${(asset.duration / 1e6).toFixed(2)} s`)
-    assert(await tracksEnded(page), 'tracks (screen and microphone) still live after stop')
-    const peak = await page.evaluate(async () => {
-      const { computeWaveform } = await import('/src/engine/audio/waveform.ts')
-      const { peaksForRange } = await import('/src/core/audio/peaks.ts')
-      const file = new File(window.__recBlobs, 'rec.webm', { type: 'video/webm' })
-      const wave = await computeWaveform(file)
-      if (!wave) return -1
-      return Math.max(...peaksForRange(wave, 0, 1_500_000, 16))
-    })
-    assert(peak > 0.01, `recorded sound is silent or has no waveform (peak ${peak})`)
+    assert(asset.duration / 1e6 >= 1.5, `still screen clip lasts ${(asset.duration / 1e6).toFixed(2)} s`)
+    const src = await recordedSources(page)
+    assert(src.video === 1 && !src.videoIsDisplayTrack, 'the canvas way was not used')
+    const c = await fileCheck(page)
+    assert(c.frameLuma.length > 0 && Math.max(...c.frameLuma) > 20, `frame luma ${c.frameLuma}`)
+    assert(/Video path: canvas \(remembered after black\)/.test(await detailsText(page)), 'details miss the canvas path')
   })
-  await check('screen: the switch choice is remembered', async () => {
+  await context.close()
+}
+
+// ---------- a black share: warning, finding, and the next recording switches the way ----------
+{
+  const { page, context } = await freshPage({ scheme: 'light', init: "window.__displayMode = 'black'" })
+  await check('black share: warns while recording, flags the clip, remembers the canvas way and tells the user', async () => {
+    const before = await assetIds(page)
+    await page.evaluate(() => (window.__recBlobs.length = 0))
+    await sourceButton(page, 'screen').click()
+    await stopButton(page).waitFor()
+    const warning = page.locator('[data-role="record-warning"]')
+    await warning.first().waitFor({ timeout: 9000 })
+    const text = await warning.allTextContents()
+    assert(text.some((x) => /The screen is recorded black/.test(x)), `warnings: ${text}`)
+    await stopAndWaitForAsset(page, 'screen', before)
+    assert(/The picture of this recording is black/.test(await page.locator('[data-role="record-check"]').first().textContent()), 'no black finding')
+    assert(/another way to record the picture/.test(await page.locator('[data-role="record-notice"]').first().textContent()), 'no notice about the other way')
+    const m = JSON.parse(await memory(page))
+    assert(m.strategy === 'canvas' && m.lastProblem === 'black', `memory ${JSON.stringify(m)}`)
+    const details = await detailsText(page)
+    assert(/problem=black/.test(details) && /Picture luma: min=/.test(details) && /frame luma=\[/.test(details), 'details miss the black measurements')
+  })
+  await check('the next screen recording uses the canvas way; a second black result does not flip back', async () => {
     await page.getByRole('button', { name: 'Record again', exact: true }).click()
-    await micSwitch(page).uncheck()
-    await page.reload()
-    await page.getByRole('button', { name: 'Record', exact: true }).click()
-    assert(!(await micSwitch(page).isChecked()), 'switch is on again after reload')
-    await micSwitch(page).check()
+    const before = await assetIds(page)
+    await page.evaluate(() => (window.__recBlobs.length = 0))
+    await sourceButton(page, 'screen').click()
+    await stopButton(page).waitFor()
+    await page.waitForTimeout(4500)
+    await stopAndWaitForAsset(page, 'screen', before)
+    const src = await recordedSources(page)
+    assert(!src.videoIsDisplayTrack, 'the direct way was used again')
+    assert(/Video path: canvas/.test(await detailsText(page)), 'details miss the canvas path')
+    const m = JSON.parse(await memory(page))
+    assert(m.strategy === 'canvas', `memory flipped to ${m.strategy}`)
   })
   await context.close()
 }
 {
-  const { page, context } = await freshPage({ scheme: 'light' })
-  await check('screen with the voice switched off: no microphone is requested and the file has no audio', async () => {
-    const before = await assetIds(page)
-    await micSwitch(page).uncheck()
+  const { page, context } = await freshPage({ scheme: 'light', init: "window.__displayMode = 'frozen'" })
+  await check('a share that delivers no picture: warning after 3 s and the canvas way is remembered', async () => {
     await sourceButton(page, 'screen').click()
     await stopButton(page).waitFor()
-    await page.waitForTimeout(1500)
-    const info = await page.evaluate(() => ({
-      audio: window.__recStreams.at(-1).getAudioTracks().length,
-      gum: window.__gumCalls
-    }))
-    assert(info.audio === 0 && info.gum === 0, `audio tracks ${info.audio}, getUserMedia calls ${info.gum}`)
-    const asset = await stopAndWaitForAsset(page, 'screen', before)
-    assert(asset.hasAudio !== true, 'clip has audio although the switch was off')
+    const warning = page.locator('[data-role="record-warning"]')
+    await warning.first().waitFor({ timeout: 9000 })
+    assert(/delivers no picture/.test(await warning.first().textContent()), 'warning text')
+    await stopButton(page).click()
+    await page.locator('[data-role="record-details"]').waitFor({ timeout: 20000 })
+    const m = JSON.parse(await memory(page))
+    assert(m.strategy === 'canvas' && m.lastProblem === 'noFrames', `memory ${JSON.stringify(m)}`)
   })
   await context.close()
 }
+
+// ---------- screen with a refused microphone ----------
 {
   const { page, context } = await freshPage({ scheme: 'light' })
   await check('screen with a refused microphone: records anyway and shows a calm notice', async () => {
@@ -581,7 +990,7 @@ const micSwitch = (page) => page.locator('[data-role="mic-switch"]')
     const notice = page.locator('[data-role="mic-notice"]')
     await notice.waitFor()
     assert(/Recorded without microphone: access was not allowed/.test(await notice.textContent()), 'notice text')
-    assert((await page.getByRole('alert').count()) === 0, 'an alert blocks the recording')
+    assert((await alertOf(page).count()) === 0, 'an alert blocks the recording')
     await page.waitForTimeout(1500)
     const asset = await stopAndWaitForAsset(page, 'screen', before)
     assert(asset.kind === 'video', 'no video asset')
@@ -599,13 +1008,13 @@ const micSwitch = (page) => page.locator('[data-role="mic-switch"]')
     await stopButton(page).waitFor()
     await page.waitForTimeout(1200)
     await stopButton(page).click()
-    await page.getByRole('alert').waitFor({ timeout: 20000 })
+    await alertOf(page).waitFor({ timeout: 20000 })
     const details = page.locator('[data-role="record-details"]')
     assert((await details.count()) === 1, 'no details box')
     assert(!(await details.evaluate((d) => d.open)), 'details are not collapsed')
     await details.locator('summary').click()
     const text = await details.locator('textarea').inputValue()
-    assert(/Chunks:/.test(text) && /Events:/.test(text) && /timer=/.test(text), `details text: ${text.slice(0, 200)}`)
+    assert(/Chunks:/.test(text) && /Events:/.test(text) && /Video path: raw/.test(text), `details text: ${text.slice(0, 200)}`)
     assert(!/localhost|http/.test(text.replace(/Mozilla[^\n]*/, '')), 'details contain an address')
     await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: `http://localhost:${PORT}` }).catch(() => undefined)
     await details.getByRole('button', { name: 'Copy', exact: true }).click()
@@ -643,7 +1052,7 @@ const micSwitch = (page) => page.locator('[data-role="mic-switch"]')
     await stopButton(page).waitFor()
     await page.waitForTimeout(1500)
     await stopButton(page).click()
-    const alert = page.getByRole('alert')
+    const alert = alertOf(page)
     await alert.waitFor({ timeout: 20000 })
     assert(await tracksEnded(page), 'screen tracks are still live after a failed import')
     const save = page.getByRole('button', { name: 'Save recording as a file', exact: true })

@@ -3,6 +3,7 @@ import { defineComponent } from 'vue'
 import { mapActions, mapState } from 'pinia'
 import Icon from '../Icon.vue'
 import { livePreviewStream, useRecordStore, type RecordPhase } from '../../stores/record'
+import { cleanDeviceLabel } from '../../../core/record/devices'
 import { RECORD_KINDS, canRecordKind, formatRecordTime, type RecordKind } from '../../../core/record/record'
 
 const ICON_FOR_KIND: Record<RecordKind, string> = { microphone: 'mic', camera: 'camera', screen: 'screen' }
@@ -14,7 +15,7 @@ export default defineComponent({
     return { copied: false }
   },
   computed: {
-    ...mapState(useRecordStore, ['phase', 'kind', 'elapsedMs', 'level', 'announcedTens', 'statusKey', 'errorKey', 'fileName', 'hasRawFile', 'capabilities', 'live', 'withMicrophone', 'noticeKey', 'diagnosticsText']),
+    ...mapState(useRecordStore, ['phase', 'kind', 'elapsedMs', 'level', 'announcedTens', 'statusKey', 'errorKey', 'fileName', 'hasRawFile', 'capabilities', 'live', 'noticeKey', 'extraNoticeKeys', 'warningKeys', 'checkKeys', 'diagnosticsText', 'micDevices', 'micDeviceId', 'micTest', 'testLevel', 'testSilent']),
     sources(): RecordKind[] {
       return RECORD_KINDS.filter((kind) => canRecordKind(kind, this.capabilities))
     },
@@ -29,6 +30,16 @@ export default defineComponent({
     },
     levelPercent(): string {
       return `${Math.min(100, Math.round(Math.sqrt(this.level) * 100))}%`
+    },
+    testPercent(): string {
+      return `${Math.min(100, Math.round(Math.sqrt(this.testLevel) * 100))}%`
+    },
+    testRunning(): boolean {
+      return this.micTest === 'on' || this.micTest === 'starting'
+    },
+    testStatus(): string {
+      const key = { off: 'record.micTestOff', starting: 'record.micTestStarting', on: 'record.micTestOn', denied: 'record.micTestDenied', failed: 'record.micTestFailed' }[this.micTest]
+      return this.$t(key)
     }
   },
   watch: {
@@ -39,9 +50,14 @@ export default defineComponent({
   mounted() {
     // Coming back to the tab while a recording runs: the preview has to be bound again.
     void this.$nextTick(() => this.onPhase(this.phase))
+    if (this.capabilities.userMedia) void this.openMicPicker()
+  },
+  beforeUnmount() {
+    // The test holds the microphone; leaving the tab lets it go.
+    this.stopMicTest()
   },
   methods: {
-    ...mapActions(useRecordStore, ['start', 'stop', 'cancel', 'pause', 'resume', 'addToTimeline', 'reset', 'retry', 'saveRecording', 'importAgain', 'setWithMicrophone']),
+    ...mapActions(useRecordStore, ['start', 'stop', 'cancel', 'pause', 'resume', 'addToTimeline', 'reset', 'retry', 'saveRecording', 'importAgain', 'selectMicrophone', 'openMicPicker', 'startMicTest', 'stopMicTest']),
     iconFor(kind: RecordKind): string {
       return ICON_FOR_KIND[kind]
     },
@@ -59,8 +75,16 @@ export default defineComponent({
       if (video.srcObject !== stream) video.srcObject = stream
       void video.play().catch(() => undefined)
     },
-    onMicSwitch(event: Event): void {
-      this.setWithMicrophone((event.target as HTMLInputElement).checked)
+    onMicChange(event: Event): void {
+      this.selectMicrophone((event.target as HTMLSelectElement).value)
+    },
+    toggleTest(): void {
+      if (this.testRunning) this.stopMicTest()
+      else void this.startMicTest()
+    },
+    deviceName(device: { label: string; unnamed: number; isDefault: boolean }): string {
+      const name = device.label ? cleanDeviceLabel(device.label) : this.$t('record.micUnnamed', { n: device.unnamed })
+      return device.isDefault ? this.$t('record.micDefaultSuffix', { name }) : name
     },
     /** Clipboard where allowed; otherwise the text is selected so Ctrl+C works. */
     async copyDiagnostics(): Promise<void> {
@@ -135,36 +159,6 @@ export default defineComponent({
         >
           {{ $t('record.tryAgain') }}
         </button>
-        <details v-if="diagnosticsText" data-role="record-details" class="text-xs">
-          <summary class="flex min-h-11 cursor-pointer items-center font-semibold">{{ $t('record.details.title') }}</summary>
-          <p class="mb-2 text-muted">{{ $t('record.details.hint') }}</p>
-          <textarea
-            ref="diagnostics"
-            readonly
-            rows="8"
-            :aria-label="$t('record.details.title')"
-            class="w-full rounded-lg border border-line bg-bg p-2 font-mono text-[11px]"
-            :value="diagnosticsText"
-          />
-          <button type="button" class="mt-2 min-h-11 rounded-lg border border-line px-4 font-semibold hover:bg-panel" @click="copyDiagnostics">
-            {{ copied ? $t('record.details.copied') : $t('record.details.copy') }}
-          </button>
-        </details>
-      </div>
-
-      <div v-if="sources.includes('screen')" class="rounded-xl border border-line bg-panel2 px-3 py-1">
-        <label class="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold">
-          <input
-            type="checkbox"
-            role="switch"
-            data-role="mic-switch"
-            class="size-5 shrink-0 accent-[var(--jc-fill)]"
-            :checked="withMicrophone"
-            @change="onMicSwitch"
-          />
-          {{ $t('record.micSwitch') }}
-        </label>
-        <p class="pb-2 text-xs text-muted">{{ $t('record.micHelp') }}</p>
       </div>
 
       <div class="flex flex-col gap-2.5">
@@ -183,6 +177,36 @@ export default defineComponent({
             <span class="text-xs text-muted">{{ $t(`record.hints.${source}`) }}</span>
           </span>
         </button>
+      </div>
+
+      <div v-if="capabilities.userMedia" data-role="mic-picker" class="flex flex-col gap-2 rounded-xl border border-line bg-panel2 px-3 py-2">
+        <label for="record-mic-select" class="text-xs font-semibold">{{ $t('record.micLabel') }}</label>
+        <select
+          id="record-mic-select"
+          data-role="mic-select"
+          class="min-h-11 w-full rounded-lg border border-line bg-bg px-2 text-sm"
+          :value="micDeviceId ?? ''"
+          @change="onMicChange"
+        >
+          <option v-if="micDevices.length === 0" value="">{{ $t('record.micSystemDefault') }}</option>
+          <option v-for="device in micDevices" :key="device.id" :value="device.id">{{ deviceName(device) }}</option>
+        </select>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            data-role="mic-test"
+            class="min-h-11 shrink-0 rounded-lg border border-line px-3 text-sm font-semibold hover:bg-panel"
+            @click="toggleTest"
+          >
+            {{ testRunning ? $t('record.micTestStop') : $t('record.micTest') }}
+          </button>
+          <div class="h-2 flex-1 overflow-hidden rounded-full bg-panel" data-role="mic-test-meter" aria-hidden="true">
+            <div class="h-full rounded-full bg-signal transition-[width] duration-100" :style="{ width: testPercent }" />
+          </div>
+        </div>
+        <p data-role="mic-test-status" aria-live="polite" class="text-xs text-muted">{{ testStatus }}</p>
+        <p v-if="testSilent" data-role="mic-warning" class="rounded-lg border border-line bg-panel px-3 py-2 text-xs">{{ $t('record.warn.noMic') }}</p>
+        <p class="text-xs text-muted">{{ $t('record.micHelp') }}</p>
       </div>
     </template>
 
@@ -215,13 +239,22 @@ export default defineComponent({
         </div>
       </div>
 
-      <div v-if="kind === 'screen' && withMicrophone && !noticeKey" class="flex items-center gap-2 text-xs font-semibold" data-role="mic-level">
+      <div v-if="kind !== 'microphone' && !noticeKey" class="flex items-center gap-2 text-xs font-semibold" data-role="mic-level">
         <Icon name="mic" class="size-4 shrink-0" />
         <div class="h-2 flex-1 overflow-hidden rounded-full bg-panel2" aria-hidden="true">
           <div class="h-full rounded-full bg-signal transition-[width] duration-100" :style="{ width: levelPercent }" />
         </div>
       </div>
       <p v-if="noticeKey" data-role="mic-notice" class="rounded-lg bg-panel2 px-3 py-2 text-xs text-muted">{{ $t(noticeKey) }}</p>
+      <p
+        v-for="key in warningKeys"
+        :key="key"
+        data-role="record-warning"
+        aria-live="polite"
+        class="rounded-lg border border-line bg-panel2 px-3 py-2 text-xs"
+      >
+        {{ $t(key) }}
+      </p>
       <button
         ref="stopButton"
         type="button"
@@ -269,6 +302,8 @@ export default defineComponent({
       <p class="break-words font-mono text-xs text-muted">{{ fileName }}</p>
       <p class="text-xs text-muted">{{ $t('record.doneText') }}</p>
       <p v-if="noticeKey" data-role="mic-notice" class="text-xs text-muted">{{ $t(noticeKey) }}</p>
+      <p v-for="key in extraNoticeKeys" :key="key" data-role="record-notice" class="text-xs text-muted">{{ $t(key) }}</p>
+      <p v-for="key in checkKeys" :key="key" data-role="record-check" aria-live="polite" class="rounded-lg border border-line bg-panel px-3 py-2 text-xs">{{ $t(key) }}</p>
       <button
         ref="addButton"
         type="button"
@@ -285,5 +320,21 @@ export default defineComponent({
         {{ $t('record.again') }}
       </button>
     </div>
+
+      <details v-if="diagnosticsText && (phase === 'error' || phase === 'done')" data-role="record-details" class="text-xs">
+        <summary class="flex min-h-11 cursor-pointer items-center font-semibold">{{ $t('record.details.title') }}</summary>
+        <p class="mb-2 text-muted">{{ $t('record.details.hint') }}</p>
+        <textarea
+          ref="diagnostics"
+          readonly
+          rows="8"
+          :aria-label="$t('record.details.title')"
+          class="w-full rounded-lg border border-line bg-bg p-2 font-mono text-[11px]"
+          :value="diagnosticsText"
+        />
+        <button type="button" class="mt-2 min-h-11 rounded-lg border border-line px-4 font-semibold hover:bg-panel" @click="copyDiagnostics">
+          {{ copied ? $t('record.details.copied') : $t('record.details.copy') }}
+        </button>
+      </details>
   </section>
 </template>

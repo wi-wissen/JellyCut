@@ -3,6 +3,7 @@ import { Recorder, RecordingError, STOP_EVENT_TIMEOUT_MS } from './recorder'
 
 // Fakes for the browser media APIs: enough to drive the recorder's state machine without devices.
 class FakeTrack {
+  kind = 'audio'
   readyState: 'live' | 'ended' = 'live'
   private listeners = new Map<string, () => void>()
   addEventListener(type: string, fn: () => void) {
@@ -22,15 +23,21 @@ class FakeTrack {
 }
 
 class FakeStream {
-  constructor(private readonly tracks: FakeTrack[]) {}
+  /** Without `kinds` the first track is the sound and the rest are pictures. */
+  constructor(
+    private readonly tracks: FakeTrack[],
+    kinds?: string[]
+  ) {
+    tracks.forEach((track, i) => (track.kind = kinds ? kinds[i]! : i === 0 ? 'audio' : 'video'))
+  }
   getTracks() {
     return this.tracks
   }
   getAudioTracks() {
-    return this.tracks.slice(0, 1)
+    return this.tracks.filter((t) => t.kind === 'audio')
   }
   getVideoTracks() {
-    return this.tracks.slice(1)
+    return this.tracks.filter((t) => t.kind === 'video')
   }
 }
 
@@ -105,7 +112,10 @@ beforeEach(() => {
       return this.list
     }
     getVideoTracks() {
-      return this.list
+      return (this.list as FakeTrack[]).filter((t) => t.kind === 'video')
+    }
+    getAudioTracks() {
+      return (this.list as FakeTrack[]).filter((t) => t.kind === 'audio')
     }
   })
 })
@@ -207,7 +217,7 @@ describe('Recorder', () => {
   })
 
   it('passes a denied permission through with its browser name', async () => {
-    getUserMedia.mockImplementationOnce(async () => {
+    getUserMedia.mockImplementation(async () => {
       throw new DOMException('denied', 'NotAllowedError')
     })
     const recorder = new Recorder()
@@ -297,7 +307,7 @@ describe('Recorder', () => {
       return new FakeStream(list)
     })
     const recorder = new Recorder()
-    await recorder.start('screen', options({ withMicrophone: true }))
+    await recorder.start('screen', options())
     expect(calls).toEqual(['screen', 'microphone'])
     expect(getUserMedia).toHaveBeenCalledWith({ audio: { echoCancellation: true, noiseSuppression: true }, video: false })
     expect(recorder.microphoneError).toBeNull()
@@ -311,18 +321,77 @@ describe('Recorder', () => {
       throw new DOMException('denied', 'NotAllowedError')
     })
     const recorder = new Recorder()
-    await recorder.start('screen', options({ withMicrophone: true }))
+    await recorder.start('screen', options())
     expect(recorder.microphoneError).toBe('NotAllowedError')
     tick(500)
     const file = await recorder.stop()
     expect(file.size).toBeGreaterThan(0)
   })
 
-  it('does not ask for the microphone when the switch is off or for other sources', async () => {
+  it('always asks for the microphone for a screen recording', async () => {
     const recorder = new Recorder()
-    await recorder.start('screen', options({ withMicrophone: false }))
-    expect(getUserMedia).not.toHaveBeenCalled()
+    await recorder.start('screen', options())
+    expect(getUserMedia).toHaveBeenCalledTimes(1)
     recorder.cancel()
+  })
+
+  it('opens the chosen microphone by its exact id and falls back to the default when it is gone', async () => {
+    getUserMedia.mockImplementationOnce(async () => {
+      throw new DOMException('gone', 'OverconstrainedError')
+    })
+    const recorder = new Recorder()
+    await recorder.start('microphone', options({ microphoneDeviceId: 'usb-1' }))
+    expect(getUserMedia.mock.calls[0]![0].audio).toEqual({ echoCancellation: true, noiseSuppression: true, deviceId: { exact: 'usb-1' } })
+    expect(getUserMedia.mock.calls[1]![0].audio).toEqual({ echoCancellation: true, noiseSuppression: true })
+    expect(recorder.diagnostics().events.map((e) => e.what)).toContain('chosen microphone unavailable, default used')
+    expect(recorder.diagnostics().capture.micDeviceRemembered).toBe(false)
+    recorder.cancel()
+  })
+
+  it('records the camera picture alone when the microphone cannot be used, and says why', async () => {
+    getUserMedia.mockImplementationOnce(async () => {
+      throw new DOMException('no mic', 'NotFoundError')
+    })
+    const recorder = new Recorder()
+    await recorder.start('camera', options())
+    expect(getUserMedia.mock.calls[1]![0]).toMatchObject({ audio: false })
+    expect(recorder.microphoneError).toBe('NotFoundError')
+    recorder.cancel()
+  })
+
+  it('passes the microphone track straight to the recorder when the share has no sound (no Web Audio)', async () => {
+    getDisplayMedia.mockImplementationOnce(async () => {
+      const list = [new FakeTrack()]
+      tracks.push(list)
+      return new FakeStream(list, ['video'])
+    })
+    const recorder = new Recorder()
+    await recorder.start('screen', options())
+    const recorded = FakeMediaRecorder.instances[0]!.stream as unknown as FakeStream
+    expect(recorded.getAudioTracks()[0]).toBe(tracks[1]![0])
+    expect(recorder.diagnostics().capture.audioPath).toBe('microphone')
+    expect(recorder.diagnostics().capture.videoPath).toBe('raw')
+    recorder.cancel()
+  })
+
+  it('announces no opus for a picture without any sound', async () => {
+    FakeMediaRecorder.supported = new Set(['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp9'])
+    try {
+      getDisplayMedia.mockImplementationOnce(async () => {
+        const list = [new FakeTrack()]
+        tracks.push(list)
+        return new FakeStream(list, ['video'])
+      })
+      getUserMedia.mockImplementationOnce(async () => {
+        throw new DOMException('denied', 'NotAllowedError')
+      })
+      const recorder = new Recorder()
+      await recorder.start('screen', options())
+      expect(FakeMediaRecorder.instances[0]!.options.mimeType).toBe('video/webm;codecs=vp9')
+      recorder.cancel()
+    } finally {
+      FakeMediaRecorder.supported = new Set(['audio/webm;codecs=opus', 'video/webm;codecs=vp9,opus'])
+    }
   })
 
   it('collects diagnostics: format support, chunks, events and track states', async () => {

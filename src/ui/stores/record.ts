@@ -1,30 +1,48 @@
 import { defineStore } from 'pinia'
 import { withTimeout } from '../../core/async/timeout'
 import { formatDiagnostics } from '../../core/record/diagnostics'
+import { chooseMicrophone, type MicOption } from '../../core/record/devices'
 import { friendlyMicNotice, friendlyRecordError, type RecordKind, type RecordLocale } from '../../core/record/record'
-import { Recorder, detectRecordCapabilities, RecordingError } from '../../engine/record/recorder'
+import { NO_SIGNAL_LEVEL, QuietWatch, judgeRecording } from '../../core/record/signal'
+import {
+  DEFAULT_MEMORY,
+  decideNextStrategy,
+  parseStrategyMemory,
+  serializeStrategyMemory,
+  type StrategyMemory,
+  type VideoProblem
+} from '../../core/record/strategy'
+import { Recorder, detectRecordCapabilities, RecordingError, type LiveWarning } from '../../engine/record/recorder'
+import { listMicrophones, microphonePermissionGranted, startMicTest, type MicTest } from '../../engine/record/micTest'
+import { checkRecording } from '../../engine/record/postCheck'
 import { useEditorStore } from './editor'
 import { useMediaStore } from './media'
 
 export type RecordPhase = 'idle' | 'starting' | 'recording' | 'paused' | 'finishing' | 'done' | 'error'
 
-const MIC_PREFERENCE_KEY = 'jellycut.record.microphone'
+const MIC_DEVICE_KEY = 'jellycut.record.microphoneDevice'
+const STRATEGY_KEY = 'jellycut.record.strategy'
 
-/** Remembered switch "record my voice"; on by default. Storage can be blocked, so every access is guarded. */
-function loadMicPreference(): boolean {
+/** Storage can be blocked (private windows, site data off), so every access is guarded and optional. */
+function readStorage(key: string): string | null {
   try {
-    return localStorage.getItem(MIC_PREFERENCE_KEY) !== 'off'
+    return localStorage.getItem(key)
   } catch {
-    return true
+    return null
   }
 }
 
-function saveMicPreference(on: boolean): void {
+function writeStorage(key: string, value: string | null): void {
   try {
-    localStorage.setItem(MIC_PREFERENCE_KEY, on ? 'on' : 'off')
+    if (value === null) localStorage.removeItem(key)
+    else localStorage.setItem(key, value)
   } catch {
-    // not remembered; the switch still works for this visit
+    // not remembered; everything still works for this visit
   }
+}
+
+function loadStrategyMemory(): StrategyMemory {
+  return parseStrategyMemory(readStorage(STRATEGY_KEY))
 }
 
 const TICK_MS = 250
@@ -34,6 +52,8 @@ const TIME_ANNOUNCE_MS = 10_000
  * limits). Whatever happens, the panel leaves 'finishing' and offers the raw file.
  */
 export const IMPORT_TIMEOUT_MS = 60_000
+/** Measuring the start of the finished file must never hold the panel back. */
+const CHECK_TIMEOUT_MS = 8000
 
 // The recorder owns the stream and the MediaRecorder: they are not reactive state.
 let recorder: Recorder | null = null
@@ -41,6 +61,8 @@ let ticker: ReturnType<typeof setInterval> | null = null
 let guardsInstalled = false
 // The finished recording, kept outside reactive state until it is in the library, so a failed import never loses it.
 let pendingFile: File | null = null
+// The microphone test owns a stream of its own; it is closed before any recording opens the device.
+let micTestHandle: MicTest | null = null
 
 function downloadFile(file: File): void {
   const url = URL.createObjectURL(file)
@@ -114,10 +136,23 @@ export const useRecordStore = defineStore('record', {
     /** An error happened after the recording was complete: it can be saved as a file or imported again. */
     hasRawFile: false,
     capabilities: detectRecordCapabilities(),
-    /** Screen recordings include the student's voice. */
-    withMicrophone: loadMicPreference(),
+    /** Input devices for the picker; labels are empty until the permission was granted. */
+    micDevices: [] as MicOption[],
+    /** Chosen microphone id; null when there is no device list yet. */
+    micDeviceId: null as string | null,
+    /** Microphone test before recording: 'on' shows the live level, 'denied' and 'failed' explain themselves. */
+    micTest: 'off' as 'off' | 'starting' | 'on' | 'denied' | 'failed',
+    testLevel: 0,
+    /** The test has seen no signal for a few seconds. */
+    testSilent: false,
     /** i18n key of a non-blocking notice (microphone could not be added); null when there is none. */
     noticeKey: null as string | null,
+    /** Other calm notices (way of recording switched, share sound dropped), i18n keys. */
+    extraNoticeKeys: [] as string[],
+    /** Live warnings while recording (no microphone signal, black picture), i18n keys. */
+    warningKeys: [] as string[],
+    /** Findings about the finished file (silent sound, black picture), i18n keys; they stay until the next recording. */
+    checkKeys: [] as string[],
     /** Technical details of the last recording, shown after a failure. */
     diagnosticsText: ''
   }),
@@ -140,17 +175,27 @@ export const useRecordStore = defineStore('record', {
       this.assetId = null
       this.hasRawFile = false
       this.noticeKey = null
+      this.extraNoticeKeys = []
+      this.warningKeys = []
+      this.checkKeys = []
       this.diagnosticsText = ''
       pendingFile = null
+      // Closing the test is synchronous and must stay so: the recorder's first step needs the click's user activation.
+      this.stopMicTest()
+      const memory = loadStrategyMemory()
       const next = new Recorder()
       recorder = next
       try {
         await next.start(kind, {
           locale: currentLocale(),
-          withMicrophone: kind === 'screen' && this.withMicrophone,
+          strategy: memory.strategy,
+          strategyReason: memory.lastProblem ? `remembered after ${memory.lastProblem}` : 'default',
+          microphoneDeviceId: this.micDeviceId,
+          microphoneCount: this.micDevices.length,
           onLevel: (level) => {
             this.level = level
           },
+          onWarning: (warning) => this.applyWarning(warning),
           onAutoStop: () => {
             void this.stop()
           }
@@ -161,6 +206,7 @@ export const useRecordStore = defineStore('record', {
         this.fail(e)
         return
       }
+      void this.refreshDevices()
       const micError = next.microphoneError
       this.noticeKey = micError ? friendlyMicNotice(micError) : null
       this.phase = 'recording'
@@ -192,19 +238,106 @@ export const useRecordStore = defineStore('record', {
       this.stopTicker()
       try {
         pendingFile = await finished.stop()
-        await this.importRecording(pendingFile)
+        await this.importRecording(pendingFile, finished)
       } catch (e) {
+        // A share that produced no data at all counts as "no pictures": the next recording tries the other way.
+        if (e instanceof RecordingError && e.name === 'EmptyRecordingError') this.rememberWay(finished, 'noFrames')
         this.fail(e)
       } finally {
         this.diagnosticsText = formatDiagnostics(finished.diagnostics())
         if (recorder === finished) recorder = null
         this.level = 0
+        this.warningKeys = []
       }
     },
 
-    setWithMicrophone(on: boolean): void {
-      this.withMicrophone = on
-      saveMicPreference(on)
+    applyWarning(warning: LiveWarning): void {
+      const key = { noMic: 'record.warn.noMic', black: 'record.warn.black', noFrames: 'record.warn.noFrames' }[warning.kind]
+      const rest = this.warningKeys.filter((k) => k !== key)
+      this.warningKeys = warning.active ? [...rest, key] : rest
+    },
+
+    /** Reads the devices (labels appear after a permission); keeps the choice when it is still plugged in. */
+    async refreshDevices(): Promise<void> {
+      const options = await listMicrophones()
+      this.micDevices = options
+      this.micDeviceId = chooseMicrophone(options, this.micDeviceId ?? readStorage(MIC_DEVICE_KEY))
+    },
+
+    /** Picker change: remembered, and a running test follows the new device. */
+    selectMicrophone(id: string): void {
+      this.micDeviceId = id
+      writeStorage(MIC_DEVICE_KEY, id)
+      if (this.micTest === 'on' || this.micTest === 'failed' || this.micTest === 'denied') void this.startMicTest()
+    },
+
+    /** Panel opened: list the devices, and start the level display at once when the permission is already there. */
+    async openMicPicker(): Promise<void> {
+      if (this.active) return
+      await this.refreshDevices()
+      if (this.micTest === 'off' && !this.active && (await microphonePermissionGranted())) await this.startMicTest()
+    },
+
+    /** Shows the live microphone level before recording. Needs a click (or an existing permission). */
+    async startMicTest(): Promise<void> {
+      if (this.active) return
+      this.stopMicTest()
+      this.micTest = 'starting'
+      this.testLevel = 0
+      const watch = new QuietWatch(NO_SIGNAL_LEVEL)
+      try {
+        micTestHandle = await startMicTest({
+          deviceId: this.micDeviceId,
+          onLevel: (level) => {
+            this.testLevel = level
+            if (micTestHandle && !micTestHandle.running()) return
+            watch.push(performance.now(), level)
+            this.testSilent = watch.isQuiet()
+          },
+          onEnded: () => this.stopMicTest()
+        })
+        if (this.active) {
+          this.stopMicTest()
+          return
+        }
+        this.micTest = 'on'
+        await this.refreshDevices()
+      } catch (e) {
+        micTestHandle = null
+        this.micTest = errorName(e) === 'NotAllowedError' ? 'denied' : 'failed'
+      }
+    },
+
+    stopMicTest(): void {
+      micTestHandle?.stop()
+      micTestHandle = null
+      this.micTest = 'off'
+      this.testLevel = 0
+      this.testSilent = false
+    },
+
+    /** Remembers which way of recording the screen to use next, from what this recording showed. */
+    rememberWay(finished: Recorder, extra: VideoProblem | null = null, black = false): void {
+      const health = finished.health()
+      if (health.strategy === null) return
+      const problem = health.problem ?? extra ?? (black ? 'black' : null)
+      const decision = decideNextStrategy(loadStrategyMemory(), health.strategy, problem)
+      writeStorage(STRATEGY_KEY, serializeStrategyMemory(decision.memory))
+      if (decision.switched) this.extraNoticeKeys = [...this.extraNoticeKeys.filter((k) => k !== 'record.notice.otherWay'), 'record.notice.otherWay']
+    },
+
+    /** Measures the finished file and turns the result into warnings and the next way of recording. */
+    async checkFile(file: File, finished: Recorder | undefined): Promise<void> {
+      const check = await withTimeout(checkRecording(file), CHECK_TIMEOUT_MS, 'check').catch(() => null)
+      finished?.setFileCheck(check)
+      const health = finished?.health()
+      const verdict = judgeRecording(check, health?.expectedAudio ?? true)
+      const keys: string[] = []
+      if (verdict.silentAudio) keys.push('record.check.silentAudio')
+      if (verdict.blackPicture) keys.push('record.check.blackPicture')
+      this.checkKeys = keys
+      if (health?.systemSoundDropped) this.extraNoticeKeys = [...this.extraNoticeKeys, 'record.notice.systemSound']
+      if (finished) this.rememberWay(finished, null, verdict.blackPicture)
     },
 
     /** Discards the recording: no asset is added. */
@@ -235,6 +368,9 @@ export const useRecordStore = defineStore('record', {
       this.assetId = null
       this.hasRawFile = false
       this.noticeKey = null
+      this.extraNoticeKeys = []
+      this.warningKeys = []
+      this.checkKeys = []
       this.diagnosticsText = ''
       pendingFile = null
       this.statusKey = ''
@@ -248,7 +384,7 @@ export const useRecordStore = defineStore('record', {
     },
 
     /** Puts the file into the library. Ends in 'done' or 'error'; never stays pending longer than IMPORT_TIMEOUT_MS. */
-    async importRecording(file: File): Promise<void> {
+    async importRecording(file: File, finished?: Recorder): Promise<void> {
       const media = useMediaStore()
       const editor = useEditorStore()
       // The recorder's clock backs up containers without a length (MediaRecorder output has none).
@@ -260,6 +396,7 @@ export const useRecordStore = defineStore('record', {
         this.errorKey = 'record.error.import'
         return
       }
+      await this.checkFile(file, finished)
       pendingFile = null
       this.hasRawFile = false
       this.assetId = asset.id

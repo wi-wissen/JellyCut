@@ -48,7 +48,7 @@ The site is built by Vite as several real HTML pages (`vite.config.ts`). There i
 
 `base: './'` makes the site work under any domain or sub path. Help pages are found by their folder (`help/**/index.html`); their order and names are in `HELP_PAGES` (`src/ui/site/helpPages.ts`).
 
-The build id (short git commit, `__APP_VERSION__` from `vite.config.ts`, `dev` if unknown) is shown quietly in the site footer and at the bottom of the project menu. Screen recordings are re-drawn through a canvas at 30 fps (long side capped at 1920 px) with the microphone mixed in; a failed recording offers copyable technical details.
+The build id (short git commit, `__APP_VERSION__` from `vite.config.ts`, `dev` if unknown) is shown quietly in the site footer and at the bottom of the project menu. Recordings always include the microphone (picker and level test in the Record tab). The browser's tracks are recorded as they are; the screen picture and the voice go straight into `MediaRecorder`, Web Audio mixes only voice + share sound and falls back to the voice when its context does not run. A canvas re-draw (30 fps, long side capped at 1920 px) is the remembered fallback after black or missing pictures. The finished file is measured (sound level, picture brightness) and findings plus copyable technical details are shown; see `docs/decisions.md`.
 
 Deployment: `.github/workflows/ci.yml` runs typecheck, tests and build for pull requests and for pushes to branches other than `main`. `.github/workflows/pages.yml` does the same on `main` and then deploys `dist/` to GitHub Pages (pull requests only build). The custom domain is set in the repository settings. The real-browser scripts are not in CI; run them before a release (see [`docs/release-checklist.md`](docs/release-checklist.md)).
 
@@ -108,7 +108,7 @@ The scripts in `scripts/e2e-*.mjs` drive Chromium with Playwright (`playwright-c
 | `e2e-frames.mjs` | 5192 | frame-exact access to the frame numbers in the fixture (root page) |
 | `e2e-media-remove.mjs` | 5183 | removing media from the library, with and without use |
 | `e2e-relink.mjs` | 5182 | re-linking missing media, work folder, access again |
-| `e2e-record.mjs` | 5183 | Record tab with fake devices, errors, screenshots (`E2E_PORT`) |
+| `e2e-record.mjs` | 5183 | Record tab with fake devices, microphone picker/test, self-healing, final-file checks, errors, screenshots (`E2E_PORT`; `BROWSER=firefox` runs it in Firefox, `ONLY=<regex>` selects checks) |
 | `e2e-timeline.mjs` | 5196 | selection, split, trim, reorder, zoom, keyboard (`E2E_PORT`) |
 | `e2e-panels.mjs` | 5189 | left column, player toolbar, one undo per slider drag (`E2E_PORT`) |
 | `e2e-responsive.mjs` | 5210 | no overflow at several sizes, 44 px targets, touch lift (`E2E_PORT`) |
