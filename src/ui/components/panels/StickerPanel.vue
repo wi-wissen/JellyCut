@@ -26,7 +26,6 @@ const TABS: readonly Tab[] = ['all', ...STICKER_IMAGE_CATEGORIES, 'basics']
 /** A sticker that stands for its category in the dropdown; 'all' and 'basics' use an icon instead. */
 const CATEGORY_STICKER: Partial<Record<Tab, string>> = {
   faces: 'grin',
-  moreFaces: 'smile',
   hearts: 'heart',
   animals: 'panda',
   celebrate: 'partyPopper',
