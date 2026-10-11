@@ -23,3 +23,14 @@ The background belongs to the project format (one choice for the whole project),
 - Its length is `srcOut - srcIn` at speed 1, exactly like an image clip; `srcIn/srcOut` only give the length, so trims, splits and ripple work unchanged. Speed is fixed at 1, and the frame has no audio (`muted`, and the audio mixer skips it).
 - The picture comes from `sourceTimeAt()` (core/timeline/edit.ts), used by the Scene for preview and export alike. Transitions use the same handle rules as images and need no change.
 - "Standbild am Abspielkopf" splits the clip under the playhead and puts a 2 s frame between the halves; the frame copies the clip's transform and look. It is not a separate frame grab, so no extra decoding or storage is needed.
+
+## Overlays: stickers, shapes and pen strokes (L-03, L-04)
+
+- One list, `project.overlays`, holds three kinds: `sticker`, `shape` (rect, ellipse, arrow) and `stroke`. All share start, duration, anchor (`pos`), `scale` and `rotation`. The unused `stickers` and `drawings` lists stay as placeholders.
+- Stickers are emoji, drawn with the system emoji font. No image files and no network, so there is no licence to check. Animated reactions (later L-03 work) are not part of this step.
+- Lengths are fractions of the output height. Positions are fractions of the output. Preview and export use the same box (`core/render/overlayLayout.ts`), so the player's handles match the pixels.
+- A stroke stores its points relative to its own bounding-box centre, in height units. It keeps its shape when the format changes.
+- Each item is rasterised to a 2D canvas (as text is) and composited in WebGL after the clips and before the text. The texture cache is limited by count and by pixels, since a stroke's box can cover the whole picture.
+- The project version stays 1. The `overlays` list has existed since version 1 and was always empty, so no migration is needed. New items are validated strictly.
+- Drawing mode is a tab state: leaving the pen tab ends it. Pen colour and width are not part of the project and are not undoable. Each finished stroke is one undo step.
+- Not in this step: blur and pixelate areas (L-04), picture or video overlays (L-02), animated stickers (L-03).

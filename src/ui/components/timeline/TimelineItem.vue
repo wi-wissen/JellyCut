@@ -19,7 +19,10 @@ export default defineComponent({
     interactive: { type: Boolean, default: true },
     handles: { type: Boolean, default: false },
     startLabel: { type: String, default: '' },
-    endLabel: { type: String, default: '' }
+    endLabel: { type: String, default: '' },
+    /** Stacking row in a multi-row lane; the bar sits in that row, inset by 4 px like a single row. */
+    row: { type: Number, default: 0 },
+    laneHeight: { type: Number, default: 38 }
   },
   emits: {
     select: () => true,
@@ -58,6 +61,8 @@ export default defineComponent({
       return {
         left: `${this.left}px`,
         width: `${Math.max(this.width, 0)}px`,
+        top: `${this.row * this.laneHeight + 4}px`,
+        height: `${this.laneHeight - 8}px`,
         transform: this.offset ? `translateX(${this.offset}px)` : 'none',
         zIndex: this.offset ? 10 : 'auto'
       }
@@ -79,7 +84,7 @@ export default defineComponent({
 </script>
 
 <template>
-  <div class="absolute inset-y-1" :class="{ 'pointer-events-none': !interactive }" :style="rootStyle" :data-kind="variant">
+  <div class="absolute" :class="{ 'pointer-events-none': !interactive }" :style="rootStyle" :data-kind="variant">
     <button
       v-if="interactive"
       type="button"

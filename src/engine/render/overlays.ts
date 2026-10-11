@@ -13,11 +13,19 @@ export interface OverlayRaster {
   height: number
 }
 
+/** Items are immutable project data, so their keys are computed once per item and height (long strokes are big). */
+const keyCache = new WeakMap<OverlayItem, { outH: number; key: string }>()
+
 /** Cache key of an overlay's pixels: everything that changes the raster, nothing that only moves or rotates it. */
 export function overlayRasterKey(item: OverlayItem, outH: number): string {
-  if (item.kind === 'sticker') return JSON.stringify([item.kind, item.emoji, item.size, outH])
-  if (item.kind === 'shape') return JSON.stringify([item.kind, item.shape, item.width, item.height, item.lineWidth, item.color, outH])
-  return JSON.stringify([item.kind, item.points, item.lineWidth, item.color, outH])
+  const known = keyCache.get(item)
+  if (known && known.outH === outH) return known.key
+  let key: string
+  if (item.kind === 'sticker') key = JSON.stringify([item.kind, item.emoji, item.size, outH])
+  else if (item.kind === 'shape') key = JSON.stringify([item.kind, item.shape, item.width, item.height, item.lineWidth, item.color, outH])
+  else key = JSON.stringify([item.kind, item.points, item.lineWidth, item.color, outH])
+  keyCache.set(item, { outH, key })
+  return key
 }
 
 /**

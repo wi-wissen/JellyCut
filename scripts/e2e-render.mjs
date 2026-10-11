@@ -72,7 +72,7 @@ const pageScenario = async () => {
   const fmt = (w, h, background = { type: 'blur' }) => ({ ratio: '16:9', width: w, height: h, fps: 30, background })
   const T = (over = {}) => ({ fit: 'fit', scale: 1, x: 0, y: 0, rotation: 0, flipX: false, ...over })
   const L = (clipId, transform = T(), transition = null) => ({ clipId, assetId: clipId, srcTime: 0, transform, transition })
-  const scene = (format, videos, texts = []) => ({ time: 0, format, videos, texts })
+  const scene = (format, videos, texts = []) => ({ time: 0, format, videos, overlays: [], texts })
   const frames = (...pairs) => new Map(pairs)
 
   const canvas = makeCanvas(10, 10)
@@ -369,7 +369,7 @@ const pageScenario = async () => {
 
   // Text is not graded: white text over a sepia picture stays white, the picture behind it is sepia
   const textOn = render(
-    { time: 0, format: fmt(W_X, H_X, { type: 'color', color: '#000000' }), videos: [G({ grade: grade('sepia', 1, undefined) })], texts: [txt({ text: 'Hi', style: textStyle({ size: 200 }) })] },
+    { time: 0, format: fmt(W_X, H_X, { type: 'color', color: '#000000' }), videos: [G({ grade: grade('sepia', 1, undefined) })], overlays: [], texts: [txt({ text: 'Hi', style: textStyle({ size: 200 }) })] },
     frames(['g', solid(W_X, H_X, [128, 128, 128])])
   )
   let whiteText = 0

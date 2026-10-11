@@ -62,7 +62,7 @@ export interface Scene {
   format: ProjectFormat
   /** Back to front. At most two layers (the two sides of a transition). */
   videos: VideoLayer[]
-  /** Stickers, shapes and strokes that are on screen at this time, in list order (back to front). */
+  /** Stickers, shapes and strokes on screen at this time, back to front. */
   overlays: OverlayItem[]
   texts: TextLayer[]
 }

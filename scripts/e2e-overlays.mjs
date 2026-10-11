@@ -202,20 +202,24 @@ check('shape: arrow pixels use the pen colour (default pink)', arrowPink.count >
 // --- 6. drawing: pen tab, thick width, mouse stroke ---
 await page.getByRole('button', { name: 'Draw', exact: true }).click()
 await page.getByRole('button', { name: 'Thick', exact: true }).click()
+check('pen: the chosen width is marked as pressed', (await page.getByRole('button', { name: 'Thick', exact: true }).getAttribute('aria-pressed')) === 'true')
 await page.getByRole('switch', { name: 'Draw on the preview' }).click()
 await settle()
 s = await overlayState()
 check('draw: drawing mode is on and the drawing surface covers the picture', s.drawing && (await rectOf('[data-role="draw-surface"]')) !== null)
 
-const surface = await rectOf('[data-role="draw-surface"]')
-const at = (fx, fy) => [surface.x + fx * surface.w, surface.y + fy * surface.h]
-let [x0, y0] = at(0.2, 0.3)
-await page.mouse.move(x0, y0)
-await page.mouse.down()
-for (let i = 1; i <= 25; i++) {
-  const [x, y] = at(0.2 + (0.6 * i) / 25, 0.3 + (0.4 * i) / 25)
-  await page.mouse.move(x, y)
+/** Screen points of a straight stroke from (ax, ay) to (bx, by) in surface fractions. Measured fresh: the page can scroll. */
+async function strokePath(ax, ay, bx, by, steps) {
+  const surface = await rectOf('[data-role="draw-surface"]')
+  return Array.from({ length: steps + 1 }, (_, i) => {
+    const t = i / steps
+    return [surface.x + (ax + (bx - ax) * t) * surface.w, surface.y + (ay + (by - ay) * t) * surface.h]
+  })
 }
+const pinkPath = await strokePath(0.2, 0.3, 0.8, 0.7, 25)
+await page.mouse.move(...pinkPath[0])
+await page.mouse.down()
+for (const p of pinkPath.slice(1)) await page.mouse.move(...p)
 await page.mouse.up()
 await settle()
 s = await overlayState()
@@ -230,21 +234,23 @@ await page.getByRole('button', { name: 'Colour #c6f432', exact: true }).click()
 await settle()
 s = await overlayState()
 check('colour: the swatch sets the pen colour', s.color === '#c6f432', s.color)
-await page.mouse.move(...at(0.2, 0.8))
+const limePath = await strokePath(0.2, 0.8, 0.8, 0.8, 20)
+await page.mouse.move(...limePath[0])
 await page.mouse.down()
-for (let i = 1; i <= 20; i++) await page.mouse.move(...at(0.2 + (0.6 * i) / 20, 0.8))
+for (const p of limePath.slice(1)) await page.mouse.move(...p)
 await page.mouse.up()
 await settle()
 s = await overlayState()
+await page.screenshot({ path: `${SHOTS}/overlay-draw-light.png` })
 check('colour: the second stroke uses the new colour', s.overlays.length === 4 && s.overlays[3].color === '#c6f432', JSON.stringify(s.overlays.at(-1)?.color))
+check('draw: the stored stroke sits where the pointer went (centre y = 0.8)', Math.abs(s.overlays[3].pos.y - 0.8) < 0.01, JSON.stringify(s.overlays[3].pos))
 
 // --- 8. touch: one stroke with CDP touch events ---
 const cdp = await context.newCDPSession(page)
 const touchY = 0.2
-const [tx0, ty0] = at(0.1, touchY)
-await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: tx0, y: ty0, id: 1 }] })
-for (let i = 1; i <= 20; i++) {
-  const [tx, ty] = at(0.1 + (0.8 * i) / 20, touchY)
+const touchPath = await strokePath(0.1, touchY, 0.9, touchY, 20)
+await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: touchPath[0][0], y: touchPath[0][1], id: 1 }] })
+for (const [tx, ty] of touchPath.slice(1)) {
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: tx, y: ty, id: 1 }] })
 }
 await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
@@ -336,22 +342,32 @@ const exported = await page.evaluate(async () => {
     return n
   }
   const star = ed.project.overlays.find((o) => o.kind === 'sticker')
+  const at = (fx, fy) => {
+    const i = (Math.round(fy * h) * w + Math.round(fx * w)) * 4
+    return [data[i], data[i + 1], data[i + 2]]
+  }
   return {
     frames: res.frames,
     size: [w, h],
-    yellowAtStar: star ? count(star.pos.x, star.pos.y, 0.07, (r, g, b) => r > 220 && g > 170 && b < 140 && r - b > 110) : 0,
-    pinkOnStroke: count(0.3, 0.3667, 0.02, (r, g, b) => r > 200 && g < 150 && b > 120 && b < 220 && r - g > 80),
-    limeOnStroke: count(0.5, 0.8, 0.02, (r, g, b) => g > 215 && r > 160 && r < 225 && b < 120),
-    limeOnTouch: count(0.5, 0.2, 0.02, (r, g, b) => g > 215 && r > 160 && r < 225 && b < 120)
+    // Every stroke: the colour of its own stroke, at the middle of its own path.
+    strokes: ed.project.overlays
+      .filter((o) => o.kind === 'stroke')
+      .map((o) => {
+        const [first, last] = [o.points[0], o.points.at(-1)]
+        const mx = o.pos.x + (first[0] + last[0]) / 2 / (w / h)
+        const my = o.pos.y + (first[1] + last[1]) / 2
+        const [r, g, b] = [1, 3, 5].map((i) => parseInt(o.color.slice(i, i + 2), 16))
+        return { color: o.color, near: count(mx, my, 0.02, (x, y, z) => Math.abs(x - r) + Math.abs(y - g) + Math.abs(z - b) < 90) }
+      }),
+    stickerNear: star ? count(star.pos.x, star.pos.y, 0.07, (r, g, b) => r > 220 && g > 170 && b < 140 && r - b > 110) : 0
   }
 }, null)
 check('export: an MP4 with frames is written', exported.frames > 30, JSON.stringify(exported))
-check('export: the exported frame shows the sticker', exported.yellowAtStar > 15, JSON.stringify(exported))
-check('export: the exported frame shows the pink stroke', exported.pinkOnStroke > 0, JSON.stringify(exported))
-check('export: the exported frame shows the lime strokes (mouse and touch)', exported.limeOnStroke > 0 && exported.limeOnTouch > 0, JSON.stringify(exported))
+check('export: the exported frame shows the sticker', exported.stickerNear > 15, JSON.stringify(exported.stickerNear))
+check('export: every stroke is in the exported frame in its own colour', exported.strokes.length === 3 && exported.strokes.every((k) => k.near > 0), JSON.stringify(exported.strokes))
 
 // --- 12. screenshots, light and dark ---
-await page.locator('[data-lane="overlay"] [data-kind="overlay"] button').first().click()
+await page.getByRole('button', { name: 'Overlay: ⭐', exact: true }).click()
 await settle()
 await page.screenshot({ path: `${SHOTS}/overlay-light.png` })
 await page.getByRole('tab', { name: 'Design' }).click()
@@ -361,7 +377,7 @@ await page.screenshot({ path: `${SHOTS}/overlay-panel-light.png` })
 await page.emulateMedia({ colorScheme: 'dark' })
 await settle()
 await page.screenshot({ path: `${SHOTS}/overlay-dark.png` })
-check('screenshots: light, panel and dark written', ['overlay-light.png', 'overlay-panel-light.png', 'overlay-dark.png'].every((f) => existsSync(`${SHOTS}/${f}`)))
+check('screenshots: light, panel and dark written', ['overlay-light.png', 'overlay-panel-light.png', 'overlay-draw-light.png', 'overlay-dark.png'].every((f) => existsSync(`${SHOTS}/${f}`)))
 
 check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '))
 

@@ -205,6 +205,11 @@ for (const size of SIZES) {
     })
 
     await check(`${label}: fine cut overlay fits`, async () => {
+      // Fine cut needs a video clip under the playhead or selected: select the clip, then hide the panel it opens.
+      await hideToolsIfOpen(page)
+      const clip = page.getByRole('button', { name: 'Clip: Beach.mp4', exact: true }).first()
+      if (size.touch) await clip.tap()
+      else await clip.click()
       await hideToolsIfOpen(page)
       await page.locator('#fine-cut-button').click()
       const back = await visibleBox(page.locator('[data-testid="fine-back"]'))
@@ -232,7 +237,11 @@ for (const size of SIZES) {
       await hideToolsIfOpen(page)
       const back = page.getByRole('button', { name: 'Back to library', exact: true })
       if (await back.isVisible()) await back.click()
-      await page.getByRole('button', { name: 'Re-link', exact: true }).first().click()
+      // The dialog opens on its own when files are missing; the demo has them missing, so set the store flag.
+      await page.evaluate(() => {
+        const pinia = document.querySelector('#app').__vue_app__.config.globalProperties.$pinia
+        pinia.state.value.media.relinkOpen = true
+      })
       const dialog = page.getByRole('dialog').first()
       const box = await visibleBox(dialog)
       assert(inViewport(box, viewport), `relink outside viewport: ${JSON.stringify(box)}`)

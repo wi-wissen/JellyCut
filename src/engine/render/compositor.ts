@@ -20,6 +20,8 @@ const MAX_BLUR_RADIUS = 64
 const MAX_OUTPUT_SIDE = 8192
 const TEXT_CACHE_LIMIT = 96
 const OVERLAY_CACHE_LIMIT = 64
+/** About 64 MB of RGBA textures for overlays. */
+const OVERLAY_PIXEL_BUDGET = 16_000_000
 
 type Vec2 = readonly [number, number]
 type Quad = readonly [Vec2, Vec2, Vec2, Vec2]
@@ -143,6 +145,7 @@ export class Compositor {
   /** Insertion order doubles as LRU order. */
   private readonly textTextures = new Map<string, FrameTexture>()
   private readonly overlayTextures = new Map<string, FrameTexture>()
+  private overlayPixels = 0
   private explicitSize: { w: number; h: number } | null = null
   private outW = 1
   private outH = 1
@@ -161,6 +164,7 @@ export class Compositor {
     this.frameTextures.clear()
     this.textTextures.clear()
     this.overlayTextures.clear()
+    this.overlayPixels = 0
     this.pages = [null, null]
     this.blurTargets = null
     this.lost = false
@@ -595,13 +599,17 @@ export class Compositor {
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false)
     const entry: FrameTexture = { tex, w: raster.width, h: raster.height }
     this.overlayTextures.set(key, entry)
-    if (this.overlayTextures.size > OVERLAY_CACHE_LIMIT) {
+    this.overlayPixels += entry.w * entry.h
+    // A stroke's box can cover the whole picture, so the cache is limited by pixels as well as by count.
+    while (this.overlayTextures.size > 1 && (this.overlayTextures.size > OVERLAY_CACHE_LIMIT || this.overlayPixels > OVERLAY_PIXEL_BUDGET)) {
       const oldest = this.overlayTextures.keys().next().value
-      if (oldest !== undefined) {
-        const evicted = this.overlayTextures.get(oldest)
-        if (evicted) gl.deleteTexture(evicted.tex)
-        this.overlayTextures.delete(oldest)
+      if (oldest === undefined) break
+      const evicted = this.overlayTextures.get(oldest)
+      if (evicted) {
+        gl.deleteTexture(evicted.tex)
+        this.overlayPixels -= evicted.w * evicted.h
       }
+      this.overlayTextures.delete(oldest)
     }
     return entry
   }

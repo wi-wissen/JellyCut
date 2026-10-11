@@ -11,6 +11,7 @@ import { frameDuration } from '../../core/time'
 import { clipEnd } from '../../core/timeline/edit'
 import type { ItemRef } from '../../core/timeline/ops'
 import { collectSnapPoints, snapTime } from '../../core/timeline/snap'
+import { packRows } from '../../core/timeline/overlayRows'
 import {
   clampPxPerSecond,
   DEFAULT_PX_PER_SECOND,
@@ -54,6 +55,8 @@ interface LaneItem {
   endMicros: Micros
   leftPx: number
   widthPx: number
+  /** Stacking row inside a lane whose bars overlap (overlay lane only). */
+  row?: number
 }
 
 interface Lane {
@@ -63,6 +66,8 @@ interface Lane {
   /** Colour key of the lane's items, shown as a small swatch in the label column. */
   swatch: string
   items: LaneItem[]
+  /** Number of stacked rows; the lane is that many lane heights tall. */
+  rows?: number
 }
 
 /** State of one pointer press. Edits during a press are computed from the origin values stored here. */
@@ -194,7 +199,9 @@ export default defineComponent({
           widthPx: px(text.duration)
         }
       })
-      const overlayItems = project.overlays.map((overlay): LaneItem => {
+      // Overlapping stickers, shapes and strokes stack in rows instead of covering each other.
+      const overlayRows = packRows(project.overlays.map((o) => ({ start: o.start, end: o.start + o.duration })))
+      const overlayItems = project.overlays.map((overlay, i): LaneItem => {
         const name = this.overlayName(overlay)
         const end = overlay.start + overlay.duration
         return {
@@ -207,7 +214,8 @@ export default defineComponent({
           startMicros: overlay.start,
           endMicros: end,
           leftPx: px(overlay.start),
-          widthPx: px(overlay.duration)
+          widthPx: px(overlay.duration),
+          row: overlayRows.rows[i]
         }
       })
       const musicItems = project.music.map((music): LaneItem => {
@@ -229,7 +237,7 @@ export default defineComponent({
 
       return [
         { id: 'text', icon: 'text', label: 'timeline.text', swatch: 'var(--jc-track-text)', items: textItems },
-        { id: 'overlay', icon: 'sticker', label: 'timeline.overlay', swatch: 'var(--jc-track-overlay)', items: overlayItems },
+        { id: 'overlay', icon: 'sticker', label: 'timeline.overlay', swatch: 'var(--jc-track-overlay)', items: overlayItems, rows: overlayRows.count },
         { id: 'video', icon: 'media', label: 'timeline.video', swatch: 'var(--jc-track-video-1)', items: videoItems },
         { id: 'originalAudio', icon: 'audio', label: 'timeline.originalAudio', swatch: 'var(--jc-wave)', items: originalAudioItems },
         { id: 'music', icon: 'audio', label: 'timeline.music', swatch: 'var(--jc-track-music)', items: musicItems }
@@ -237,7 +245,8 @@ export default defineComponent({
     },
     dropTop(): number {
       const index = this.lanes.findIndex((lane) => lane.id === 'video')
-      return RULER_HEIGHT_PX + Math.max(0, index) * LANE_HEIGHT_PX + 4
+      const above = this.lanes.slice(0, Math.max(0, index))
+      return RULER_HEIGHT_PX + above.reduce((sum, lane) => sum + this.laneHeightPx(lane), 0) + 4
     }
   },
   watch: {
@@ -295,6 +304,9 @@ export default defineComponent({
       'endGesture'
     ]),
 
+    laneHeightPx(lane: Lane): number {
+      return (lane.rows ?? 1) * LANE_HEIGHT_PX
+    },
     /** Short label of an overlay bar: the emoji for stickers, the kind for shapes and strokes. */
     overlayName(item: OverlayItem): string {
       if (item.kind === 'sticker') return item.emoji
@@ -596,7 +608,7 @@ export default defineComponent({
           v-for="lane in lanes"
           :key="lane.id"
           class="flex items-center gap-1.5 border-b border-line/60 px-2.5 text-[11px] text-muted"
-          :style="{ height: laneHeight + 'px' }"
+          :style="{ height: laneHeightPx(lane) + 'px' }"
         >
           <span class="size-2.5 shrink-0 rounded-sm" :style="{ background: lane.swatch }" aria-hidden="true" />
           <Icon :name="lane.icon" class="size-3.5 shrink-0" />
@@ -630,7 +642,7 @@ export default defineComponent({
             v-for="lane in lanes"
             :key="lane.id"
             class="relative border-b border-line/60"
-            :style="{ height: laneHeight + 'px' }"
+            :style="{ height: laneHeightPx(lane) + 'px' }"
             :data-lane="lane.id"
           >
             <TimelineItem
@@ -639,6 +651,8 @@ export default defineComponent({
               :label="item.label"
               :aria-label="item.ariaLabel"
               :variant="item.variant"
+              :row="item.row ?? 0"
+              :lane-height="laneHeight"
               :tone="item.tone"
               :left="item.leftPx"
               :width="item.widthPx"
