@@ -171,6 +171,7 @@
     "outlineColor": "Konturfarbe"
   },
   "library": {
-    "asPicture": "Als Bild im Bild"
+    "asPicture": "Als Bild im Bild",
+    "asPictureOf": "Als Bild im Bild: {name}"
   }
 }

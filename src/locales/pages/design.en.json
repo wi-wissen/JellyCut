@@ -171,6 +171,7 @@
     "outlineColor": "Outline colour"
   },
   "library": {
-    "asPicture": "As picture in picture"
+    "asPicture": "As picture in picture",
+    "asPictureOf": "As picture in picture: {name}"
   }
 }

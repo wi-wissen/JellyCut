@@ -34,7 +34,7 @@
         "sliderLabel": "Position in the video",
         "time": "{time} s · picture {frame}",
         "hint": "Arrow keys: one picture. Page up and down: one second. Home and End: start and end.",
-        "clip": "A 2-second excerpt: 12 pictures, each 1/6 second long."
+        "clip": "A 2-second excerpt: 12 pictures, each 1/6 second long. The time axis, the pictures and the sound show the same 2 seconds."
       },
       "endings": {
         "heading": "3. The ending is only the box",

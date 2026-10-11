@@ -150,12 +150,10 @@ for (const [name, kind] of Object.entries(kinds)) {
 // --- 1b. the library adds a picture in the picture; Round makes a square with a full radius -------
 await page.getByRole('tab', { name: 'Material', exact: true }).click()
 await page.getByRole('button', { name: 'Media', exact: true }).click()
-console.log('DBG', JSON.stringify((await page.locator('aside button').allTextContents()).slice(0, 12)), await page.evaluate(() => document.activeElement?.outerHTML?.slice(0, 80)))
-await page.getByRole('button', { name: 'As picture in picture', exact: true }).first().click()
+await page.getByRole('button', { name: /^As picture in picture: / }).first().click()
 await settle(200)
 const fromLibrary = await st('(ed) => ed.selectedItem && ed.selectedItem.kind')
 check('library: "As picture in picture" adds a picture and selects it', fromLibrary === 'media', String(fromLibrary))
-await page.getByRole('tab', { name: 'Design', exact: true }).click()
 await page.getByRole('button', { name: 'Round', exact: true }).click()
 await settle(150)
 const round = await st('(ed) => ed.selectedItem')

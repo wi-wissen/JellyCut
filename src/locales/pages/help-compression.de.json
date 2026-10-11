@@ -88,7 +88,6 @@
         "targetLabel": "Wohin willst du springen?",
         "targetValue": "Bild {n}",
         "marker": "Hier willst du hin",
-        "earlier": "Bilder davor, hier nicht gezeigt",
         "legendKey": "Schlüsselbild: ganzes Bild, mit Stern",
         "legendChange": "Änderungsbild: nur die geänderten Pixel",
         "cardKey": "Bild {n}: ganzes Bild (Schlüsselbild)",
@@ -103,7 +102,9 @@
         "resultPlan": "Die App startet bei Bild {keyframe}, dem letzten Schlüsselbild davor. Dann baut sie {frames} Bilder nach, bis Bild {target}.",
         "resultDirect": "Bild {target} ist selbst ein Schlüsselbild. Die App springt direkt dorthin.",
         "tradeoffMore": "Mehr Schlüsselbilder = größere Datei, aber schnelleres Springen.",
-        "tradeoffFewer": "Weniger Schlüsselbilder = kleinere Datei, aber längeres Rechnen beim Springen."
+        "tradeoffFewer": "Weniger Schlüsselbilder = kleinere Datei, aber längeres Rechnen beim Springen.",
+        "stripLabel": "Bildfolge der Datei",
+        "earlier": "Bilder davor, hier nicht gezeigt"
       },
       "lossy": {
         "heading": "5. Trick 2: Details weglassen",

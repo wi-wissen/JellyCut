@@ -27,12 +27,12 @@ export default defineComponent({
       :aria-expanded="open ? 'true' : 'false'"
       @click="open = !open"
     >
-      <svg viewBox="0 0 240 150" class="h-24 w-auto" aria-hidden="true" focusable="false">
+      <svg viewBox="0 -36 240 186" class="h-28 w-auto" aria-hidden="true" focusable="false">
         <rect x="30" y="66" width="180" height="72" rx="14" style="fill: var(--jc-track-video-1)" />
         <rect x="104" y="84" width="32" height="14" rx="4" style="fill: var(--jc-track-text)" />
         <g
           class="transition-transform duration-500 ease-out motion-reduce:transition-none"
-          :style="{ transform: open ? 'translate(0px, -40px) rotate(-16deg)' : 'none', transformOrigin: '30px 66px' }"
+          :style="{ transform: open ? 'translate(-2px, -34px) rotate(-14deg)' : 'none', transformOrigin: '30px 66px' }"
         >
           <rect x="22" y="48" width="196" height="30" rx="12" style="fill: var(--jc-fill)" />
           <rect x="106" y="54" width="28" height="12" rx="4" style="fill: var(--jc-track-text)" />

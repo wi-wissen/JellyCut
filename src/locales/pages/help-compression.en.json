@@ -88,7 +88,6 @@
         "targetLabel": "Where do you want to go?",
         "targetValue": "Picture {n}",
         "marker": "You want to go here",
-        "earlier": "Earlier pictures, not shown here",
         "legendKey": "Keyframe: whole picture, with a star",
         "legendChange": "Change picture: only the changed pixels",
         "cardKey": "Picture {n}: whole picture (keyframe)",
@@ -103,7 +102,9 @@
         "resultPlan": "The app starts at picture {keyframe}, the last keyframe before it. Then it rebuilds {frames} pictures up to picture {target}.",
         "resultDirect": "Picture {target} is a keyframe itself. The app jumps straight there.",
         "tradeoffMore": "More keyframes = bigger file, but faster jumping.",
-        "tradeoffFewer": "Fewer keyframes = smaller file, but more work when jumping."
+        "tradeoffFewer": "Fewer keyframes = smaller file, but more work when jumping.",
+        "stripLabel": "Sequence of pictures in the file",
+        "earlier": "Earlier pictures, not shown here"
       },
       "lossy": {
         "heading": "5. Trick 2: leave out details",
