@@ -42,7 +42,7 @@
       "loss": {
         "heading": "3. Kopie einer Kopie",
         "text": "Jede neue Kodierung lässt etwas weg. Wer ein Bild oft hintereinander kodiert, sieht den Schaden. Probier es aus.",
-        "note": "Hier nehmen wir JPEG als Beispiel. Echte Videocodecs verlieren anders, aber das Prinzip ist dasselbe.",
+        "note": "Hier nehmen wir JPEG als Beispiel. Bei JPEG hört der Schaden nach einigen Durchgängen fast auf zu wachsen. In Videos mit Bewegung summiert er sich oft stärker.",
         "qualityLabel": "Qualität beim Kodieren",
         "passesLabel": "Durchgänge",
         "originalLabel": "Originalbild",

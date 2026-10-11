@@ -42,7 +42,7 @@
       "loss": {
         "heading": "3. A copy of a copy",
         "text": "Every new encoding leaves something out. If you encode a picture again and again, you see the damage. Try it.",
-        "note": "Here we use JPEG as an example. Real video codecs lose detail in other ways, but the principle is the same.",
+        "note": "Here we use JPEG as an example. With JPEG the damage almost stops growing after a few passes. In videos with movement it often adds up more.",
         "qualityLabel": "Quality when encoding",
         "passesLabel": "Passes",
         "originalLabel": "Original picture",

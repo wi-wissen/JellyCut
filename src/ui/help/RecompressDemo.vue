@@ -20,7 +20,7 @@ export default defineComponent({
   data() {
     return {
       qualities: QUALITIES,
-      qualityId: 'small',
+      qualityId: 'good',
       passes: 10,
       maxPasses: MAX_PASSES,
       amplify: AMPLIFY,
