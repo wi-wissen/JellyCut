@@ -295,7 +295,8 @@ for (const size of SIZES.filter((z) => !process.env.SIZE || z.name === process.e
       assert(moved === 'ok' || moved === 'no overflow', `scroll ${moved}`)
     })
 
-    if (size.touch) await check(`${label}: every tap target is at least 44px (all tabs)`, async () => {
+    // Compact layout only (below 1100 px): the 44px rules are scoped to it; the desktop layout keeps its sizes.
+    if (size.touch && size.width < 1100) await check(`${label}: every tap target is at least 44px (all tabs)`, async () => {
       const problems = []
       const tabs = [
         ['Material', 'Media'],
@@ -357,8 +358,10 @@ for (const size of SIZES.filter((z) => !process.env.SIZE || z.name === process.e
         const metrics = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
         assert(metrics <= 1, `page overflows by ${metrics}px`)
         await shot('-clip')
-        const problems = await undersizedTargets(page)
-        assert(problems.length === 0, `with trim handles: ${problems.slice(0, 6).join(' | ')}`)
+        if (size.width < 1100) {
+          const problems = await undersizedTargets(page)
+          assert(problems.length === 0, `with trim handles: ${problems.slice(0, 6).join(' | ')}`)
+        }
       })
       const cdp = await context.newCDPSession(page)
       await check(`${label}: long press lifts a clip, a drag reorders it`, async () => {
