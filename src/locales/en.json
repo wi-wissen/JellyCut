@@ -408,6 +408,22 @@
     "frameTile": "#{n}"
   },
   "relink": {
+    "remove": "Remove",
+    "removeLabel": "Remove {name} from the library",
+    "removeUnused": "Remove unused media",
+    "undo": "Undo",
+    "removed": {
+      "one": "Removed {name}.",
+      "withClips": "Removed {name} and the clips that use it.",
+      "unused": "Removed {count} unused file. | Removed {count} unused files."
+    },
+    "confirm": {
+      "title": "Remove file?",
+      "clips": "This file is used in {count} clip on the timeline. Removing it also removes that clip. | This file is used in {count} clips on the timeline. Removing it also removes those clips.",
+      "music": "{count} audio items also use this file. They are removed too.",
+      "remove": "Remove",
+      "cancel": "Cancel"
+    },
     "apply": "Apply",
     "close": "Close",
     "banner": "{count} file is missing. Re-link it to keep editing. | {count} files are missing. Re-link them to keep editing.",

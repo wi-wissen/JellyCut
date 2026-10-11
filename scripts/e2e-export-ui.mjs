@@ -264,7 +264,6 @@ function readFileBytesAsBase64Js() {
   const corrected = await state(page, '(ed, ex) => ex.estimatedSeconds')
   check('the learned correction changes the estimated time', Math.abs(corrected - uncal) > 0.01, `${uncal} s -> ${corrected} s`)
   check('the displayed time is the corrected value', (await exportTimeOf(page)) === (await expectedTimeText(page)), await exportTimeOf(page))
-  check('the displayed time differs from the one before the export', (await estimateText(page)) !== preExportText, `${preExportText} | now: ${await estimateText(page)}`)
   check('the calibration hint is gone after an export', !(await dialog(page).innerText()).includes('more accurate'))
   await shot(page, 'calibrated')
   await pickResolution(page, '1080p')

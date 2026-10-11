@@ -29,6 +29,7 @@ import {
   type WorkFolderHandle
 } from '../../platform/workFolder'
 import { chooseWorkFolder } from '../../platform/projectFiles'
+import { assetUsage, removeAsset as removeAssetFromProject, removeUnusedAssets } from '../../core/timeline/assetOps'
 import { useEditorStore } from './editor'
 
 export type MediaStatus = 'ready' | 'missing' | 'unsupported'
@@ -205,13 +206,23 @@ export const useMediaStore = defineStore('media', {
     relinkNotice: null as string | null,
 
     /** The remembered work folder. Null when none is remembered. */
-    folder: null as { name: string; permission: FolderPermission } | null
+    folder: null as { name: string; permission: FolderPermission } | null,
+
+    /** A removal waiting for the user's confirmation because the asset is used on the timeline. */
+    pendingRemoval: null as null | { assetId: string; name: string; clips: number; music: number },
+    /** The last removal, offered with an Undo button until the next action. */
+    removalNote: null as null | { key: string; params: Record<string, string | number> }
   }),
   getters: {
     /** Assets without a File (for example after a reload) count as missing. */
     statusOf: (state) => (assetId: string): MediaStatus => state.status[assetId] ?? 'missing',
     missingCount(state): number {
       return missingUsedAssets(useEditorStore().project, state.status).length
+    },
+    /** User assets that no clip or music item uses. */
+    unusedCount(): number {
+      const project = useEditorStore().project
+      return project.assets.filter((a) => isUserAsset(a) && assetUsage(project, a.id).clipIds.length + assetUsage(project, a.id).musicIds.length === 0).length
     }
   },
   actions: {
@@ -335,6 +346,99 @@ export const useMediaStore = defineStore('media', {
 
     dismissImportError(): void {
       this.lastImportError = null
+    },
+
+    /**
+     * Removes an asset with every clip and music item that uses it, in one undo step, and frees its file,
+     * decoder, thumbnail and status. Returns false when the asset is unknown. Use requestRemoval from the UI.
+     */
+    removeAsset(assetId: string): boolean {
+      const editor = useEditorStore()
+      const before = editor.project
+      const after = removeAssetFromProject(before, assetId)
+      if (after === before) return false
+      const name = before.assets.find((a) => a.id === assetId)?.name ?? ''
+      const usage = assetUsage(before, assetId)
+      editor.commitProject(after)
+      this.freeAssets([assetId])
+      const clips = usage.clipIds.length
+      this.removalNote = clips > 0
+        ? { key: 'relink.removed.withClips', params: { name, clips } }
+        : { key: 'relink.removed.one', params: { name } }
+      this.afterRemoval()
+      return true
+    },
+
+    /** Asks first when the asset is used on the timeline; an unused asset is removed at once. */
+    requestRemoval(assetId: string): void {
+      const project = useEditorStore().project
+      const asset = project.assets.find((a) => a.id === assetId)
+      if (!asset) return
+      const usage = assetUsage(project, assetId)
+      if (usage.clipIds.length + usage.musicIds.length === 0) {
+        this.removeAsset(assetId)
+        return
+      }
+      this.pendingRemoval = { assetId, name: asset.name, clips: usage.clipIds.length, music: usage.musicIds.length }
+    },
+
+    confirmRemoval(): void {
+      const pending = this.pendingRemoval
+      this.pendingRemoval = null
+      if (pending) this.removeAsset(pending.assetId)
+    },
+
+    cancelRemoval(): void {
+      this.pendingRemoval = null
+    },
+
+    /** Removes every unused user asset in one undo step. */
+    removeUnused(): number {
+      const editor = useEditorStore()
+      const before = editor.project
+      const after = removeUnusedAssets(before)
+      if (after === before) return 0
+      const removed = before.assets.filter((a) => !after.assets.some((b) => b.id === a.id)).map((a) => a.id)
+      editor.commitProject(after)
+      this.freeAssets(removed)
+      this.removalNote = { key: 'relink.removed.unused', params: { count: removed.length } }
+      this.afterRemoval()
+      return removed.length
+    },
+
+    /** Undoes the last removal (one undo step of the editor history). */
+    undoRemoval(): void {
+      useEditorStore().undo()
+      this.removalNote = null
+    },
+
+    dismissRemovalNote(): void {
+      this.removalNote = null
+    },
+
+    /** Drops everything the session knows about the given assets. */
+    freeAssets(assetIds: string[]): void {
+      if (assetIds.length === 0) return
+      const gone = new Set(assetIds)
+      let hadFile = false
+      for (const id of assetIds) {
+        if (files.delete(id)) hadFile = true
+        delete this.status[id]
+        delete this.problems[id]
+        delete this.thumbnails[id]
+        delete this.relinkReasons[id]
+        delete this.relinkRejected[id]
+        delete this.relinkChoices[id]
+      }
+      // Rebuilding the provider disposes the decoders of the removed files.
+      if (hadFile || gone.size > 0) rebuildProvider()
+      this.relinkListIds = this.relinkListIds.filter((id) => !gone.has(id))
+      this.replan()
+    },
+
+    /** After a removal: nothing missing any more closes the dialog. */
+    afterRemoval(): void {
+      if (missingUsedAssets(useEditorStore().project, this.status).length === 0) this.relinkOpen = false
     },
 
     /**

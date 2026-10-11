@@ -36,7 +36,8 @@ export default defineComponent({
       'relinkScanned',
       'relinkNotice',
       'missingCount',
-      'status'
+      'status',
+      'pendingRemoval'
     ]),
     ...mapState(useEditorStore, ['project', 'caps']),
     locale(): string {
@@ -101,7 +102,8 @@ export default defineComponent({
       'chooseFolderForRelink',
       'relinkFiles',
       'chooseCandidate',
-      'applyChoices'
+      'applyChoices',
+      'requestRemoval'
     ]),
     panel(): HTMLElement | null {
       return (this.$refs.panel as HTMLElement | undefined) ?? null
@@ -171,7 +173,8 @@ export default defineComponent({
       if (!this.relinkBusy) this.closeRelinkDialog()
     },
     onWindowKeydown(event: KeyboardEvent): void {
-      if (!this.relinkOpen) return
+      // A pending removal confirmation sits on top and takes the keys first.
+      if (!this.relinkOpen || this.pendingRemoval) return
       event.stopPropagation()
       if (event.key === 'Escape') {
         event.preventDefault()
@@ -257,6 +260,15 @@ export default defineComponent({
                 >
                   {{ $t('relink.status.notFound') }}
                 </span>
+                <button
+                  v-if="rowState(asset) !== 'matched'"
+                  type="button"
+                  class="min-h-11 shrink-0 rounded-lg px-2 text-xs font-semibold text-[var(--jc-danger)] hover:bg-panel"
+                  :aria-label="$t('relink.removeLabel', { name: asset.name })"
+                  @click="requestRemoval(asset.id)"
+                >
+                  {{ $t('relink.remove') }}
+                </button>
               </div>
 
               <p v-if="rowState(asset) === 'matched' && basisText(asset)" class="mt-1.5 text-xs text-muted">{{ basisText(asset) }}</p>

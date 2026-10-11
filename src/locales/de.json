@@ -408,6 +408,22 @@
     "frameTile": "#{n}"
   },
   "relink": {
+    "remove": "Entfernen",
+    "removeLabel": "{name} aus der Mediathek entfernen",
+    "removeUnused": "Ungenutzte Medien entfernen",
+    "undo": "Rückgängig",
+    "removed": {
+      "one": "{name} wurde entfernt.",
+      "withClips": "{name} und die Clips, die sie nutzen, wurden entfernt.",
+      "unused": "{count} ungenutzte Datei wurde entfernt. | {count} ungenutzte Dateien wurden entfernt."
+    },
+    "confirm": {
+      "title": "Datei entfernen?",
+      "clips": "Diese Datei wird in {count} Clip auf der Timeline genutzt. Beim Entfernen werden auch diese Clips entfernt. | Diese Datei wird in {count} Clips auf der Timeline genutzt. Beim Entfernen werden auch diese Clips entfernt.",
+      "music": "Außerdem nutzen {count} Audio-Elemente die Datei. Sie werden ebenfalls entfernt.",
+      "remove": "Entfernen",
+      "cancel": "Abbrechen"
+    },
     "apply": "Übernehmen",
     "close": "Schließen",
     "banner": "{count} Datei fehlt. Verknüpfe sie neu, um weiterzuarbeiten. | {count} Dateien fehlen. Verknüpfe sie neu, um weiterzuarbeiten.",

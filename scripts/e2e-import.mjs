@@ -74,7 +74,8 @@ await page.locator('#project-menu-trigger').click()
 await page.getByRole('menuitem', { name: 'New project' }).click()
 if (await page.locator('#project-menu-panel').isVisible()) await page.keyboard.press('Escape')
 
-const tile = (name) => page.locator('aside section').getByRole('button', { name })
+// Tiles only: the remove and re-link buttons sit beside a tile and carry the file name too.
+const tile = (name) => page.locator('aside section').getByRole('button', { name }).and(page.locator('button:not([aria-label^="Remove "])'))
 // Audio files live in the Audio tab; video and images in Media.
 const AUDIO_ONLY = new Set(['music.webm'])
 const openFor = (name) => page.getByRole('button', { name: AUDIO_ONLY.has(name) ? 'Audio' : 'Media', exact: true }).click()

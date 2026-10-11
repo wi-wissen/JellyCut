@@ -45,12 +45,13 @@ export default defineComponent({
       'thumbnails',
       'importing',
       'lastImportError',
-      'needsRelink',
       'missingCount',
-      'folder'
+      'folder',
+      'unusedCount',
+      'removalNote'
     ]),
     showRelinkBanner(): boolean {
-      return this.needsRelink && this.missingCount > 0
+      return this.missingCount > 0
     },
     canImportFromFolder(): boolean {
       return this.caps.filePicker && this.folder?.permission === 'granted'
@@ -79,8 +80,18 @@ export default defineComponent({
       'dismissImportError',
       'pickFiles',
       'pickFileFor',
-      'chooseFolderForRelink'
+      'chooseFolderForRelink',
+      'requestRemoval',
+      'removeUnused',
+      'undoRemoval',
+      'dismissRemovalNote'
     ]),
+    removalText(): string {
+      const note = this.removalNote
+      if (!note) return ''
+      if (note.key === 'relink.removed.unused') return this.$t(note.key, Number(note.params.count))
+      return this.$t(note.key, note.params)
+    },
     onRelinkTile(asset: Asset): void {
       this.pickFileFor(asset.id)
     },
@@ -154,6 +165,14 @@ export default defineComponent({
         {{ $t('library.importing') }}
       </span>
       <button
+        v-if="unusedCount > 0"
+        type="button"
+        class="min-h-11 shrink-0 rounded-lg px-2 text-xs font-semibold text-txt hover:bg-panel2"
+        @click="removeUnused"
+      >
+        {{ $t('relink.removeUnused') }}
+      </button>
+      <button
         v-else-if="canImportFromFolder"
         type="button"
         class="min-h-11 shrink-0 rounded-lg px-2 text-xs font-semibold text-txt hover:bg-panel2"
@@ -188,6 +207,21 @@ export default defineComponent({
       </div>
     </div>
 
+    <div v-if="removalNote" role="status" class="flex shrink-0 items-center gap-2 rounded-lg bg-panel2 p-2 text-xs text-fg">
+      <span class="min-w-0 flex-1">{{ removalText() }}</span>
+      <button type="button" class="min-h-11 shrink-0 rounded-lg px-2 font-bold text-txt hover:bg-panel" @click="undoRemoval">
+        {{ $t('relink.undo') }}
+      </button>
+      <button
+        type="button"
+        class="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg font-bold hover:bg-panel"
+        :aria-label="$t('project.dismiss')"
+        @click="dismissRemovalNote"
+      >
+        ×
+      </button>
+    </div>
+
     <input ref="fileInput" type="file" multiple :accept="accept" class="hidden" @change="onPicked" />
 
     <div class="min-h-0 flex-1 overflow-y-auto" :class="dragging ? 'rounded-lg outline-2 outline-dashed outline-fill -outline-offset-4' : ''">
@@ -214,7 +248,7 @@ export default defineComponent({
 
             <span
               v-if="!isReady(asset)"
-              class="absolute inset-0 flex items-start justify-center gap-1 bg-panel2 px-2.5 pt-5 text-center text-[10px] font-semibold leading-tight text-fg"
+              class="absolute inset-0 flex items-start justify-center gap-1 bg-panel2 pl-2.5 pr-12 pt-5 text-center text-[10px] font-semibold leading-tight text-fg"
             >
               <svg viewBox="0 0 24 24" class="mt-px size-3.5 shrink-0 text-[var(--jc-danger)]" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
                 <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
@@ -239,11 +273,22 @@ export default defineComponent({
               {{ $t('library.add') }}
             </span>
 
-            <span v-if="durationLabel(asset)" class="absolute right-1.5 top-1.5 rounded bg-black/60 px-1 font-mono text-[10px] text-white">
+            <span v-if="durationLabel(asset)" class="absolute right-12 top-2 rounded bg-black/60 px-1 font-mono text-[10px] text-white">
               {{ durationLabel(asset) }}
             </span>
             <span class="absolute inset-x-0 bottom-0 truncate bg-black/55 px-2 py-1 text-[11px] font-semibold text-white">
               {{ asset.name }}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            class="absolute right-1 top-1 z-10 flex size-11 items-center justify-center rounded-lg text-white"
+            :aria-label="$t('relink.removeLabel', { name: asset.name })"
+            @click="requestRemoval(asset.id)"
+          >
+            <span class="flex size-7 items-center justify-center rounded-full bg-black/60 shadow">
+              <Icon name="trash" class="size-4" />
             </span>
           </button>
 
