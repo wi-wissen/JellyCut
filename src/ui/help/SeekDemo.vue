@@ -259,11 +259,7 @@ export default defineComponent({
             <svg v-if="cell.key" class="absolute right-0.5 top-0.5 size-3.5 drop-shadow" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path :d="star" style="fill: var(--jc-track-text); stroke: var(--jc-track-text-fg); stroke-width: 1.5" />
             </svg>
-            <span v-else class="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 gap-0.5" aria-hidden="true">
-              <i class="size-1 rounded-full bg-fill"></i>
-              <i class="size-1 rounded-full bg-fill"></i>
-              <i class="size-1 rounded-full bg-fill"></i>
-            </span>
+            <span v-else class="absolute left-1 right-1 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-fill" aria-hidden="true"></span>
           </div>
           <span class="mt-1 text-[11px] leading-none tabular-nums text-muted" aria-hidden="true">{{ cell.frame + 1 }}</span>
         </div>

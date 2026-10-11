@@ -211,7 +211,7 @@ await check('container: the lid stays inside the SVG box when the box is open, a
     await page.getByRole('button', { name: 'Box öffnen' }).click()
     await page.waitForTimeout(700)
     const r = await page.evaluate(() => {
-      const svg = document.querySelector('button svg')
+      const svg = document.querySelector('button[aria-controls="container-box-tracks"] svg')
       const lid = svg.querySelector('g').getBoundingClientRect()
       const box = svg.getBoundingClientRect()
       return { lid: [lid.left, lid.top, lid.right, lid.bottom], box: [box.left, box.top, box.right, box.bottom] }
@@ -230,7 +230,7 @@ await check('container: strip is a 2-second excerpt; picture, time axis and soun
   await page.keyboard.press('Home')
   for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowRight')
   assert((await slider.getAttribute('aria-valuenow')) === '6', 'frame 6 not reached')
-  assert((await slider.getAttribute('aria-valuetext')).includes('1,00 s'), `time at frame 6: ${await slider.getAttribute('aria-valuetext')}`)
+  assert((await slider.getAttribute('aria-valuetext')).includes('1 s'), `time at frame 6: ${await slider.getAttribute('aria-valuetext')}`)
   await page.keyboard.press('End')
   assert((await slider.getAttribute('aria-valuenow')) === '11', 'last frame is not 11')
   assert((await slider.getAttribute('aria-valuetext')).includes('1,83 s'), 'time at last frame')
@@ -245,7 +245,7 @@ await check('container: strip is a 2-second excerpt; picture, time axis and soun
   })
   assert(Math.abs(widths[0] - widths[2]) < 1 && Math.abs(widths[1] - widths[3]) < 1, `strip and sound differ in span: ${widths}`)
   const axis = await page.locator('[role="slider"] ~ div').first().innerText()
-  assert(axis.includes('0,0 s') && axis.includes('2,0 s'), `time axis: ${axis}`)
+  assert(axis.includes('0 s') && axis.includes('2 s'), `time axis: ${axis}`)
   await context.close()
 })
 
@@ -384,7 +384,9 @@ for (const scheme of ['light', 'dark']) {
       const seekCtx = await open('compression', { width, height, scheme })
       const seek = seekSection(seekCtx.page)
       await seek.getByRole('button', { name: 'Springe dorthin' }).click()
-      await seekCtx.page.waitForTimeout(2600)
+      await seekCtx.page.waitForTimeout(400)
+      await seek.screenshot({ path: `${SHOT_DIR}/didactic2-seek-look-${scheme}-${size}.png` })
+      await seekCtx.page.waitForTimeout(2200)
       await seek.screenshot({ path: `${SHOT_DIR}/didactic2-seek-mid-${scheme}-${size}.png` })
       await seekCtx.page.waitForFunction(() => document.querySelector('[data-stat="seek"]')?.innerText.startsWith('Fertig'), null, { timeout: 15000 })
       await seek.screenshot({ path: `${SHOT_DIR}/didactic2-seek-end-${scheme}-${size}.png` })

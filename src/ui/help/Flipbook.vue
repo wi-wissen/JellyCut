@@ -88,7 +88,7 @@ export default defineComponent({
       return {
         newly: `rgb(${ACCENT.join(' ')})`,
         uncovered: `rgb(${LIGHT_ACCENT.join(' ')})`,
-        inside: `rgba(${ACCENT.join(', ')}, 0.55)`
+        inside: `rgba(${ACCENT.join(', ')}, 0.3)`
       }
     },
     totalPercent(): number {
@@ -171,7 +171,7 @@ export default defineComponent({
         } else if (k === UNCOVERED) {
           live.data.set([...LIGHT_ACCENT, 255], i)
         } else if (k === INSIDE_CHANGE) {
-          live.data.set([0.5 * r + 0.5 * ACCENT[0]!, 0.5 * g + 0.5 * ACCENT[1]!, 0.5 * b + 0.5 * ACCENT[2]!, 255].map(Math.round), i)
+          live.data.set([0.8 * r + 0.2 * ACCENT[0]!, 0.8 * g + 0.2 * ACCENT[1]!, 0.8 * b + 0.2 * ACCENT[2]!, 255].map(Math.round), i)
         } else {
           const gray = 0.3 * r + 0.59 * g + 0.11 * b
           live.data.set([0.45 * r + 0.55 * gray, 0.45 * g + 0.55 * gray, 0.45 * b + 0.55 * gray, 255].map(Math.round), i)
