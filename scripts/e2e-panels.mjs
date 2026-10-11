@@ -369,7 +369,7 @@ await check('dark: clip panel, text properties, transitions and ratio popover re
 
 // ---------- narrow stage: the popover stays inside the stage ----------
 const narrow = await newPage({ viewport: { width: 760, height: 640 }, colorScheme: 'light' })
-await check('ratio popover stays inside the stage on a narrow window', async () => {
+await check('ratio popover stays inside the stage sideways and the window vertically', async () => {
   await narrow.getByRole('button', { name: 'Aspect ratio', exact: true }).click()
   const dialog = narrow.getByRole('dialog', { name: 'Picture format and background' })
   await dialog.waitFor()
@@ -378,7 +378,9 @@ await check('ratio popover stays inside the stage on a narrow window', async () 
   assert(stage && box, 'stage or popover not measurable')
   assert(box.x >= stage.x - 0.5, `left ${box.x} < stage ${stage.x}`)
   assert(box.x + box.width <= stage.x + stage.width + 0.5, `right ${box.x + box.width} > stage ${stage.x + stage.width}`)
-  assert(box.y >= stage.y - 0.5 && box.y + box.height <= stage.y + stage.height + 0.5, 'popover leaves the stage vertically')
+  // Vertically the popover may run past the stage (background options under Fit), but not off the window.
+  const viewport = narrow.viewportSize()
+  assert(box.y >= 0 && box.y + box.height <= viewport.height + 0.5, 'popover leaves the window vertically')
   await narrow.screenshot({ path: join(SHOT_DIR, 'panel-ratio-narrow.png') })
 })
 

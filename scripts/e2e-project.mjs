@@ -75,7 +75,8 @@ async function waitForName(page, name) {
 }
 
 async function waitForAutosaved(page) {
-  await page.getByRole('img', { name: 'Autosave: saved' }).waitFor({ timeout: 5000 })
+  // The save dot: green = autosaved in this browser (see docs/ui-layout.md, save state).
+  await page.locator('[data-role="save-state"][data-tone="green"]').waitFor({ timeout: 5000 })
 }
 
 async function chooseFileToOpen(page, path) {
@@ -129,7 +130,7 @@ await check('Firefox-like: autosave survives a reload', async () => {
 await check('Firefox-like: Download as file writes a parsable .jellycut file', async () => {
   await openMenu(fx)
   const [download] = await Promise.all([fx.waitForEvent('download'), menuItem(fx, 'Download as file').click()])
-  assert(download.suggestedFilename() === 'Trip Renamed.jellycut', `file name ${download.suggestedFilename()}`)
+  assert(download.suggestedFilename() === 'Trip Renamed.jellycut.json', `file name ${download.suggestedFilename()}`)
   downloadedText = readFileSync(await download.path(), 'utf8')
   const parsed = JSON.parse(downloadedText)
   assert(parsed.name === 'Trip Renamed', `project name ${parsed.name}`)

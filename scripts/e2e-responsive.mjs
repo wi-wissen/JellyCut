@@ -168,7 +168,7 @@ function centerOf(box) {
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
 }
 
-const videoClipOrder = (page) => page.$$eval('[data-lane="video"] button', (els) => els.map((e) => e.getAttribute('aria-label')))
+const videoClipOrder = (page) => page.$$eval('[data-lane="video"] button[aria-label^="Clip:"]', (els) => els.map((e) => e.getAttribute('aria-label')))
 const firstTextStart = (page) =>
   page.evaluate(() => document.querySelector('#app').__vue_app__.config.globalProperties.$pinia.state.value.editor.history.present.texts[0].start)
 const timelineScrollLeft = (page) => page.evaluate(() => document.querySelector('[data-role="ruler"]').parentElement.parentElement.scrollLeft)

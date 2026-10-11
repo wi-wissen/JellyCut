@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import de from './de.json'
-import en from './en.json'
+import { allMessages } from '../ui/i18n'
 
 type Messages = { [key: string]: Messages | string }
 
@@ -20,11 +19,12 @@ function placeholders(text: string): string[] {
   return [...text.matchAll(/\{([^{}]+)\}/g)].map((m) => m[1]!).sort()
 }
 
-const deMessages = flatten(de as Messages)
-const enMessages = flatten(en as Messages)
+const all = allMessages()
+const deMessages = flatten(all.de as Messages)
+const enMessages = flatten(all.en as Messages)
 
 describe('locale files', () => {
-  it('de.json and en.json have identical key sets', () => {
+  it('German and English (including src/locales/pages) have identical key sets', () => {
     const onlyDe = [...deMessages.keys()].filter((k) => !enMessages.has(k))
     const onlyEn = [...enMessages.keys()].filter((k) => !deMessages.has(k))
     expect({ onlyDe, onlyEn }).toEqual({ onlyDe: [], onlyEn: [] })

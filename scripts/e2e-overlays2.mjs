@@ -352,16 +352,18 @@ const vidShot = await canvasShot()
 const vidGreen = await analyze({ a: vidShot, kind: 'stats', rect: [0.2 - 0.02, 0.2 + 0.02, 0.75 - 0.02, 0.75 + 0.02], predicate: isGreen })
 check('video picture: the first frame of the video shows in its box', vidGreen.matched > 200, JSON.stringify(vidGreen.matched))
 await st('(ed) => { ed.setPlayhead(1500000); ed.togglePlaying() }')
-await page.waitForTimeout(900)
+await page.waitForTimeout(500)
 const playing = await page.evaluate(() => {
   const pinia = document.querySelector('#app').__vue_app__.config.globalProperties.$pinia
   return pinia._s.get('editor').isPlaying
 })
-const playShot = await canvasShot()
+// Pause before the shot: taking it takes a while, and the picture only lasts from 1.5 s to 4 s.
 await st('(ed) => ed.togglePlaying()')
-await settle(200)
+await settle(300)
+const playT = await st('(ed) => ed.playheadMicros')
+const playShot = await canvasShot()
 const playGreen = await analyze({ a: playShot, kind: 'stats', rect: [0.2 - 0.02, 0.2 + 0.02, 0.75 - 0.02, 0.75 + 0.02], predicate: isGreen })
-check('video picture: it keeps playing with the timeline', playing && playGreen.matched > 200, JSON.stringify({ playing, matched: playGreen.matched }))
+check('video picture: it plays with the timeline (it was playing, and the picture is shown at the stopped time)', playing && playT > 1_500_000 && playT < 4_000_000 && playGreen.matched > 200, JSON.stringify({ playing, playT, matched: playGreen.matched }))
 
 // --- 8. export: one frame with all overlays, and the same project without overlays
 const exported = await page.evaluate(async () => {

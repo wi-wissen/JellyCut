@@ -883,6 +883,11 @@
     }
   },
   "export2": {
+    "hidden": {
+      "ready": "The estimate applies to a tab in the foreground.",
+      "running": "The export runs slower while this tab is in the background. Keep it open in the foreground.",
+      "skipped": "The tab was in the background for a long time, so this run did not change the estimate."
+    },
     "estimate": {
       "video": "Video: {duration}",
       "size": "File size about {size}",
@@ -925,8 +930,18 @@
         "plain": "Plain project",
         "video": "With a picture-in-picture video"
       },
-      "samples": "Calibration: {count} exports on this computer",
+      "samples": "Exports learned on this computer: {count}",
       "none": "No calibration yet"
+    }
+  },
+  "site": {
+    "theme": {
+      "toLight": "Switch to light theme",
+      "toDark": "Switch to dark theme"
+    },
+    "footer": {
+      "text": "Jelly Cut is open source. Your files stay on your device.",
+      "github": "Source code on GitHub"
     }
   }
 }

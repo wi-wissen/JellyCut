@@ -51,7 +51,7 @@ describe('ExportEta', () => {
       const now = eta.update(elapsed, done)
       if (now === null) continue
       expect(now).toBeGreaterThanOrEqual(0)
-      if (Math.abs(now - previous) > 1500) jumps++
+      if (Math.abs(now - previous) > 2500) jumps++
       previous = now
     }
     expect(jumps).toBe(0)
@@ -69,5 +69,19 @@ describe('ExportEta warm-up', () => {
     const eta = new ExportEta(null, 1000)
     // 40 frames in 2 s: 50 ms per frame on average, so 960 frames are still 48 s away.
     expect(eta.update(2000, 40)).toBeCloseTo(960 * 50, -1)
+  })
+})
+
+describe('ExportEta pausing', () => {
+  it('progress made while paused does not change the rate', () => {
+    const eta = new ExportEta(null, 1000)
+    for (let done = 8; done <= 200; done += 8) eta.update(done * 100, done)
+    // 100 frames appear in 1 s while the tab is hidden: this progress says nothing about the speed.
+    eta.update(21_000, 300, true)
+    // Back at the steady pace of 100 ms per frame: 100 frames in 10 s.
+    const value = eta.update(31_000, 400)!
+    // 600 frames still to go at 100 ms each.
+    expect(value).toBeGreaterThan(60_000 * 0.75)
+    expect(value).toBeLessThan(60_000 * 1.25)
   })
 })

@@ -50,11 +50,11 @@
     flex: 1 1 0;
     min-height: 0;
   }
-  /* The height is set inline (TimelinePanel); the lane area scrolls inside it. */
+  /* The height is set inline (TimelinePanel); the lane area scrolls inside it. No overflow:hidden here:
+     Chrome then skips the clipped controls (the lanes hint and the tool sheet) in the tab order. */
   .jc-timeline {
     flex: 0 0 auto;
     max-height: 60dvh;
-    overflow: hidden;
   }
   .jc-sheet {
     flex: 0 0 auto;

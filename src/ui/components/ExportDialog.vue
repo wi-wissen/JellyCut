@@ -47,7 +47,8 @@ export default defineComponent({
       'estimate',
       'missingNames',
       'canStart',
-      'runFileName'
+      'runFileName',
+      'hiddenNow'
     ]),
     ...mapState(useEditorStore, ['totalDuration', 'project']),
     ...mapState(useCreditsStore, { creditsOpen: 'open' }),
@@ -275,6 +276,22 @@ export default defineComponent({
         <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           <!-- Settings: checking, ready and (disabled) running -->
           <template v-if="phase === 'checking' || phase === 'ready' || phase === 'running'">
+            <fieldset class="mb-4 min-w-0 border-0 p-0" :disabled="optionsDisabled">
+              <legend class="mb-2 text-xs font-semibold text-muted">{{ $t('export.labels.format') }}</legend>
+              <div class="grid grid-cols-2 gap-1.5 rounded-xl bg-panel2 p-1">
+                <label v-for="f in formats" :key="f" class="cursor-pointer">
+                  <input
+                    type="radio"
+                    name="export-format"
+                    class="peer sr-only"
+                    :checked="format === f"
+                    @change="setFormat(f)"
+                  />
+                  <span class="flex min-h-11 items-center justify-center rounded-lg text-sm font-semibold peer-checked:bg-fill peer-checked:text-fill-fg peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-fill peer-disabled:cursor-default">{{ $t(`export.formats.${f}`) }}</span>
+                </label>
+              </div>
+            </fieldset>
+
             <template v-if="format === 'mp4'">
             <fieldset class="mb-4 min-w-0 border-0 p-0" :disabled="optionsDisabled">
               <legend class="mb-2 text-xs font-semibold text-muted">{{ $t('export.labels.resolution') }}</legend>
@@ -370,22 +387,6 @@ export default defineComponent({
               </fieldset>
             </template>
 
-            <fieldset class="mb-4 min-w-0 border-0 p-0" :disabled="optionsDisabled">
-              <legend class="mb-2 text-xs font-semibold text-muted">{{ $t('export.labels.format') }}</legend>
-              <div class="grid grid-cols-2 gap-1.5 rounded-xl bg-panel2 p-1">
-                <label v-for="f in formats" :key="f" class="cursor-pointer">
-                  <input
-                    type="radio"
-                    name="export-format"
-                    class="peer sr-only"
-                    :checked="format === f"
-                    @change="setFormat(f)"
-                  />
-                  <span class="flex min-h-11 items-center justify-center rounded-lg text-sm font-semibold peer-checked:bg-fill peer-checked:text-fill-fg peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-fill peer-disabled:cursor-default">{{ $t(`export.formats.${f}`) }}</span>
-                </label>
-              </div>
-            </fieldset>
-
             <div v-if="phase === 'checking'" role="status" class="mb-3 text-sm text-muted">{{ $t('export.checking') }}</div>
 
             <template v-else-if="phase === 'ready' || phase === 'running'">
@@ -397,6 +398,7 @@ export default defineComponent({
                   <small class="text-xs font-normal text-muted">{{ estimateNoteText }}</small>
                 </p>
               </div>
+              <p v-if="phase === 'ready'" class="mb-2 text-xs text-muted">{{ $t('export2.hidden.ready') }}</p>
               <p v-if="!estimate.calibrated" class="mb-3 text-xs text-muted">{{ $t('export.calibrationHint') }}</p>
               <p v-if="format === 'mp4' && encoders?.video" class="mb-3 text-xs text-muted">
                 {{ $t('export.encoder', { codec: codecLabel }) }}
@@ -432,6 +434,7 @@ export default defineComponent({
               </div>
               <p class="mt-2 text-xs text-muted">{{ timingText }}</p>
               <p class="mt-2 text-xs text-muted">{{ savingText }}</p>
+              <p v-if="hiddenNow" role="status" class="mt-2 rounded-lg bg-panel2 px-3 py-2 text-sm">{{ $t('export2.hidden.running') }}</p>
               <p v-if="!inWorker" class="mt-2 text-xs text-muted">{{ $t('export.keepOpen') }}</p>
             </div>
           </template>
@@ -464,6 +467,7 @@ export default defineComponent({
                 </tbody>
               </table>
               <p class="text-xs text-muted">{{ classText }} · {{ calibrationText }}</p>
+              <p v-if="result.hiddenShare > 0.1" class="mt-1 text-xs text-muted">{{ $t('export2.hidden.skipped') }}</p>
             </details>
             <div v-if="creditsHintVisible" class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-line bg-panel2 px-3 py-2 text-sm">
               <p class="w-full">{{ $t('export.creditsHint.text') }}</p>

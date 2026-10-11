@@ -126,6 +126,7 @@ function analyze(mode, a, b = null, predicate = null, rect = null) {
 }
 
 const isYellow = '(r, g, b) => r > 220 && g > 170 && b < 140 && r - b > 110'
+// The vector star takes the overlay colour (pink by default); see docs/decisions.md, Overlays 3.
 const isPink = '(r, g, b) => r > 200 && g < 150 && b > 120 && b < 220 && r - g > 80'
 const isLime = '(r, g, b) => g > 215 && r > 160 && r < 225 && b < 120'
 
@@ -152,8 +153,8 @@ const starId = s.overlays[0]?.id
 const withStar = await canvasShot()
 const starDiff = await analyze('diff', withStar, base)
 check('sticker: the preview draws it at the centre', starDiff.count > 200 && Math.abs(starDiff.cx - 0.5) < 0.04 && Math.abs(starDiff.cy - 0.5) < 0.06, JSON.stringify(starDiff))
-const starYellow = await analyze('match', withStar, null, isYellow)
-check('sticker: emoji pixels come from the system emoji font (yellow star)', starYellow.count > 150, JSON.stringify(starYellow.count))
+const starYellow = await analyze('match', withStar, null, isPink)
+check('sticker: the vector star is drawn in the overlay colour (pink)', starYellow.count > 150, JSON.stringify(starYellow.count))
 
 // --- 3. move the sticker with its handle (drag by 150 x 80 screen pixels) ---
 const moveHandle = await rectOf('[data-role="overlay-box"] button[aria-label="Move"]')
@@ -169,7 +170,7 @@ const expectX = 0.5 + 150 / root.w
 const expectY = 0.5 + 80 / root.h
 check('move: the drag changes the anchor by the pointer distance', moved && Math.abs(moved.pos.x - expectX) < 0.02 && Math.abs(moved.pos.y - expectY) < 0.02, JSON.stringify(moved?.pos))
 const movedShot = await canvasShot()
-const movedYellow = await analyze('match', movedShot, null, isYellow)
+const movedYellow = await analyze('match', movedShot, null, isPink)
 check('move: the star is drawn at its new place', movedYellow.cx !== null && movedYellow.cx > 0.5 + 0.05 && movedYellow.cy > 0.5 + 0.03, JSON.stringify(movedYellow))
 
 // --- 4. rotate with the top handle: pointer to the right of the anchor is +90 degrees ---
@@ -359,7 +360,7 @@ const exported = await page.evaluate(async () => {
         const [r, g, b] = [1, 3, 5].map((i) => parseInt(o.color.slice(i, i + 2), 16))
         return { color: o.color, near: count(mx, my, 0.02, (x, y, z) => Math.abs(x - r) + Math.abs(y - g) + Math.abs(z - b) < 90) }
       }),
-    stickerNear: star ? count(star.pos.x, star.pos.y, 0.07, (r, g, b) => r > 220 && g > 170 && b < 140 && r - b > 110) : 0
+    stickerNear: star ? count(star.pos.x, star.pos.y, 0.07, (r, g, b) => r > 200 && g < 130 && b > 120 && r - g > 80) : 0
   }
 }, null)
 check('export: an MP4 with frames is written', exported.frames > 30, JSON.stringify(exported))
@@ -367,7 +368,7 @@ check('export: the exported frame shows the sticker', exported.stickerNear > 15,
 check('export: every stroke is in the exported frame in its own colour', exported.strokes.length === 3 && exported.strokes.every((k) => k.near > 0), JSON.stringify(exported.strokes))
 
 // --- 12. screenshots, light and dark ---
-await page.getByRole('button', { name: 'Overlay: ⭐', exact: true }).click()
+await page.getByRole('button', { name: 'Overlay: Star', exact: true }).click()
 await settle()
 await page.screenshot({ path: `${SHOTS}/overlay-light.png` })
 await page.getByRole('tab', { name: 'Design' }).click()

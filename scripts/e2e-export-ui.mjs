@@ -118,6 +118,15 @@ async function setupProject(page) {
   await waitFor(async () => (await state(page, '(ed) => ed.project.clips.length')) === 2, 10_000)
 }
 
+// Emulates a hidden (background) tab: the page reads visibilityState 'hidden' and gets a visibilitychange event.
+async function setVisibility(page, value) {
+  await page.evaluate((v) => {
+    if (v === 'visible') delete document.visibilityState
+    else Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' })
+    document.dispatchEvent(new Event('visibilitychange'))
+  }, value)
+}
+
 async function pickResolution(page, label) {
   await page.getByRole('radio', { name: label, exact: true }).click({ force: true })
 }
@@ -140,6 +149,8 @@ async function waitPhase(page, phase, timeout) {
   check('Export button opens the dialog', await dialog(page).isVisible())
   check('focus moves into the dialog on open', await page.evaluate(() => !!document.activeElement?.closest('[role=dialog]')))
   check('Start export is enabled once encoders are checked', await startButton(page).isEnabled())
+  check('the format choice is the first control in the dialog', (await dialog(page).getByRole('radio').first().getAttribute('name')) === 'export-format')
+  check('the ready state hints that the estimate applies to a foreground tab', (await dialog(page).innerText()).includes('tab in the foreground'))
   await shot(page, 'ready')
 
   check('the video length, file size and export time are separate lines', (await dialog(page).innerText()).match(/Video: \S+/) !== null)
@@ -297,9 +308,11 @@ async function waitPhase(page, phase, timeout) {
   const ratio = quarter && restMs > 0 ? quarter.eta / restMs : 0
   const seq = etaSamples.map((x) => (x.eta / 1000).toFixed(1)).join(' ')
   check('the ETA at a quarter is within a factor of two of the real rest', ratio > 0.5 && ratio < 2, `ETA ${Math.round((quarter?.eta ?? 0) / 1000)} s, real ${Math.round(restMs / 1000)} s; sequence ${seq}`)
-  let bigRises = 0
-  for (let i = 1; i < etaSamples.length; i++) if (etaSamples[i].eta - etaSamples[i - 1].eta > Math.max(1500, 0.15 * etaSamples[i - 1].eta)) bigRises++
-  check('the ETA rises by more than its hold band only a few times', bigRises <= 4, `${bigRises} rises in ${etaSamples.length} changes; sequence ${seq}`)
+  // The encoder's speed changes during a run, so the ETA follows it (several small rises are real). A wild jump is one
+  // change of more than half the value; none is allowed.
+  let wildJumps = 0
+  for (let i = 1; i < etaSamples.length; i++) if (etaSamples[i].eta - etaSamples[i - 1].eta > Math.max(3000, 0.5 * etaSamples[i - 1].eta)) wildJumps++
+  check('the ETA has no wild jumps (more than half of its value in one step)', wildJumps === 0, `${wildJumps} jumps; sequence ${seq}`)
   check('the ETA values are finite and never negative', etaSamples.every((x) => Number.isFinite(x.eta) && x.eta >= 0))
   let countdowns = 0
   for (let i = 1; i < etaSamples.length; i++) if (etaSamples[i].eta < etaSamples[i - 1].eta) countdowns++
@@ -364,6 +377,40 @@ async function waitPhase(page, phase, timeout) {
     check(`dialog fits ${width} px without horizontal overflow`, fit.pageOverflow <= 0 && fit.panelOverflow <= 0, JSON.stringify(fit))
   }
   await page.keyboard.press('Escape')
+  await context.close()
+}
+
+// ---------- Pass D: background tab while exporting ----------
+{
+  const { context, page, pageErrors } = await newPage({ initScript: PICKER_OFF })
+  await setupProject(page)
+  await page.locator('#export-button').click()
+  await waitPhase(page, 'ready', 15_000)
+  await pickResolution(page, '480p')
+  const noticeText = /Keep it open in the foreground/
+  await startButton(page).click()
+  await waitFor(async () => ((await state(page, '(ed, ex) => ex.progress?.fraction ?? 0')) || 0) > 0.05, 120_000, 50)
+  await setVisibility(page, 'hidden')
+  check('a hidden tab shows the calm notice while exporting', await waitFor(async () => noticeText.test(await dialog(page).innerText()), 3000, 50))
+  check('the store knows the tab is hidden', await state(page, '(ed, ex) => ex.hiddenNow'))
+  await setVisibility(page, 'visible')
+  check('the notice disappears when the tab is visible again', await waitFor(async () => !noticeText.test(await dialog(page).innerText()), 3000, 50))
+  await waitPhase(page, 'done', 180_000)
+  check('the run with a short hidden stretch finishes', (await state(page, '(ed, ex) => ex.phase')) === 'done')
+
+  // A run that stays hidden is throttled: its timing must not become the calibration.
+  await page.getByRole('button', { name: 'Export again', exact: true }).click()
+  await waitPhase(page, 'ready', 5000)
+  const before = await page.evaluate(() => localStorage.getItem('jellycut.export.calibration'))
+  await setVisibility(page, 'hidden')
+  await startButton(page).click()
+  await waitPhase(page, 'done', 180_000)
+  const share = await state(page, '(ed, ex) => ex.result?.hiddenShare ?? 0')
+  check('the hidden run reports most of its time as hidden', share > 0.5, `share ${share}`)
+  check('a run hidden for most of its time does not change the calibration', (await page.evaluate(() => localStorage.getItem('jellycut.export.calibration'))) === before)
+  check('the done state explains that the estimate was not changed', (await dialog(page).textContent()).includes('did not change the estimate'))
+  await setVisibility(page, 'visible')
+  check('no uncaught page errors in pass D', pageErrors.length === 0, pageErrors.join(' | '))
   await context.close()
 }
 

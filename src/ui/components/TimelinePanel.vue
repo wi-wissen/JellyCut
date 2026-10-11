@@ -462,7 +462,7 @@ export default defineComponent({
     },
     /** Short label of an overlay bar: the emoji for stickers, the kind for shapes and strokes. */
     overlayName(item: OverlayItem): string {
-      if (item.kind === 'sticker') return item.emoji ?? ''
+      if (item.kind === 'sticker') return item.emoji ?? this.$t(`overlays3.sticker.${item.shape}`)
       if (item.kind === 'shape') return this.$t(`overlays.shape.${item.shape}`)
       if (item.kind === 'region') return this.$t(`overlays2.effects.${item.effect}`)
       if (item.kind === 'media') return this.project.assets.find((a) => a.id === item.assetId)?.name ?? ''
@@ -881,6 +881,16 @@ export default defineComponent({
       <div class="flex-1" />
 
       <button
+        v-if="hiddenBelow > 0"
+        type="button"
+        class="jc-timeline__more flex min-h-8 items-center rounded-full bg-fill px-3 text-[11px] font-semibold text-fill-fg"
+        data-role="more-lanes"
+        @click="scrollToBottom"
+      >
+        {{ $t('polish.timeline.moreLanes', { count: hiddenBelow }, hiddenBelow) }}
+      </button>
+
+      <button
         type="button"
         class="flex h-8 items-center rounded-md px-2 text-xs font-semibold text-muted hover:bg-panel2"
         :aria-label="$t('timeline.fit')"
@@ -1011,15 +1021,6 @@ export default defineComponent({
     </div>
     </div>
 
-    <button
-      v-if="hiddenBelow > 0"
-      type="button"
-      class="jc-timeline__more absolute bottom-1 right-2 z-40 flex min-h-11 items-center rounded-full bg-fill px-4 text-[11px] font-semibold text-fill-fg shadow"
-      data-role="more-lanes"
-      @click="scrollToBottom"
-    >
-      {{ $t('polish.timeline.moreLanes', { count: hiddenBelow }, hiddenBelow) }}
-    </button>
     </div>
 
     <ItemContextMenu

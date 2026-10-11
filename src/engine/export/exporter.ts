@@ -55,6 +55,11 @@ export interface ExportResult {
   phases: PhaseSeconds
 }
 
+/** Set by the page: while the tab is hidden the browser throttles the export, so its progress is not timed. */
+export interface ExportControl {
+  hidden: boolean
+}
+
 export class ExportCancelled extends Error {
   constructor() {
     super('Export cancelled')
@@ -86,7 +91,8 @@ export async function checkEncoders(width: number, height: number, bitrate: numb
 export async function runExport(
   req: ExportRequest,
   onProgress: (p: ExportProgress) => void,
-  signal: AbortSignal
+  signal: AbortSignal,
+  control: ExportControl = { hidden: false }
 ): Promise<ExportResult> {
   const started = performance.now()
   const { project, options } = req
@@ -169,7 +175,7 @@ export async function runExport(
           totalFrames: frames,
           fraction: done / frames,
           elapsedMs,
-          etaMs: eta.update(elapsedMs, done),
+          etaMs: eta.update(elapsedMs, done, control.hidden),
           phases: { ...measured }
         })
       }

@@ -78,6 +78,8 @@ export interface ExportResultInfo {
   featureClass: FeatureClass
   /** 'file': written to the file the user picked. 'download': handed to the browser's download. */
   savedAs: 'file' | 'download'
+  /** Share of the run the tab was hidden (browsers throttle hidden tabs). */
+  hiddenShare: number
 }
 
 export type ExportFormat = 'mp4' | 'gif'
@@ -115,6 +117,34 @@ export interface Estimate {
   calibrated: boolean
 }
 
+/** A run with more hidden time than this share is not learned from: the browser throttled it. */
+const HIDDEN_SHARE_LIMIT = 0.1
+
+/**
+ * Follows the page's visibility while an export runs. Returns the stop function, which gives the hidden time
+ * in milliseconds.
+ */
+function watchVisibility(onChange: (hidden: boolean) => void): () => number {
+  // A tab that is already hidden counts from now on.
+  let since: number | null = document.visibilityState === 'hidden' ? performance.now() : null
+  let total = 0
+  const handler = () => {
+    const hidden = document.visibilityState === 'hidden'
+    const now = performance.now()
+    if (hidden && since === null) since = now
+    if (!hidden && since !== null) {
+      total += now - since
+      since = null
+    }
+    onChange(hidden)
+  }
+  document.addEventListener('visibilitychange', handler)
+  return () => {
+    document.removeEventListener('visibilitychange', handler)
+    return total + (since !== null ? performance.now() - since : 0)
+  }
+}
+
 interface SaveHandle {
   createWritable(): Promise<{ write(data: Blob): Promise<void>; close(): Promise<void>; abort?(): Promise<void> }>
 }
@@ -125,6 +155,7 @@ const GIF_CALIBRATION_KEY = 'jellycut.export.gif'
 
 // The file and the running export are large or not serialisable: they stay out of Pinia state.
 let activeRun: RunningExport | null = null
+let stopWatch: (() => number) | null = null
 let resultBlob: Blob | null = null
 /** Incremented on every encoder check, so only the latest answer is applied. */
 let encoderCheck = 0
@@ -341,6 +372,8 @@ export const useExportStore = defineStore('export', {
     notice: null as ExportMessage | null,
     /** Name of the file the running export will be written to; null when it will be downloaded. */
     runFileName: null as string | null,
+    /** The tab is in the background right now: the export runs slower and the dialog says so. */
+    hiddenNow: false,
     encoders: null as EncoderInfo | null,
     inWorker: false,
     /** The save dialog is open; nothing else may start meanwhile. */
@@ -523,7 +556,15 @@ export const useExportStore = defineStore('export', {
           : startExport({ project: snapshot, files, options: { ...this.options } }, FONT_SOURCES, onProgress)
         activeRun = run
         this.inWorker = run.inWorker
+        run.setHidden(document.visibilityState === 'hidden')
+        this.hiddenNow = document.visibilityState === 'hidden'
+        stopWatch = watchVisibility((hidden) => {
+          this.hiddenNow = hidden
+          activeRun?.setHidden(hidden)
+        })
         const result: ExportResult | GifResult = await run.promise
+        const hiddenMs = stopWatch()
+        stopWatch = null
         resultBlob = result.blob
         const info: ExportResultInfo = {
           size: result.blob.size,
@@ -534,7 +575,8 @@ export const useExportStore = defineStore('export', {
           estimatedPhases: isGif ? null : shownPhases,
           measuredPhases: isGif ? null : (result as ExportResult).phases,
           featureClass,
-          savedAs: handle ? 'file' : 'download'
+          savedAs: handle ? 'file' : 'download',
+          hiddenShare: result.elapsedMs > 0 ? Math.min(1, hiddenMs / result.elapsedMs) : 0
         }
         this.result = info
         this.phase = 'done'
@@ -542,7 +584,9 @@ export const useExportStore = defineStore('export', {
         this.result = { ...info, savedAs: delivery.savedAs }
         this.notice = delivery.error ? { key: 'export2.errors.writeFailed', params: { message: delivery.error } } : null
 
-        if (isGif) {
+        if (info.hiddenShare > HIDDEN_SHARE_LIMIT) {
+          // Throttled by the browser for too long: the timing says nothing about this computer.
+        } else if (isGif) {
           const { width, height } = gifOutputSize(project.format.ratio, this.gif.width)
           this.learnGifCalibration(result.blob.size, totalSeconds(uncalibrated), result.elapsedMs, width, height, totalFrames(editor.totalDuration, this.gif.fps))
         } else {
@@ -554,6 +598,9 @@ export const useExportStore = defineStore('export', {
         else if (error instanceof GifTooLargeError) this.fail({ key: 'export.errors.gifTooLarge', params: {} })
         else this.fail({ key: 'export.errors.failed', params: { message: errorMessage(error) } })
       } finally {
+        stopWatch?.()
+        stopWatch = null
+        this.hiddenNow = false
         activeRun = null
         this.runFileName = null
       }

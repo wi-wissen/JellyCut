@@ -94,8 +94,9 @@ export default defineComponent({
       return this.$refs.ratioTrigger as HTMLElement | undefined
     },
     /**
-     * Places the popover under its trigger, inside the player stage (the section around the
-     * toolbar). It is teleported to the body, so the stage's own overflow clipping does not cut it.
+     * Places the popover under its trigger. Left and right stay inside the player stage; the bottom
+     * may reach the window edge, because the background options sit below Fit and must stay visible.
+     * It is teleported to the body, so the stage's own overflow clipping does not cut it.
      */
     place(): void {
       const trigger = this.panel ? this.triggerFor() : undefined
@@ -105,8 +106,8 @@ export default defineComponent({
       const s = stage.getBoundingClientRect()
       const width = Math.min(POPOVER_WIDTH, s.width - 2 * STAGE_MARGIN)
       const left = Math.min(Math.max(t.right - width, s.left + STAGE_MARGIN), s.right - width - STAGE_MARGIN)
-      const top = Math.min(t.bottom + 6, s.bottom - STAGE_MARGIN - 120)
-      this.placement = { left, top, width, maxHeight: Math.max(120, s.bottom - STAGE_MARGIN - top) }
+      const top = Math.min(t.bottom + 6, window.innerHeight - STAGE_MARGIN - 120)
+      this.placement = { left, top, width, maxHeight: Math.max(120, window.innerHeight - STAGE_MARGIN - top) }
     },
     toggle(): void {
       this.panel = this.panel ? null : 'ratio'

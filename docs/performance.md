@@ -118,7 +118,11 @@ The dialog shows `[t / (1+u), t * (1+u)]` rounded outwards to whole steps (5 s b
 
 ## Progress ETA
 
-The work per output frame comes from the same model, so a slow section later on (overlays, transitions) counts when it arrives. Remaining work divided by an exponential average of the throughput (time constant 3 s) gives the remaining time. The value counts down between updates and only replaces the shown value when the new one differs by more than the larger of 1 s and 15 %. It appears after 15 frames.
+The work per output frame comes from the same model, so a slow section later on (overlays, transitions) counts when it arrives. Remaining work divided by an exponential average of the throughput (time constant 3 s) gives the remaining time. The rate is the average since the start until the window is full, then the exponential average. The remaining time is smoothed with the same time constant. The value counts down between updates and only replaces the shown value when the new one differs by more than the larger of 1 s and 15 %. It appears after 15 frames. The encoder's speed changes during a run, so the ETA follows it: a wild jump (more than half the value in one step) does not happen in the test runs, several smaller rises do.
+
+## Background tabs
+
+Browsers throttle hidden tabs, so an export in the background runs 2-3 times slower. The dialog shows a calm notice while the tab is hidden and a hint in the ready state. While hidden, progress does not change the throughput (the ETA restarts its measurement when the tab is visible again). A run whose tab was hidden for more than 10 % of its time does not change the calibration, and the details say so.
 
 ## Validation status
 

@@ -6,7 +6,7 @@ import { planTimeline } from '../../core/render/scene'
 import { frameStart } from '../../core/time'
 import { ExportEta } from '../../core/export/eta'
 import { Compositor } from '../render/compositor'
-import { ExportCancelled, ExportUnsupported, createFrameProvider, drawFrame, projectDuration, type ExportProgress } from './exporter'
+import { ExportCancelled, ExportUnsupported, createFrameProvider, drawFrame, projectDuration, type ExportControl, type ExportProgress } from './exporter'
 
 export interface GifExportRequest {
   kind: 'gif'
@@ -50,7 +50,8 @@ export function paletteSampleFrames(frames: number, count = PALETTE_SAMPLES): nu
 export async function runGifExport(
   request: GifExportRequest,
   onProgress: (p: ExportProgress) => void,
-  signal: AbortSignal
+  signal: AbortSignal,
+  control: ExportControl = { hidden: false }
 ): Promise<GifResult> {
   const started = performance.now()
   const { project, options } = request
@@ -81,7 +82,7 @@ export async function runGifExport(
       totalFrames: total,
       fraction: done / total,
       elapsedMs,
-      etaMs: eta.update(elapsedMs, done)
+      etaMs: eta.update(elapsedMs, done, control.hidden)
     })
   }
   // WebGL output is read through a 2D canvas: getImageData gives the unpremultiplied RGBA of the frame.

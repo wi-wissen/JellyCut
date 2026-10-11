@@ -1,4 +1,4 @@
-import { ExportCancelled, ExportUnsupported, runExport, type ExportProgress, type ExportRequest, type ExportResult } from './exporter'
+import { ExportCancelled, ExportUnsupported, runExport, type ExportControl, type ExportProgress, type ExportRequest, type ExportResult } from './exporter'
 import { GifTooLarge, isGifRequest, runGifExport, type GifExportRequest, type GifResult } from './gifExporter'
 import { loadFonts, type FontSource } from './fontLoader'
 import type { WorkerIn, WorkerOut } from './export.worker'
@@ -6,6 +6,8 @@ import type { WorkerIn, WorkerOut } from './export.worker'
 export interface RunningExport {
   promise: Promise<ExportResult | GifResult>
   cancel(): void
+  /** Tells the export that its tab is hidden (throttled) or visible again. */
+  setHidden(hidden: boolean): void
   /** True when the export runs in a worker and therefore keeps going in a background tab. */
   inWorker: boolean
 }
@@ -26,10 +28,13 @@ export function startExport(
 ): RunningExport {
   if (!canUseWorker()) {
     const controller = new AbortController()
+    const control: ExportControl = { hidden: false }
     const run = (): Promise<ExportResult | GifResult> =>
-      isGifRequest(request) ? runGifExport(request, onProgress, controller.signal) : runExport(request, onProgress, controller.signal)
+      isGifRequest(request)
+        ? runGifExport(request, onProgress, controller.signal, control)
+        : runExport(request, onProgress, controller.signal, control)
     const promise = loadFonts(fonts).then(run)
-    return { promise, cancel: () => controller.abort(), inWorker: false }
+    return { promise, cancel: () => controller.abort(), inWorker: false, setHidden: (hidden) => (control.hidden = hidden) }
   }
 
   const worker = new Worker(new URL('./export.worker.ts', import.meta.url), { type: 'module' })
@@ -57,6 +62,7 @@ export function startExport(
   return {
     promise,
     inWorker: true,
-    cancel: () => worker.postMessage({ type: 'cancel' } satisfies WorkerIn)
+    cancel: () => worker.postMessage({ type: 'cancel' } satisfies WorkerIn),
+    setHidden: (hidden) => worker.postMessage({ type: 'hidden', hidden } satisfies WorkerIn)
   }
 }

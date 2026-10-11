@@ -325,6 +325,10 @@ await check('dark: transitions and format popover render', async () => {
   await dark.getByRole('dialog', { name: 'Picture format and background' }).waitFor()
   await dark.screenshot({ path: join(SHOT_DIR, 'polish-format-dark.png') })
   await dark.keyboard.press('Escape')
+  await tlClip(dark, 'Beach.mp4').click({ button: 'right' })
+  await dark.getByRole('menu', { name: 'Actions for the selected item' }).waitFor()
+  await dark.screenshot({ path: join(SHOT_DIR, 'polish-context-dark.png') })
+  await dark.keyboard.press('Escape')
   await dark.locator('header').screenshot({ path: join(SHOT_DIR, 'polish-topbar-dark.png') })
 })
 
