@@ -1,13 +1,33 @@
-import { ALL_FORMATS, BlobSource, CanvasSink, Input, type InputVideoTrack } from 'mediabunny'
+import { ALL_FORMATS, BlobSource, CanvasSink, EncodedPacketSink, Input, type InputVideoTrack, type WrappedCanvas } from 'mediabunny'
+import { FRAME_LOOKUP_TOLERANCE, frameEnd, lookupTime, spanCovers } from '../../core/media/frameLookup'
+import { keyAtOrBefore } from '../../core/media/keyList'
+import { readKeyTimes } from './keyframes'
 import type { Micros } from '../../core/time'
+
+export { FRAME_LOOKUP_TOLERANCE }
 
 export type DecodedFrame = HTMLCanvasElement | OffscreenCanvas | ImageBitmap
 
-interface VideoEntry {
-  kind: 'video'
+interface VideoSource {
   input: Input
   track: InputVideoTrack
   sink: CanvasSink
+  packets: EncodedPacketSink
+  /** Timestamp of the first frame; recordings can start late. */
+  first: Micros
+}
+/** Forward decoding from one keyframe, kept so stepping through a long keyframe-less stretch decodes each frame once. */
+interface Run {
+  key: Micros
+  iterator: AsyncGenerator<WrappedCanvas, void, undefined>
+  current: WrappedCanvas | null
+  ahead: WrappedCanvas | null
+}
+interface VideoEntry extends VideoSource {
+  kind: 'video'
+  /** Keyframe times, read once and only when the demuxer's own keyframe search failed. */
+  keys: Promise<Micros[]> | null
+  run: Run | null
   /** Last returned frame, reused while the requested time stays inside it. */
   last: { canvas: DecodedFrame; start: Micros; end: Micros } | null
 }
@@ -17,18 +37,37 @@ interface ImageEntry {
 }
 type Entry = VideoEntry | ImageEntry
 
-/**
- * Containers quantise timestamps (WebM uses whole milliseconds), so a time computed on the project's
- * frame grid can fall a hair before the frame that is meant. Looking up slightly later fixes that and
- * stays far below half a frame for every realistic frame rate (up to ~300 fps).
- */
-export const FRAME_LOOKUP_TOLERANCE: Micros = 1500
+async function openVideo(file: File): Promise<VideoSource | null> {
+  const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS })
+  try {
+    const track = await input.getPrimaryVideoTrack()
+    if (!track || !(await track.canDecode())) {
+      input.dispose()
+      return null
+    }
+    const first = Math.round((await track.getFirstTimestamp()) * 1_000_000)
+    return { input, track, sink: new CanvasSink(track), packets: new EncodedPacketSink(track), first }
+  } catch (e) {
+    input.dispose()
+    throw e
+  }
+}
+
+function closeVideo(entry: VideoEntry): void {
+  void entry.run?.iterator.return().catch(() => undefined)
+  entry.input.dispose()
+}
 
 /**
  * Frame-exact access to media files through WebCodecs (decodes from the previous keyframe).
  * Used for paused preview, single-frame stepping and export. Playback uses <video> elements instead.
  */
 export class ExactFrameProvider {
+  /**
+   * How many lookups the demuxer's keyframe search could not serve and the keyframe list did (visible for tests
+   * and diagnostics).
+   */
+  readonly rescues = { fromKeyframe: 0 }
   private entries = new Map<string, Promise<Entry | null>>()
   private files = new Map<string, { file: File; isImage: boolean }>()
 
@@ -38,7 +77,7 @@ export class ExactFrameProvider {
     for (const [key, entry] of this.entries) {
       if (!key.startsWith(`${assetId}|`)) continue
       this.entries.delete(key)
-      void entry.then((e) => (e?.kind === 'video' ? e.input.dispose() : undefined))
+      void entry.then((e) => (e?.kind === 'video' ? closeVideo(e) : undefined))
     }
   }
 
@@ -62,13 +101,77 @@ export class ExactFrameProvider {
     if (source.isImage) {
       return { kind: 'image', bitmap: await createImageBitmap(source.file) }
     }
-    const input = new Input({ source: new BlobSource(source.file), formats: ALL_FORMATS })
-    const track = await input.getPrimaryVideoTrack()
-    if (!track || !(await track.canDecode())) {
-      input.dispose()
-      return null
+    const video = await openVideo(source.file)
+    return video ? { kind: 'video', keys: null, run: null, last: null, ...video } : null
+  }
+
+  /**
+   * Fallback for files whose keyframes the demuxer cannot find by time. Mediabunny remembers where clusters start;
+   * in a WebM without cues whose later clusters hold no keyframe (MediaRecorder output: one keyframe at the start,
+   * a cluster per second) a lookup after such a cluster was seen starts the search inside it and reports "no
+   * keyframe", so no frame could be decoded any more. Asking for the exact time of a known keyframe still works.
+   */
+  private async decode(entry: VideoEntry, lookup: Micros): Promise<WrappedCanvas | null> {
+    let failure: unknown = null
+    try {
+      const wrapped = await entry.sink.getCanvas(lookup / 1_000_000)
+      if (wrapped) return wrapped
+    } catch (e) {
+      failure = e
     }
-    return { kind: 'video', input, track, sink: new CanvasSink(track), last: null }
+    try {
+      const wrapped = await this.decodeFromKeyframe(entry, lookup)
+      if (wrapped) return wrapped
+    } catch (e) {
+      failure ??= e
+    }
+    if (failure) throw failure
+    return null
+  }
+
+  private keyTimes(entry: VideoEntry): Promise<Micros[]> {
+    entry.keys ??= readKeyTimes(entry.packets)
+    return entry.keys
+  }
+
+  private async decodeFromKeyframe(entry: VideoEntry, lookup: Micros): Promise<WrappedCanvas | null> {
+    const keys = await this.keyTimes(entry)
+    if (keys.length === 0) return null
+    // Last keyframe at or before the lookup; before the first one the first is the nearest.
+    const key = keyAtOrBefore(keys, lookup) ?? keys[0]!
+    let run = entry.run
+    const resumable = run && run.key === key && run.current && Math.round(run.current.timestamp * 1_000_000) <= lookup
+    if (!resumable) {
+      await run?.iterator.return()
+      run = { key, iterator: entry.sink.canvases(key / 1_000_000), current: null, ahead: null }
+      entry.run = run
+    }
+    const active = entry.run!
+    for (;;) {
+      const next: WrappedCanvas | null = active.ahead ?? (await active.iterator.next()).value ?? null
+      active.ahead = null
+      if (!next) break
+      if (active.current && Math.round(next.timestamp * 1_000_000) > lookup) {
+        active.ahead = next
+        break
+      }
+      active.current = next
+      if (Math.round(next.timestamp * 1_000_000) > lookup) break
+    }
+    if (active.current) this.rescues.fromKeyframe++
+    return active.current
+  }
+
+  /** Start of the first frame after `start`; null at the end of the file. */
+  private async nextFrameStart(entry: VideoEntry, start: Micros): Promise<Micros | null> {
+    let packet = await entry.packets.getPacket(start / 1_000_000, { metadataOnly: true })
+    // Some recordings repeat a timestamp, so look a few packets ahead.
+    for (let i = 0; packet && i < 4; i++) {
+      packet = await entry.packets.getNextPacket(packet, { metadataOnly: true })
+      const t = packet ? Math.round(packet.timestamp * 1_000_000) : null
+      if (t !== null && t > start) return t
+    }
+    return null
   }
 
   /**
@@ -81,15 +184,15 @@ export class ExactFrameProvider {
     if (!entry) return null
     if (entry.kind === 'image') return entry.bitmap
 
-    const lookup = srcTime + FRAME_LOOKUP_TOLERANCE
-    const last = entry.last
-    if (last && lookup >= last.start && lookup < last.end) return last.canvas
+    const lookup = lookupTime(srcTime, entry.first)
+    if (spanCovers(entry.last, lookup)) return entry.last!.canvas
 
-    const wrapped = await entry.sink.getCanvas(lookup / 1_000_000)
+    const wrapped = await this.decode(entry, lookup)
     if (!wrapped) return null
     const start = Math.round(wrapped.timestamp * 1_000_000)
-    const end = start + Math.max(1, Math.round(wrapped.duration * 1_000_000))
-    entry.last = { canvas: wrapped.canvas, start, end }
+    const duration = Math.round(wrapped.duration * 1_000_000)
+    const next = duration > 0 ? null : await this.nextFrameStart(entry, start)
+    entry.last = { canvas: wrapped.canvas, start, end: frameEnd(start, duration, next) }
     return wrapped.canvas
   }
 
@@ -108,7 +211,7 @@ export class ExactFrameProvider {
   async dispose(): Promise<void> {
     const all = await Promise.all(this.entries.values())
     for (const entry of all) {
-      if (entry?.kind === 'video') entry.input.dispose()
+      if (entry?.kind === 'video') closeVideo(entry)
       if (entry?.kind === 'image') entry.bitmap.close()
     }
     this.entries.clear()

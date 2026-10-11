@@ -20,6 +20,7 @@ Stop `npm run dev` first (it uses port 5173, which `e2e-gif.mjs` needs). Run the
 - [ ] `e2e-media.mjs` (5193)
 - [ ] `e2e-waveform.mjs` (5185)
 - [ ] `e2e-frames.mjs` (5192)
+- [ ] `e2e-recorded-frames.mjs` (5420)
 - [ ] `e2e-media-remove.mjs` (5183)
 - [ ] `e2e-relink.mjs` (5182)
 - [ ] `e2e-record.mjs` (5183)
@@ -89,6 +90,7 @@ These cannot be run in the test Chromium. Each needs a person with the device, a
 - [ ] Hardware H.264 on a school PC (Chrome or Edge): H.264 MP4 import (decode) and export (encode) with AAC audio; the export time estimate after one export.
 - [ ] 4K source (for example 3840 x 2160 H.264): import, preview playback and export to 1080p; check the time against [`performance.md`](performance.md).
 - [ ] File System Access dialogs (Chrome, Edge): open and save a project, choose a work folder, cancel a picker, grant access again after a restart.
+- [ ] Firefox: record 10 s (screen + voice), put the clip on the timeline, pause at several places (also after 1 s, 5 s and at the very start) and step with the frame buttons: the picture is never black; open the fine cut there. The console must not show `[jellycut] paused picture ... comes from the video element` (if it does, the exact path failed and the safety net was used: copy the line).
 - [ ] Screen capture (Record tab): screen recording with the system dialog in Chrome/Edge and Firefox (whole screen, a window, a tab): picture not black, own voice audible in the editor and in the export, microphone test shows a level; a browser without screen capture (the button must be hidden). If something fails, copy the "Technical details".
 
 ## 7. Known limitations

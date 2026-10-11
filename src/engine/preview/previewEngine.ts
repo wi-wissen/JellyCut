@@ -3,6 +3,7 @@ import { CURATED_FONTS, canvasFont } from '../../core/text/fonts'
 import type { Clip, Project } from '../../core/project/types'
 import { buildScene, planTimeline, type PlannedTimeline } from '../../core/render/scene'
 import type { Micros } from '../../core/time'
+import { ElementFallback } from '../media/elementFallback'
 import { ExactFrameProvider } from '../media/frames'
 import { Compositor, type FrameSource } from '../render/compositor'
 import { sceneFrames } from '../render/sceneFrames'
@@ -60,6 +61,7 @@ export class PreviewEngine {
   private targetSize: { width: number; height: number } | null = null
   private disposed = false
   private fontsReady: Promise<unknown>
+  private fallback = new ElementFallback()
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -68,6 +70,11 @@ export class PreviewEngine {
   ) {
     this.compositor = new Compositor(canvas)
     this.fontsReady = this.loadFonts()
+  }
+
+  /** Assets whose paused picture had to come from the media element because exact decoding gave nothing usable. */
+  get elementFallbackAssets(): string[] {
+    return this.fallback.assets
   }
 
   get playing(): boolean {
@@ -408,9 +415,39 @@ export class PreviewEngine {
     await this.fontsReady
     const project = this.project
     const scene = buildScene(project, this.planned, this.time)
-    const frames = await sceneFrames(scene, this.getProvider())
+    const frames = await sceneFrames(scene, this.getProvider(), (id, assetId, srcTime, frame, failed) =>
+      this.fallback.pick(assetId, srcTime, frame, failed, () => this.elementFor(id, assetId))
+    )
     if (token !== this.renderToken || this.disposed) return
+    if (this.fallback.assets.length > 0) this.canvas.dataset.pausedFallback = this.fallback.assets.join(' ')
     this.compositor.draw(scene, frames)
+  }
+
+  /** The media element that plays a clip (or a picture-in-picture video), created when it does not exist yet. */
+  private elementFor(id: string, assetId: string): HTMLVideoElement | null {
+    const asset = this.assets.get(assetId)
+    if (!asset || asset.kind !== 'video') return null
+    const clip = this.project?.clips.find((c) => c.id === id)
+    if (clip) {
+      const old = this.videoEls.get(clip.id)
+      if (old?.error) this.releaseElement(old, this.videoEls, clip.id)
+      return this.videoElement(clip, asset)
+    }
+    if (!this.project?.overlays.some((o) => o.kind === 'media' && o.id === id)) return null
+    let el = this.overlayEls.get(id)
+    if (el?.error) {
+      this.releaseElement(el, this.overlayEls, id)
+      el = undefined
+    }
+    if (!el) {
+      el = document.createElement('video')
+      el.playsInline = true
+      el.preload = 'auto'
+      el.muted = true
+      el.src = asset.url
+      this.overlayEls.set(id, el)
+    }
+    return el
   }
 
   // --- helpers ---------------------------------------------------------------------------

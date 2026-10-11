@@ -94,7 +94,7 @@ The scripts in `scripts/e2e-*.mjs` drive Chromium with Playwright (`playwright-c
 - Stop `npm run dev` first (port 5173 is used by `e2e-gif.mjs`). Run the scripts one at a time: 5183, 5250 and 5350 are shared by two scripts each.
 - `e2e-build.mjs` and `e2e-pwa.mjs` test the production build and need `npm run build` first.
 - Pages that need the demo project open `/app/?demo=1`; a demo session never touches the autosave. A plain `/app/` starts empty.
-- The test Chromium decodes and encodes VP8/VP9/AV1 and Opus, but not H.264/AAC. The fixtures in `tests/fixtures` are VP9/Opus WebM clips, PNG stills and one H.264/AAC MP4 for the "cannot decode" path. No script in the repository regenerates them.
+- The test Chromium decodes and encodes VP8/VP9/AV1 and Opus, but not H.264/AAC. The fixtures in `tests/fixtures` are VP9/Opus WebM clips, PNG stills and one H.264/AAC MP4 for the "cannot decode" path. `recorded-*.webm` are real MediaRecorder recordings (160 x 90, about 2.6 s, VP8 or VP9 + Opus, recorded in Firefox 157 and Chromium with a 1 s timeslice like the Record tab) plus one ffmpeg file that starts late (first picture at 0.3 s, no cues, one keyframe). No script in the repository regenerates them.
 - Scripts marked "root page" use the start page URL as a harness and import modules from `src/` in the browser.
 
 | Script | Port | Checks |
@@ -106,6 +106,7 @@ The scripts in `scripts/e2e-*.mjs` drive Chromium with Playwright (`playwright-c
 | `e2e-media.mjs` | 5193 | media probe against the fixtures (root page) |
 | `e2e-waveform.mjs` | 5185 | keyframe index and streaming waveform (root page) |
 | `e2e-frames.mjs` | 5192 | frame-exact access to the frame numbers in the fixture (root page) |
+| `e2e-recorded-frames.mjs` | 5420 | clips recorded by MediaRecorder (`recorded-*.webm`): paused preview, fine cut and export are not black, safety net (media element) when the exact path fails; provider check in Firefox when installed (`MODES=none,throws,black` selects safety-net runs) |
 | `e2e-media-remove.mjs` | 5183 | removing media from the library, with and without use |
 | `e2e-relink.mjs` | 5182 | re-linking missing media, work folder, access again |
 | `e2e-record.mjs` | 5183 | Record tab with fake devices, microphone picker/test, self-healing, final-file checks, errors, screenshots (`E2E_PORT`; `BROWSER=firefox` runs it in Firefox, `ONLY=<regex>` selects checks) |

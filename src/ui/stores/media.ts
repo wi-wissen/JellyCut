@@ -5,6 +5,7 @@ import { projectIds } from '../../core/timeline/ops'
 import { addAsset, addMusic, appendClip, assetFromProbe } from '../../core/timeline/insert'
 import type { Asset, Project } from '../../core/project/types'
 import { secondsToMicros, MICROS_PER_SECOND, type Micros } from '../../core/time'
+import { ElementFallback } from '../../engine/media/elementFallback'
 import { ExactFrameProvider, type DecodedFrame } from '../../engine/media/frames'
 import { isImageFile, probeFile, type MediaInfo, type ProbeProblem } from '../../engine/media/probe'
 import { type FileCandidate, type RelinkReason } from '../../core/io/relink'
@@ -74,6 +75,9 @@ interface RemovedMedia {
 }
 const removedMedia = new RemovedMediaCache<RemovedMedia>(REMOVED_MEDIA_LIMIT)
 let rememberedFolder: WorkFolderHandle | null = null
+
+/** Safety net for single pictures drawn outside the preview (fine cut view): the media element stands in when exact decoding fails. */
+export const elementFallback = new ElementFallback()
 
 /** Frame source for media in this session. Call it each time: the instance is replaced when media is reset. */
 export function getFrameProvider(): ExactFrameProvider {

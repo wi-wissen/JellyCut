@@ -1,6 +1,6 @@
 <script lang="ts">
-import { defineComponent } from 'vue'
-import { getFrameProvider } from '../../stores/media'
+import { defineComponent, markRaw } from 'vue'
+import { elementFallback, getAssetFile, getFrameProvider } from '../../stores/media'
 import type { DecodedFrame } from '../../../engine/media/frames'
 
 // Its own decoder lane, so the two images do not pull the preview decoder back and forth.
@@ -16,7 +16,7 @@ export default defineComponent({
     badge: { type: String, default: '' }
   },
   data() {
-    return { loading: true, failed: false, token: 0 }
+    return { loading: true, failed: false, token: 0, media: null as { el: HTMLVideoElement; url: string; assetId: string } | null }
   },
   watch: {
     srcTime(): void {
@@ -29,23 +29,53 @@ export default defineComponent({
   mounted() {
     void this.load()
   },
+  beforeUnmount() {
+    this.releaseMedia()
+  },
   methods: {
+    /** The asset's own media element, only created when the exact picture is missing or black. */
+    mediaElement(): HTMLVideoElement | null {
+      if (this.media && (this.media.assetId !== this.assetId || this.media.el.error)) this.releaseMedia()
+      if (this.media) return this.media.el
+      const file = getAssetFile(this.assetId)
+      if (!file) return null
+      const el = document.createElement('video')
+      el.playsInline = true
+      el.muted = true
+      el.preload = 'auto'
+      const url = URL.createObjectURL(file)
+      el.src = url
+      this.media = markRaw({ el, url, assetId: this.assetId })
+      return el
+    },
+    releaseMedia(): void {
+      if (!this.media) return
+      this.media.el.removeAttribute('src')
+      this.media.el.load()
+      URL.revokeObjectURL(this.media.url)
+      this.media = null
+    },
     async load(): Promise<void> {
       const token = ++this.token
       this.loading = true
       this.failed = false
-      let frame: DecodedFrame | null = null
+      let exact: DecodedFrame | null = null
+      let threw = false
       try {
-        frame = await getFrameProvider().getFrame(this.assetId, this.srcTime, LANE)
+        exact = await getFrameProvider().getFrame(this.assetId, this.srcTime, LANE)
       } catch {
-        frame = null
+        threw = true
       }
+      const frame = await elementFallback.pick(this.assetId, this.srcTime, exact, threw, () => this.mediaElement())
       if (token !== this.token) return
       const canvas = this.$refs.canvas as HTMLCanvasElement | undefined
       if (frame && canvas) {
-        canvas.width = frame.width
-        canvas.height = frame.height
+        const width = frame instanceof HTMLVideoElement ? frame.videoWidth : frame.width
+        const height = frame instanceof HTMLVideoElement ? frame.videoHeight : frame.height
+        canvas.width = width
+        canvas.height = height
         canvas.getContext('2d')?.drawImage(frame, 0, 0)
+        canvas.dataset.fallback = frame === exact ? '' : 'element'
       }
       this.failed = !frame
       this.loading = false
