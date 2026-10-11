@@ -1,0 +1,10 @@
+{
+  "app": { "name": "Jelly Cut" },
+  "top": { "export": "Export", "undo": "Undo", "redo": "Redo", "darkMode": "Dark theme", "lightMode": "Light theme" },
+  "groups": { "material": "Material", "design": "Design", "look": "Look" },
+  "tabs": { "media": "Media", "audio": "Audio", "record": "Record", "text": "Text", "sticker": "Stickers", "draw": "Draw", "captions": "Captions", "filter": "Filters", "transitions": "Transitions" },
+  "library": { "media": "Media", "addMedia": "Add media", "freeSources": "Where do I find free images and music?" },
+  "actions": { "play": "Play", "pause": "Pause", "frameBack": "Back one frame", "frameForward": "Forward one frame", "split": "Split", "fineCut": "Fine cut", "duplicate": "Duplicate", "flip": "Flip", "rotate": "Rotate", "speed": "Speed", "mute": "Mute", "delete": "Delete" },
+  "timeline": { "magnet": "Snapping", "snapOn": "Snapping on", "zoomOut": "Zoom out", "fit": "Fit timeline", "text": "Text", "overlay": "Overlay", "video": "Video", "originalAudio": "Original audio", "music": "Music" },
+  "player": { "fitFill": "Fit · Fill" }
+}

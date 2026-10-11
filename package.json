@@ -6,15 +6,24 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "vue-tsc --noEmit",
     "test": "vitest run"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-vue": "^6.0.10",
-    "typescript": "^7.0.2",
+    "playwright-core": "^1.64.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "5.9",
     "vite": "^8.3.4",
     "vitest": "^5.0.3",
     "vue": "^3.5.43",
     "vue-tsc": "^3.3.13"
+  },
+  "dependencies": {
+    "@fontsource/dm-mono": "^5.3.0",
+    "@fontsource/sora": "^5.3.0",
+    "pinia": "^4.0.3",
+    "vue-i18n": "^11.4.14"
   }
 }

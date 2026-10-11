@@ -1,0 +1,28 @@
+@import 'tailwindcss';
+@import '@fontsource/sora/400.css';
+@import '@fontsource/sora/600.css';
+@import '@fontsource/sora/700.css';
+@import '@fontsource/dm-mono/400.css';
+@import '@fontsource/dm-mono/500.css';
+@import './tokens.css';
+
+@theme inline {
+  --color-bg: var(--jc-bg);
+  --color-panel: var(--jc-panel);
+  --color-panel2: var(--jc-panel2);
+  --color-line: var(--jc-line);
+  --color-fg: var(--jc-fg);
+  --color-muted: var(--jc-muted);
+  --color-fill: var(--jc-fill);
+  --color-fill-fg: var(--jc-fill-fg);
+  --color-txt: var(--jc-txt);
+  --color-signal: var(--jc-signal);
+  --color-signal-fg: var(--jc-signal-fg);
+  --color-stage: var(--jc-stage);
+  --font-sans: 'Sora', system-ui, sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, monospace;
+}
+
+html, body, #app { height: 100%; }
+body { margin: 0; background: var(--jc-bg); color: var(--jc-fg); font-family: var(--font-sans); font-size: 13px; line-height: 1.35; }
+:focus-visible { outline: 2px solid var(--jc-fill); outline-offset: 2px; }
