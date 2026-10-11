@@ -55,7 +55,19 @@
   "library": {
     "media": "Medien",
     "addMedia": "Medien hinzufügen",
-    "freeSources": "Wo finde ich freie Bilder und Musik?"
+    "freeSources": "Wo finde ich freie Bilder und Musik?",
+    "dropHint": "Dateien hier ablegen, um sie zu importieren",
+    "importing": "Importiere…",
+    "importFailed": "Beim Importieren ist etwas schiefgegangen. Die anderen Dateien sind nicht betroffen.",
+    "add": "Hinzufügen",
+    "addToTimeline": "{name} zur Timeline hinzufügen",
+    "emptyHint": "Füge Videos, Bilder oder Musik von deinem Computer hinzu oder ziehe sie hierher.",
+    "problems": {
+      "cannotDecode": "Dieser Browser kann diese Datei nicht lesen. Bitte nutze Chrome oder Edge.",
+      "unsupportedFormat": "Dieser Dateityp wird nicht unterstützt.",
+      "noMedia": "Diese Datei enthält weder Bild noch Ton.",
+      "missing": "Datei nicht verknüpft. Öffne sie erneut, um sie neu zu verknüpfen."
+    }
   },
   "actions": {
     "play": "Abspielen",
@@ -83,7 +95,14 @@
     "on": "An",
     "off": "Aus",
     "snapHint": "Magnet: Clips und Schnitte rasten an Kanten und am Abspielkopf ein",
-    "zoomIn": "Vergrößern"
+    "zoomIn": "Vergrößern",
+    "fit": "An Breite anpassen",
+    "area": "Zeitleiste",
+    "clipLabel": "Clip: {name}",
+    "textLabel": "Text: {name}",
+    "musicLabel": "Eigener Ton: {name}",
+    "trimStart": "Anfang kürzen",
+    "trimEnd": "Ende kürzen"
   },
   "player": {
     "fitFill": "Einpassen · Füllen",

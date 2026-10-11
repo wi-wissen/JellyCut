@@ -55,7 +55,19 @@
   "library": {
     "media": "Media",
     "addMedia": "Add media",
-    "freeSources": "Where do I find free images and music?"
+    "freeSources": "Where do I find free images and music?",
+    "dropHint": "Drop files here to import them",
+    "importing": "Importing…",
+    "importFailed": "Something went wrong while importing. The other files were not affected.",
+    "add": "Add",
+    "addToTimeline": "Add {name} to the timeline",
+    "emptyHint": "Add videos, images or music from your computer, or drop them here.",
+    "problems": {
+      "cannotDecode": "This browser cannot read this file. Please use Chrome or Edge.",
+      "unsupportedFormat": "This file type is not supported.",
+      "noMedia": "This file has no picture or sound.",
+      "missing": "File not linked. Open it again to re-link."
+    }
   },
   "actions": {
     "play": "Play",
@@ -83,7 +95,14 @@
     "on": "On",
     "off": "Off",
     "snapHint": "Magnet: clips and cuts snap to edges and the playhead",
-    "zoomIn": "Zoom in"
+    "zoomIn": "Zoom in",
+    "fit": "Fit to width",
+    "area": "Timeline",
+    "clipLabel": "Clip: {name}",
+    "textLabel": "Text: {name}",
+    "musicLabel": "Added audio: {name}",
+    "trimStart": "Trim start",
+    "trimEnd": "Trim end"
   },
   "player": {
     "fitFill": "Fit · Fill",

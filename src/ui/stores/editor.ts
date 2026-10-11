@@ -1,7 +1,24 @@
 import { defineStore } from 'pinia'
 import { createProject, parseProjectJson, serializeProject } from '../../core/project/schema'
-import type { Asset, Clip, Project } from '../../core/project/types'
-import { formatTimecode, frameStart, secondsToMicros, type Micros } from '../../core/time'
+import type { Asset, Clip, MusicItem, Project, TextItem } from '../../core/project/types'
+import { formatTimecode, frameIndexAt, frameStart, secondsToMicros, type Micros } from '../../core/time'
+import { nextId } from '../../core/timeline/ids'
+import {
+  deleteItem,
+  duplicateItem,
+  moveText as moveTextInTime,
+  nextSpeed,
+  projectIds,
+  reorderVideoClip,
+  setClipProps,
+  splitAt,
+  trimTextEnd,
+  trimTextStart,
+  trimVideoEnd,
+  trimVideoStart,
+  type ItemKind,
+  type ItemRef
+} from '../../core/timeline/ops'
 import {
   breakCoalescing,
   canRedo as historyCanRedo,
@@ -29,6 +46,7 @@ import {
   type ProjectFileCaps,
   type SavedProjectFile
 } from '../../platform/projectFiles'
+import { useMediaStore } from './media'
 
 export type TabId = 'media' | 'audio' | 'record' | 'text' | 'sticker' | 'draw' | 'captions' | 'filter' | 'transitions'
 export type GroupId = 'material' | 'design' | 'look'
@@ -68,11 +86,31 @@ export interface EditorState {
   dirtySinceFileSave: boolean
   loadError: string | null
   caps: ProjectFileCaps
+  /** The timeline item the user selected, if it still exists. */
+  selection: ItemRef | null
+  /** Read by the transport code; the store does not play anything itself. */
+  isPlaying: boolean
 }
 
 const RULER_STEP = secondsToMicros(5)
 const AUTOSAVE_DELAY_MS = 800
 const MAX_PROJECT_NAME = 60
+const ID_PREFIX: Record<ItemKind, string> = { clip: 'clip-', text: 'text-', music: 'music-' }
+
+/**
+ * Drag gestures edit relative to the project at pointer-down. Kept outside the reactive
+ * state: it is only needed between begin and end of one gesture.
+ */
+let gestureBase: Project | null = null
+
+function freshId(project: Project, prefix: string): string {
+  return nextId(projectIds(project), prefix)
+}
+
+/** Angle in [0, 360). */
+function normalizeAngle(degrees: number): number {
+  return ((degrees % 360) + 360) % 360
+}
 
 /** Timeline length of a clip after speed is applied. */
 function clipLength(clip: Clip): Micros {
@@ -238,7 +276,9 @@ export const useEditorStore = defineStore('editor', {
     saveStatus: 'idle',
     dirtySinceFileSave: false,
     loadError: null,
-    caps: detectCaps()
+    caps: detectCaps(),
+    selection: null,
+    isPlaying: false
   }),
   getters: {
     project(state): Project {
@@ -326,6 +366,23 @@ export const useEditorStore = defineStore('editor', {
       const words = (state.history.present.texts[0]?.text ?? '').split(' ').filter(Boolean)
       const accent = words.pop() ?? ''
       return { lead: words.join(' '), accent }
+    },
+    selectedItem(state): Clip | TextItem | MusicItem | null {
+      const ref = state.selection
+      if (!ref) return null
+      const project = state.history.present
+      if (ref.kind === 'clip') return project.clips.find((c) => c.id === ref.id) ?? null
+      if (ref.kind === 'text') return project.texts.find((t) => t.id === ref.id) ?? null
+      return project.music.find((m) => m.id === ref.id) ?? null
+    },
+    selectedClip(state): Clip | null {
+      const ref = state.selection
+      if (ref?.kind !== 'clip') return null
+      return state.history.present.clips.find((c) => c.id === ref.id) ?? null
+    },
+    canSplitAtPlayhead(state): boolean {
+      const project = state.history.present
+      return splitAt(project, state.playheadMicros, freshId(project, ID_PREFIX.clip)) !== project
     }
   },
   actions: {
@@ -376,10 +433,12 @@ export const useEditorStore = defineStore('editor', {
     /** Replaces the whole document. The history starts over, so undo never mixes two files. */
     replaceDocument(project: Project, file: { handle: FsFileHandle | null; name: string | null }) {
       this.history = createHistory(project)
+      useMediaStore().markMissingFor(project)
       this.fileHandle = file.handle
       this.fileName = file.name
       this.dirtySinceFileSave = false
       this.loadError = null
+      this.selection = null
       this.scheduleAutosave()
     },
     newProject(name: string) {
@@ -457,7 +516,104 @@ export const useEditorStore = defineStore('editor', {
       if (this.history !== startedFrom) return
       if (!record || typeof record.text !== 'string') return
       const result = parseProjectJson(record.text)
-      if (result.ok) this.history = createHistory(result.project)
+      if (result.ok) {
+        this.history = createHistory(result.project)
+        useMediaStore().markMissingFor(result.project)
+      }
+    },
+
+    select(ref: ItemRef | null) {
+      this.selection = ref ? { kind: ref.kind, id: ref.id } : null
+    },
+    togglePlaying() {
+      this.isPlaying = !this.isPlaying
+    },
+    /** Clamped to 0..project duration; the playhead is always a whole number of microseconds. */
+    setPlayhead(micros: Micros) {
+      const value = Number.isFinite(micros) ? Math.round(micros) : 0
+      this.playheadMicros = Math.min(Math.max(value, 0), this.totalDuration)
+    },
+    stepFrame(delta: number) {
+      if (!Number.isFinite(delta)) return
+      const fps = this.project.format.fps
+      const frame = frameIndexAt(this.playheadMicros, fps) + Math.trunc(delta)
+      this.setPlayhead(frameStart(Math.max(0, frame), fps))
+    },
+
+    /**
+     * Starts a drag gesture. Edits made until endGesture are computed from the project as it
+     * was now and share one undo step, so the drag can be reversed or moved back exactly.
+     */
+    beginGesture() {
+      gestureBase = this.project
+    },
+    endGesture() {
+      gestureBase = null
+      this.history = breakCoalescing(this.history)
+    },
+    /** Applies an edit to the gesture's base project (or the current one outside a gesture). */
+    editProject(build: (base: Project) => Project, key?: string) {
+      this.commitProject(build(gestureBase ?? this.project), key)
+    },
+    trimStart(id: string, t: Micros) {
+      this.editProject((base) => trimVideoStart(base, id, t), `trim-start:${id}`)
+    },
+    trimEnd(id: string, t: Micros) {
+      this.editProject((base) => trimVideoEnd(base, id, t), `trim-end:${id}`)
+    },
+    trimTextStart(id: string, t: Micros) {
+      this.editProject((base) => trimTextStart(base, id, t), `text-trim-start:${id}`)
+    },
+    trimTextEnd(id: string, t: Micros) {
+      this.editProject((base) => trimTextEnd(base, id, t), `text-trim-end:${id}`)
+    },
+    moveText(id: string, t: Micros) {
+      this.editProject((base) => moveTextInTime(base, id, t), `text-move:${id}`)
+    },
+    reorderClip(id: string, index: number) {
+      this.commitProject(reorderVideoClip(this.project, id, index))
+    },
+
+    splitAtPlayhead() {
+      const project = this.project
+      this.commitProject(splitAt(project, this.playheadMicros, freshId(project, ID_PREFIX.clip)))
+    },
+    deleteSelected() {
+      const ref = this.selection
+      if (!ref) return
+      this.commitProject(deleteItem(this.project, ref))
+      this.selection = null
+    },
+    duplicateSelected() {
+      const ref = this.selection
+      if (!ref) return
+      const project = this.project
+      const id = freshId(project, ID_PREFIX[ref.kind])
+      const next = duplicateItem(project, ref, id)
+      if (next === project) return
+      this.commitProject(next)
+      this.selection = { kind: ref.kind, id }
+    },
+    toggleMuteSelected() {
+      const clip = this.selectedClip
+      if (!clip) return
+      this.commitProject(setClipProps(this.project, clip.id, { muted: !clip.muted }))
+    },
+    flipSelected() {
+      const clip = this.selectedClip
+      if (!clip) return
+      this.commitProject(setClipProps(this.project, clip.id, { transform: { flipX: !clip.transform.flipX } }))
+    },
+    rotateSelected() {
+      const clip = this.selectedClip
+      if (!clip) return
+      const rotation = normalizeAngle(clip.transform.rotation + 90)
+      this.commitProject(setClipProps(this.project, clip.id, { transform: { rotation } }))
+    },
+    cycleSpeedSelected() {
+      const clip = this.selectedClip
+      if (!clip) return
+      this.commitProject(setClipProps(this.project, clip.id, { speed: nextSpeed(clip.speed) }))
     }
   }
 })

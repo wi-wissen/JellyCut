@@ -1,11 +1,13 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
-import { mapState } from 'pinia'
+import { mapActions, mapState } from 'pinia'
 import Icon from './Icon.vue'
 import { useEditorStore } from '../stores/editor'
 
+type ActionKey = 'split' | 'fineCut' | 'duplicate' | 'flip' | 'rotate' | 'speed' | 'mute' | 'delete'
+
 interface ActionDef {
-  key: 'split' | 'fineCut' | 'duplicate' | 'flip' | 'rotate' | 'speed' | 'mute' | 'delete'
+  key: ActionKey
   icon: string
   hot?: boolean
 }
@@ -28,7 +30,77 @@ export default defineComponent({
     return { actions: ACTIONS }
   },
   computed: {
-    ...mapState(useEditorStore, ['timecode'])
+    ...mapState(useEditorStore, ['timecode', 'isPlaying', 'selection', 'selectedClip', 'canSplitAtPlayhead']),
+    playLabel(): string {
+      return this.$t(this.isPlaying ? 'actions.pause' : 'actions.play')
+    },
+    speedValue(): string {
+      return this.selectedClip ? `${this.selectedClip.speed}×` : this.$t('actions.speed')
+    }
+  },
+  methods: {
+    ...mapActions(useEditorStore, [
+      'togglePlaying',
+      'stepFrame',
+      'splitAtPlayhead',
+      'duplicateSelected',
+      'deleteSelected',
+      'flipSelected',
+      'rotateSelected',
+      'cycleSpeedSelected',
+      'toggleMuteSelected'
+    ]),
+    /** Actions that need a suitable selection are disabled (aria-disabled) without one. */
+    enabled(key: ActionKey): boolean {
+      switch (key) {
+        case 'split':
+          return this.canSplitAtPlayhead
+        case 'fineCut':
+          return true
+        case 'duplicate':
+        case 'delete':
+          return this.selection !== null
+        case 'flip':
+        case 'rotate':
+        case 'speed':
+        case 'mute':
+          return this.selectedClip !== null
+      }
+    },
+    pressed(key: ActionKey): boolean | undefined {
+      if (key === 'mute') return this.selectedClip?.muted ?? false
+      if (key === 'flip') return this.selectedClip?.transform.flipX ?? false
+      return undefined
+    },
+    run(key: ActionKey) {
+      if (!this.enabled(key)) return
+      switch (key) {
+        case 'split':
+          this.splitAtPlayhead()
+          break
+        case 'duplicate':
+          this.duplicateSelected()
+          break
+        case 'delete':
+          this.deleteSelected()
+          break
+        case 'flip':
+          this.flipSelected()
+          break
+        case 'rotate':
+          this.rotateSelected()
+          break
+        case 'speed':
+          this.cycleSpeedSelected()
+          break
+        case 'mute':
+          this.toggleMuteSelected()
+          break
+        case 'fineCut':
+          // Not implemented yet.
+          break
+      }
+    }
   }
 })
 </script>
@@ -38,14 +110,17 @@ export default defineComponent({
     <button
       type="button"
       class="flex size-10 shrink-0 items-center justify-center rounded-full bg-fill text-fill-fg"
-      :aria-label="$t('actions.play')"
+      :aria-label="playLabel"
+      :aria-pressed="isPlaying"
+      @click="togglePlaying"
     >
-      <Icon name="play" class="size-[18px]" />
+      <Icon :name="isPlaying ? 'pause' : 'play'" class="size-[18px]" />
     </button>
     <button
       type="button"
       class="flex size-11 items-center justify-center rounded-lg text-fg hover:bg-panel2"
       :aria-label="$t('actions.frameBack')"
+      @click="stepFrame(-1)"
     >
       <Icon name="back" class="size-[18px]" />
     </button>
@@ -53,6 +128,7 @@ export default defineComponent({
       type="button"
       class="flex size-11 items-center justify-center rounded-lg text-fg hover:bg-panel2"
       :aria-label="$t('actions.frameForward')"
+      @click="stepFrame(1)"
     >
       <Icon name="fwd" class="size-[18px]" />
     </button>
@@ -64,11 +140,18 @@ export default defineComponent({
       v-for="action in actions"
       :key="action.key"
       type="button"
-      class="flex min-h-11 min-w-[50px] flex-col items-center justify-center gap-0.5 rounded-lg px-1.5 text-[10.5px] font-semibold hover:bg-panel2"
-      :class="action.hot ? 'bg-signal text-signal-fg hover:bg-signal' : 'text-fg'"
+      class="flex min-h-11 min-w-[50px] flex-col items-center justify-center gap-0.5 rounded-lg px-1.5 text-[10.5px] font-semibold"
+      :class="[
+        action.hot ? 'bg-signal text-signal-fg hover:bg-signal' : 'text-fg hover:bg-panel2',
+        enabled(action.key) ? '' : 'cursor-not-allowed opacity-40'
+      ]"
+      :aria-disabled="!enabled(action.key)"
+      :aria-pressed="pressed(action.key)"
+      :aria-label="action.key === 'speed' ? `${$t('actions.speed')}: ${speedValue}` : undefined"
+      @click="run(action.key)"
     >
       <Icon :name="action.icon" class="size-[18px]" />
-      <span>{{ $t(`actions.${action.key}`) }}</span>
+      <span>{{ action.key === 'speed' ? speedValue : $t(`actions.${action.key}`) }}</span>
     </button>
   </div>
 </template>
