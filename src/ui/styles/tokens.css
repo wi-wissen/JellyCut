@@ -17,6 +17,8 @@
   --jc-track-video-3: #6f7389;
   --jc-wave: #2e9e63;
   --jc-music: #7e6bd6;
+  --jc-logo-tile: #ede9ff;
+  --jc-logo-tile-line: #cfc6f5;
   --jc-radius: 10px;
   --jc-touch: 44px;
   --jc-danger: #b3261e;
@@ -38,6 +40,8 @@
     --jc-wave: #4fd48a;
     --jc-music: #4a3c99;
     --jc-danger: #ff8a80;
+    --jc-logo-tile: #33287a;
+    --jc-logo-tile-line: #5a4bb8;
     color-scheme: dark;
   }
 }
@@ -56,5 +60,7 @@
   --jc-wave: #4fd48a;
   --jc-music: #4a3c99;
   --jc-danger: #ff8a80;
+  --jc-logo-tile: #33287a;
+  --jc-logo-tile-line: #5a4bb8;
   color-scheme: dark;
 }
