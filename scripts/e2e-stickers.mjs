@@ -125,7 +125,7 @@ async function openStickers(page) {
   check('gallery: no horizontal scroller is left', (await page.locator('#sticker-grid').evaluate((g) => g.parentElement.querySelectorAll('.overflow-x-auto').length)) === 0)
   await trigger.click()
   const opts = await page.getByRole('option').evaluateAll((els) => els.map((e) => e.textContent.trim()))
-  check('gallery: the list starts with All and offers every category plus Shapes', opts[0] === 'All' && opts.includes('Faces') && opts.includes('Animals') && opts.at(-1) === 'Shapes' && opts.length === 11, JSON.stringify(opts))
+  check('gallery: the list starts with All and offers every category plus Shapes', opts[0] === 'All' && opts.includes('Faces') && opts.includes('Animals') && opts.at(-1) === 'Shapes' && opts.length === 10, JSON.stringify(opts))
   check('gallery: options carry an icon', (await page.getByRole('option').first().locator('svg, img').count()) >= 1 && (await page.getByRole('option', { name: 'Animals' }).locator('img').count()) === 1)
   await page.screenshot({ path: `${SHOTS}/stickers-dropdown-open-desktop-light.png` })
   await page.keyboard.press('Escape')
