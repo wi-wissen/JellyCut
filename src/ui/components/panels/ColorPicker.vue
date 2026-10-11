@@ -56,7 +56,8 @@ export default defineComponent({
   data() {
     return {
       defaults: DEFAULT_COLORS,
-      open: false,
+      // Inline pickers are always open: the palette is the content of their section.
+      open: !this.popover,
       recentList: recents(),
       hexText: '',
       hexError: false,
@@ -154,6 +155,7 @@ export default defineComponent({
       })
     },
     close(returnFocus: boolean): void {
+      if (!this.popover) return
       const was = this.open
       this.open = false
       if (returnFocus && was && this.popover) this.$nextTick(() => (this.$refs.trigger as HTMLElement | undefined)?.focus())
@@ -244,11 +246,6 @@ export default defineComponent({
       event.preventDefault()
       this.close(true)
     },
-    onPanelEscape(event: KeyboardEvent): void {
-      if (event.key !== 'Escape' || this.popover) return
-      event.stopPropagation()
-      this.close(true)
-    }
   }
 })
 </script>
@@ -274,6 +271,7 @@ export default defineComponent({
         />
       </button>
       <button
+        v-if="popover"
         ref="trigger"
         type="button"
         class="flex size-11 items-center justify-center rounded-lg hover:bg-panel2"
@@ -295,14 +293,13 @@ export default defineComponent({
 
     <Teleport to="body" :disabled="!popover">
       <div
-        v-if="open"
+        v-if="open || !popover"
         ref="panel"
         role="dialog"
         :aria-label="groupLabel"
         class="flex flex-col gap-3 overflow-y-auto rounded-xl border border-line bg-panel p-3 text-[12px] text-fg"
         :class="popover ? 'fixed z-50 shadow-xl' : 'relative mt-1'"
         :style="popover ? placementStyle : undefined"
-        @keydown="onPanelEscape"
       >
         <template v-if="recentList.length">
           <h3 class="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">{{ $t('colors.recent') }}</h3>
