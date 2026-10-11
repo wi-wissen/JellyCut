@@ -95,7 +95,8 @@ async function networkFirst(url) {
   const cache = await caches.open(CACHE)
   const key = pageKey(url)
   try {
-    const response = await fetch(url.href)
+    // GitHub Pages sends max-age=600 for pages: revalidate (cheap 304) so a reload always gets the newest page and its hashed assets.
+    const response = await fetch(url.href, { cache: 'no-cache' })
     // A real 404 is shown as it is and never replaces a cached page.
     if (response.ok) void cache.put(key, response.clone())
     return response

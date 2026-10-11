@@ -30,7 +30,7 @@ export function registerServiceWorker(swUrl: string): void {
     if (reloading) location.reload()
   })
   navigator.serviceWorker
-    .register(swUrl)
+    .register(swUrl, { updateViaCache: 'none' })
     .then((registration) => {
       const hadController = navigator.serviceWorker.controller !== null
       const announce = (worker: ServiceWorker | null) => {
