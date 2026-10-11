@@ -14,6 +14,7 @@ export default defineComponent({ name: 'LandingView' })
     >
       {{ $t('landing.open') }}
     </a>
+    <p class="max-w-md text-sm text-muted">{{ $t('pwa.offline') }}</p>
     <p class="text-xs text-muted">{{ $t('landing.soon') }}</p>
   </main>
 </template>

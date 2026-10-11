@@ -749,5 +749,54 @@
       "surface": "Drawing surface: paint with a mouse or your finger",
       "drawing": "Drawing"
     }
+  },
+  "pwa": {
+    "updateAvailable": "Update available",
+    "reload": "Reload",
+    "offline": "Works offline: after the first visit, Jelly Cut also runs without an internet connection. Use the browser menu to install it like an app."
+  },
+  "overlays2": {
+    "opacity": "Opacity",
+    "animation": "Animation",
+    "animIn": "Enter",
+    "animOut": "Exit",
+    "loop": "Loop",
+    "none": "None",
+    "anim": {
+      "fade": "Fade in",
+      "pop": "Pop",
+      "slideUp": "Slide up"
+    },
+    "loops": {
+      "wiggle": "Wiggle"
+    },
+    "effect": "Effect",
+    "effects": {
+      "blur": "Blur",
+      "pixelate": "Pixelate"
+    },
+    "strength": "Strength",
+    "regionShape": {
+      "rect": "Rectangle",
+      "ellipse": "Ellipse"
+    },
+    "regionHeader": "Area · {name}",
+    "regionHint": "The area blurs or pixelates what lies under it, for example a face or a number plate. It appears at the playhead.",
+    "regionsTitle": "Areas",
+    "blurAction": "Blur a region",
+    "pixelateAction": "Pixelate a region",
+    "picturesTitle": "Picture or video",
+    "pictureHint": "An image or video from the library appears over the video at the playhead.",
+    "noPictures": "No images or videos in the library.",
+    "addPicture": "Add {name} at the playhead",
+    "pictureKind": {
+      "image": "Image",
+      "video": "Video"
+    },
+    "pictureHeader": "Picture · {name}",
+    "pictureSound": "The sound of a video is not played.",
+    "radius": "Corners",
+    "border": "Border",
+    "borderColor": "Border colour"
   }
 }

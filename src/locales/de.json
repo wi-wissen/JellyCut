@@ -749,5 +749,54 @@
       "surface": "Zeichenfläche: Mit Maus oder Finger malen",
       "drawing": "Zeichnen läuft"
     }
+  },
+  "pwa": {
+    "updateAvailable": "Update verfügbar",
+    "reload": "Neu laden",
+    "offline": "Offline nutzbar: Nach dem ersten Besuch läuft Jelly Cut auch ohne Internet. Im Browsermenü lässt es sich wie eine App installieren."
+  },
+  "overlays2": {
+    "opacity": "Deckkraft",
+    "animation": "Animation",
+    "animIn": "Einblenden",
+    "animOut": "Ausblenden",
+    "loop": "Dauerschleife",
+    "none": "Keine",
+    "anim": {
+      "fade": "Weich einblenden",
+      "pop": "Aufpoppen",
+      "slideUp": "Von unten hochgleiten"
+    },
+    "loops": {
+      "wiggle": "Wackeln"
+    },
+    "effect": "Wirkung",
+    "effects": {
+      "blur": "Weichzeichnen",
+      "pixelate": "Verpixeln"
+    },
+    "strength": "Stärke",
+    "regionShape": {
+      "rect": "Rechteck",
+      "ellipse": "Ellipse"
+    },
+    "regionHeader": "Bereich · {name}",
+    "regionHint": "Der Bereich verwischt oder verpixelt, was darunter liegt, zum Beispiel ein Gesicht oder ein Autokennzeichen. Er erscheint am Abspielkopf.",
+    "regionsTitle": "Bereiche",
+    "blurAction": "Bereich weichzeichnen",
+    "pixelateAction": "Bereich verpixeln",
+    "picturesTitle": "Bild oder Video",
+    "pictureHint": "Ein Bild oder Video aus der Bibliothek erscheint über dem Video am Abspielkopf.",
+    "noPictures": "Keine Bilder oder Videos in der Bibliothek.",
+    "addPicture": "{name} am Abspielkopf einfügen",
+    "pictureKind": {
+      "image": "Bild",
+      "video": "Video"
+    },
+    "pictureHeader": "Bild · {name}",
+    "pictureSound": "Der Ton eines Videos wird nicht abgespielt.",
+    "radius": "Ecken",
+    "border": "Rahmen",
+    "borderColor": "Rahmenfarbe"
   }
 }
