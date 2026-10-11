@@ -33,7 +33,8 @@
         "text": "The strip shows some pictures from the video. Drag the line with the mouse or your finger, or use the arrow keys. Below it you see the sound as a waveform: high peaks are loud spots.",
         "sliderLabel": "Position in the video",
         "time": "{time} s · picture {frame}",
-        "hint": "Arrow keys: one picture. Page up and down: one second. Home and End: start and end."
+        "hint": "Arrow keys: one picture. Page up and down: one second. Home and End: start and end.",
+        "clip": "A 2-second excerpt: 12 pictures, each 1/6 second long."
       },
       "endings": {
         "heading": "3. The ending is only the box",
@@ -55,7 +56,7 @@
       "app": {
         "heading": "4. How Jelly Cut reads the file",
         "text": "When you drag a video into the library, Jelly Cut reads the box on your computer: length, pictures per second and sound. The file is not uploaded. It stays where it is.",
-        "text2": "If your browser cannot read a track or the packing method, Jelly Cut shows a message. Then Chrome or Edge will help.",
+        "text2": "If your browser cannot read a track or the packing method, Jelly Cut shows a message. Then a Chromium-based browser such as Brave, Microsoft Edge or Google Chrome will help.",
         "open": "Go to the editor",
         "tip": "Jelly Cut only reads your file. Your original file stays unchanged."
       },

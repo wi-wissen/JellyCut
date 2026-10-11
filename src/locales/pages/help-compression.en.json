@@ -72,17 +72,38 @@
         "barLabel": "Picture {n}: {percent} % stored, {kind}",
         "kindKey": "keyframe",
         "kindChange": "changes",
-        "total": "In total: {percent} % of the file compared to {frames} full pictures. {keyframes} of them are keyframes."
+        "total": "In total: {percent} % of the file compared to {frames} full pictures. {keyframes} of them are keyframes.",
+        "legendLabel": "Colours of the changed pixels",
+        "legend": {
+          "newly": "newly covered",
+          "uncovered": "visible again",
+          "inside": "changed inside the turtle"
+        }
       },
       "seek": {
         "heading": "4. Jumping into the middle of a video",
         "text": "If you want to start at second 30, you cannot simply jump there. A change picture needs the picture before it. So the app starts at the last keyframe and rebuilds all pictures up to the target.",
         "intervalLabel": "Distance between keyframes",
-        "every": "every {n} s",
-        "jump": "Jump to second {target}",
-        "reset": "Back to the start",
-        "resultDirect": "Second {target} is a keyframe itself. The app jumps straight there.",
-        "resultPlan": "The app starts at second {keyframe}, the last keyframe before it. Then it rebuilds {frames} pictures up to second {target}."
+        "every": "every {n} pictures",
+        "targetLabel": "Where do you want to go?",
+        "targetValue": "Picture {n}",
+        "marker": "You want to go here",
+        "earlier": "Earlier pictures, not shown here",
+        "legendKey": "Keyframe: whole picture, with a star",
+        "legendChange": "Change picture: only the changed pixels",
+        "cardKey": "Picture {n}: whole picture (keyframe)",
+        "cardChange": "Picture {n}: changes only",
+        "start": "The player is at the beginning.",
+        "jump": "Jump there",
+        "stepLook": "Step 1: the player looks back to the last keyframe, picture {keyframe}.",
+        "stepRebuild": "Picture {frame} is rebuilt from the picture before it.",
+        "counter": "Pictures rebuilt: {done} of {total}",
+        "done": "Done",
+        "doneText": "Done: picture {target} is there.",
+        "resultPlan": "The app starts at picture {keyframe}, the last keyframe before it. Then it rebuilds {frames} pictures up to picture {target}.",
+        "resultDirect": "Picture {target} is a keyframe itself. The app jumps straight there.",
+        "tradeoffMore": "More keyframes = bigger file, but faster jumping.",
+        "tradeoffFewer": "Fewer keyframes = smaller file, but more work when jumping."
       },
       "lossy": {
         "heading": "5. Trick 2: leave out details",

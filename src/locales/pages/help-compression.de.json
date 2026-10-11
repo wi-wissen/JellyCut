@@ -72,17 +72,38 @@
         "barLabel": "Bild {n}: {percent} % gespeichert, {kind}",
         "kindKey": "Schlüsselbild",
         "kindChange": "Änderungen",
-        "total": "Insgesamt: {percent} % der Datei im Vergleich zu {frames} vollen Bildern. Davon sind {keyframes} Schlüsselbilder."
+        "total": "Insgesamt: {percent} % der Datei im Vergleich zu {frames} vollen Bildern. Davon sind {keyframes} Schlüsselbilder.",
+        "legendLabel": "Farben der geänderten Pixel",
+        "legend": {
+          "newly": "neu verdeckt",
+          "uncovered": "wieder sichtbar",
+          "inside": "im Motiv verändert"
+        }
       },
       "seek": {
         "heading": "4. Mitten ins Video springen",
         "text": "Wenn du bei Sekunde 30 startest, reicht es nicht, dort einfach hinzuspringen. Ein Änderungsbild braucht das Bild davor. Also startet die App beim letzten Schlüsselbild und baut alle Bilder bis zum Ziel nach.",
         "intervalLabel": "Abstand der Schlüsselbilder",
-        "every": "alle {n} s",
-        "jump": "Springe zu Sekunde {target}",
-        "reset": "Zurück zum Anfang",
-        "resultDirect": "Sekunde {target} ist selbst ein Schlüsselbild. Die App springt direkt dorthin.",
-        "resultPlan": "Die App startet bei Sekunde {keyframe}, dem letzten Schlüsselbild davor. Dann baut sie {frames} Bilder nach, bis zur Sekunde {target}."
+        "every": "alle {n} Bilder",
+        "targetLabel": "Wohin willst du springen?",
+        "targetValue": "Bild {n}",
+        "marker": "Hier willst du hin",
+        "earlier": "Bilder davor, hier nicht gezeigt",
+        "legendKey": "Schlüsselbild: ganzes Bild, mit Stern",
+        "legendChange": "Änderungsbild: nur die geänderten Pixel",
+        "cardKey": "Bild {n}: ganzes Bild (Schlüsselbild)",
+        "cardChange": "Bild {n}: nur Änderungen",
+        "start": "Der Player steht am Anfang.",
+        "jump": "Springe dorthin",
+        "stepLook": "Schritt 1: Der Player schaut zurück zum letzten Schlüsselbild, Bild {keyframe}.",
+        "stepRebuild": "Bild {frame} wird aus dem Bild davor nachgebaut.",
+        "counter": "Bilder berechnet: {done} von {total}",
+        "done": "Fertig",
+        "doneText": "Fertig: Bild {target} steht da.",
+        "resultPlan": "Die App startet bei Bild {keyframe}, dem letzten Schlüsselbild davor. Dann baut sie {frames} Bilder nach, bis Bild {target}.",
+        "resultDirect": "Bild {target} ist selbst ein Schlüsselbild. Die App springt direkt dorthin.",
+        "tradeoffMore": "Mehr Schlüsselbilder = größere Datei, aber schnelleres Springen.",
+        "tradeoffFewer": "Weniger Schlüsselbilder = kleinere Datei, aber längeres Rechnen beim Springen."
       },
       "lossy": {
         "heading": "5. Trick 2: Details weglassen",

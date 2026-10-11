@@ -33,7 +33,8 @@
         "text": "Die Leiste zeigt einige Bilder aus dem Video. Ziehe den Strich mit der Maus oder dem Finger, oder nutze die Pfeiltasten. Darunter steht der Ton als Wellenform: Hohe Ausschläge sind laute Stellen.",
         "sliderLabel": "Position im Video",
         "time": "{time} s · Bild {frame}",
-        "hint": "Pfeiltasten: ein Bild. Bild auf und ab: eine Sekunde. Pos 1 und Ende: Anfang und Ende."
+        "hint": "Pfeiltasten: ein Bild. Bild auf und ab: eine Sekunde. Pos 1 und Ende: Anfang und Ende.",
+        "clip": "Ein Ausschnitt von 2 Sekunden: 12 Bilder, jedes 1/6 Sekunde lang."
       },
       "endings": {
         "heading": "3. Die Endung ist nur die Box",
@@ -55,7 +56,7 @@
       "app": {
         "heading": "4. Wie Jelly Cut die Datei liest",
         "text": "Wenn du ein Video in die Bibliothek ziehst, liest Jelly Cut die Box auf deinem Computer aus: Länge, Bilder pro Sekunde und Ton. Die Datei wird dabei nicht hochgeladen. Sie bleibt, wo sie ist.",
-        "text2": "Kann dein Browser eine Spur oder das Packverfahren nicht lesen, zeigt Jelly Cut eine Meldung. Dann hilft Chrome oder Edge.",
+        "text2": "Kann dein Browser eine Spur oder das Packverfahren nicht lesen, zeigt Jelly Cut eine Meldung. Dann hilft ein Chromium-basierter Browser wie Brave, Microsoft Edge oder Google Chrome.",
         "open": "Zum Editor",
         "tip": "Jelly Cut liest deine Datei nur. Deine Originaldatei bleibt unverändert."
       },
