@@ -118,7 +118,7 @@ await check('Fill in "Picture in format" sets transform.fit; Fit sets it back', 
 
 await check('zoom drag lands in transform.scale and is one undo step', async () => {
   const before = await snapshot(page)
-  await dragSlider(page, page.getByRole('slider', { name: 'Zoom' }), 0.5, 0.9)
+  await dragSlider(page, page.locator('aside').getByRole('slider', { name: 'Zoom' }), 0.5, 0.9)
   const after = await snapshot(page)
   const scale = clipNamed(after.project, 'Beach.mp4').transform.scale
   assert(scale > 2.5, `scale ${scale}`)
@@ -129,7 +129,7 @@ await check('zoom drag lands in transform.scale and is one undo step', async () 
 
 await check('volume drag lands in clip.volume and is one undo step', async () => {
   const before = await snapshot(page)
-  await dragSlider(page, page.getByRole('slider', { name: 'Volume' }), 0.25, 0.4)
+  await dragSlider(page, page.locator('aside').getByRole('slider', { name: 'Volume' }), 0.25, 0.4)
   const after = await snapshot(page)
   const volume = clipNamed(after.project, 'Beach.mp4').volume
   assert(near(volume, 0.8, 0.06), `volume ${volume}`)
@@ -149,7 +149,7 @@ await check('"Original audio" switch mutes and unmutes the clip', async () => {
 })
 
 await check('tempo slider steps over SPEED_STEPS and shows 1.5x', async () => {
-  const slider = page.getByRole('slider', { name: 'Tempo' })
+  const slider = page.locator('aside').getByRole('slider', { name: 'Tempo' })
   await slider.focus()
   await page.keyboard.press('ArrowRight')
   await page.keyboard.press('ArrowRight')
@@ -190,6 +190,7 @@ await check('transitions: a selected first clip gets no transition (the target i
 await page.getByRole('heading', { name: 'Transitions', exact: true }).waitFor()
 await page.screenshot({ path: join(SHOT_DIR, 'panel-transitions-light.png') })
 
+await page.getByRole('tab', { name: 'Material', exact: true }).click()
 await check('record tab shows the calm placeholder', async () => {
   await page.getByRole('button', { name: 'Record', exact: true }).click()
   await page.getByText('Recording comes soon', { exact: true }).waitFor()
@@ -197,6 +198,7 @@ await check('record tab shows the calm placeholder', async () => {
   await page.getByRole('heading', { name: 'Media', exact: true }).waitFor()
 })
 
+await page.getByRole('tab', { name: 'Design', exact: true }).click()
 await check('text tab: Add text adds a text at the playhead and shows the text panel', async () => {
   const before = (await project(page)).texts.length
   await page.getByRole('button', { name: 'Text', exact: true }).click()
@@ -319,6 +321,7 @@ await check('fit chip toggles every clip when nothing is selected', async () => 
 })
 
 await check('music: selecting a music item shows its panel; volume drag and fade-in change the item', async () => {
+  await page.getByRole('tab', { name: 'Material', exact: true }).click()
   await page.getByRole('button', { name: 'Audio', exact: true }).click()
   await page.getByRole('button', { name: 'Added audio: Sunset loop.mp3', exact: true }).click()
   await page.getByRole('heading', { name: 'Own sound · Sunset loop.mp3' }).waitFor()
@@ -349,6 +352,7 @@ await check('dark: clip panel, text properties, transitions and ratio popover re
   await dark.getByRole('button', { name: 'Change', exact: true }).click()
   await dark.getByRole('heading', { name: 'Transitions', exact: true }).waitFor()
   await dark.screenshot({ path: join(SHOT_DIR, 'panel-transitions-dark.png') })
+  await dark.getByRole('tab', { name: 'Design', exact: true }).click()
   await dark.getByRole('button', { name: 'Text', exact: true }).click()
   await dark.getByRole('button', { name: 'Add text', exact: true }).click()
   await dark.getByRole('heading', { name: /^Text · / }).waitFor()

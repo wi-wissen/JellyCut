@@ -60,6 +60,7 @@ export default defineComponent({
       'setSelectedClipProps',
       'removeTransition',
       'setActiveTab',
+      'setActiveGroup',
       'endGesture'
     ]),
     keyFor(field: string): string {
@@ -82,7 +83,7 @@ export default defineComponent({
       if (speed !== undefined) this.setSelectedClipProps({ speed }, this.keyFor('speed'))
     },
     openTransitions(): void {
-      this.setActiveTab('transitions')
+      this.setActiveGroup('look', 'transitions')
     },
     removeCut(): void {
       if (this.clip) this.removeTransition(this.clip.id)

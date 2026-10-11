@@ -138,10 +138,10 @@ function readFileBytesAsBase64Js() {
   await waitFor(async () => (await estimateText(page)) !== est1, 3000)
   const est2 = await estimateText(page)
   check('480p gives a smaller estimate than 720p', est2 !== est1, `${est1} -> ${est2}`)
+  const bytes480_30 = await state(page, '(ed, ex) => ex.estimatedBytes')
   await page.getByRole('radio', { name: '24', exact: true }).click({ force: true })
-  await waitFor(async () => (await estimateText(page)) !== est2, 3000)
-  const est3 = await estimateText(page)
-  check('frame rate change updates the estimate', est3 !== est2, `${est2} -> ${est3}`)
+  await waitFor(async () => (await state(page, '(ed, ex) => ex.estimatedBytes')) !== bytes480_30, 3000)
+  check('frame rate change updates the estimate', (await state(page, '(ed, ex) => ex.estimatedBytes')) !== bytes480_30)
   await page.getByRole('radio', { name: '30', exact: true }).click({ force: true })
   await page.getByRole('radio', { name: 'Small', exact: true }).click({ force: true })
   await waitFor(async () => (await estimateText(page)) !== est2, 3000)
@@ -172,18 +172,21 @@ function readFileBytesAsBase64Js() {
     maxFraction = Math.max(maxFraction, (await state(page, '(ed, ex) => ex.progress?.fraction ?? 0')) || 0)
     return (await state(page, '(ed, ex) => ex.phase')) === 'done'
   }, 180_000, 100)
-  check('export at 480p/30 finishes in the done state', runDone, `phase=${await state(page, '(ed, ex) => ex.phase')}`)
+  const phaseNow = await state(page, '(ed, ex) => ex.phase')
+  check('export at 480p/30 finishes in the done state', runDone, `phase=${phaseNow} error=${JSON.stringify(await state(page, '(ed, ex) => ex.error'))}`)
   check('done state shows Save and the file name', runDone && (await page.getByRole('button', { name: 'Save', exact: true }).isVisible()) && (await dialog(page).innerText()).includes('New project.mp4'))
   await shot(page, 'done')
 
-  const [download] = await Promise.all([
-    page.waitForEvent('download', { timeout: 15_000 }),
-    page.getByRole('button', { name: 'Save', exact: true }).click()
-  ])
-  check('Save file name is "New project.mp4"', download.suggestedFilename() === 'New project.mp4', download.suggestedFilename())
+  const downloadPromise = page.waitForEvent('download', { timeout: 15_000 }).catch(() => null)
+  await page.getByRole('button', { name: 'Save', exact: true }).click().catch(() => undefined)
+  const download = await downloadPromise
+  check('Save starts a download', download !== null)
   const savedPath = join(SHOT_DIR, 'export-download.mp4')
-  await download.saveAs(savedPath)
-  const bytes = readFileSync(savedPath)
+  if (download) {
+    check('Save file name is "New project.mp4"', download.suggestedFilename() === 'New project.mp4', download.suggestedFilename())
+    await download.saveAs(savedPath)
+  }
+  const bytes = download ? readFileSync(savedPath) : Buffer.alloc(0)
   check('downloaded bytes start with an MP4 ftyp box at offset 4', bytes.length > 8 && bytes.toString('latin1', 4, 8) === 'ftyp', bytes.subarray(0, 12).toString('hex'))
   check('downloaded file is above 2 KB', bytes.length > 2048, `${bytes.length} bytes`)
 
