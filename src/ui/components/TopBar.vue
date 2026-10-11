@@ -9,7 +9,7 @@ export default defineComponent({
   name: 'TopBar',
   components: { Icon, ProjectMenu },
   data() {
-    return { logoUrl: `${import.meta.env.BASE_URL}logo.svg` }
+    return { logoUrl: `${import.meta.env.BASE_URL}favicon.svg` }
   },
   computed: {
     ...mapState(useEditorStore, ['project', 'resolvedDark', 'canUndo', 'canRedo'])
@@ -23,7 +23,7 @@ export default defineComponent({
 <template>
   <header class="flex h-[52px] shrink-0 items-center gap-2.5 border-b border-line bg-panel px-3">
     <div class="flex items-center gap-2 pr-1">
-      <img :src="logoUrl" alt="" class="h-8 w-auto" />
+      <img :src="logoUrl" alt="" class="size-8 rounded-lg" />
       <span class="text-[15px] font-bold tracking-tight">{{ $t('app.name') }}</span>
     </div>
 

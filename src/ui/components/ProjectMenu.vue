@@ -125,7 +125,7 @@ export default defineComponent({
       id="project-menu-trigger"
       ref="trigger"
       type="button"
-      class="flex min-h-11 max-w-[220px] items-center gap-1.5 rounded-full border border-line bg-panel2 px-3 text-xs font-semibold"
+      class="relative flex h-8 max-w-[220px] items-center gap-1.5 rounded-full border border-line bg-panel2 px-3 text-xs font-semibold before:absolute before:inset-x-0 before:-inset-y-1.5 before:content-['']"
       aria-haspopup="menu"
       aria-controls="project-menu-panel"
       :aria-expanded="open ? 'true' : 'false'"
