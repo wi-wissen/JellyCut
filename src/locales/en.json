@@ -227,7 +227,12 @@
     },
     "start": "Start (s)",
     "duration": "Duration (s)",
-    "sample": "Aa"
+    "sample": "Aa",
+    "swatchText": "Text colour {hex}",
+    "swatchOutline": "Outline colour {hex}",
+    "customTextColor": "Custom text colour",
+    "customOutlineColor": "Custom outline colour",
+    "presetAria": "Preset {name}"
   },
   "music": {
     "header": "Own sound · {name}",
@@ -235,8 +240,8 @@
     "fadeIn": "Fade in",
     "fadeOut": "Fade out"
   },
-
   "export": {
+    "resolutionValue": "{value}p",
     "title": "Export video",
     "close": "Close",
     "cancel": "Cancel",

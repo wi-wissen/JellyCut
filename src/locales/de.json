@@ -227,7 +227,12 @@
     },
     "start": "Start (s)",
     "duration": "Dauer (s)",
-    "sample": "Aa"
+    "sample": "Aa",
+    "swatchText": "Textfarbe {hex}",
+    "swatchOutline": "Konturfarbe {hex}",
+    "customTextColor": "Eigene Textfarbe",
+    "customOutlineColor": "Eigene Konturfarbe",
+    "presetAria": "Vorlage {name}"
   },
   "music": {
     "header": "Eigener Ton · {name}",
@@ -235,8 +240,8 @@
     "fadeIn": "Einblenden",
     "fadeOut": "Ausblenden"
   },
-
   "export": {
+    "resolutionValue": "{value}p",
     "title": "Video exportieren",
     "close": "Schließen",
     "cancel": "Abbrechen",

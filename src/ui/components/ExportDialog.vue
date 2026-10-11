@@ -36,7 +36,7 @@ export default defineComponent({
     ]),
     ...mapState(useEditorStore, ['totalDuration']),
     locale(): string {
-      return String(this.$i18n.locale)
+      return this.$i18n.locale
     },
     durationText(): string {
       return formatClock(this.totalDuration)
@@ -178,7 +178,7 @@ export default defineComponent({
                     :checked="options.resolution === r"
                     @change="setOptions({ resolution: r })"
                   />
-                  <span class="flex min-h-11 items-center justify-center rounded-lg text-sm font-semibold peer-checked:bg-fill peer-checked:text-fill-fg peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-fill peer-disabled:cursor-default">{{ r }}p</span>
+                  <span class="flex min-h-11 items-center justify-center rounded-lg text-sm font-semibold peer-checked:bg-fill peer-checked:text-fill-fg peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-fill peer-disabled:cursor-default">{{ $t('export.resolutionValue', { value: r }) }}</span>
                 </label>
               </div>
             </fieldset>

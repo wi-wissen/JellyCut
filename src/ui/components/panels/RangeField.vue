@@ -42,7 +42,7 @@ export default defineComponent({
   <div class="flex flex-col gap-0.5">
     <div class="flex items-baseline justify-between gap-2">
       <label :for="uid" class="text-[13px] font-semibold">{{ label }}</label>
-      <span class="shrink-0 text-xs tabular-nums text-muted">{{ display }}</span>
+      <span class="shrink-0 text-xs [font-variant-numeric:tabular-nums] text-muted">{{ display }}</span>
     </div>
     <input
       :id="uid"

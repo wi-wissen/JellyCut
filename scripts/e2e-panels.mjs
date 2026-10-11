@@ -58,6 +58,8 @@ const undo = (page) => page.keyboard.press('Control+z')
 
 /** Moves the thumb with the mouse from one fraction of the slider width to another (one drag). */
 async function dragSlider(page, slider, fromFrac, toFrac) {
+  // A real user scrolls the panel first; the clip and text panels scroll inside the left column.
+  await slider.scrollIntoViewIfNeeded()
   const box = await slider.boundingBox()
   assert(box, 'slider not visible')
   const y = box.y + box.height / 2
@@ -242,7 +244,7 @@ await check('size drag changes style.size in one undo step', async () => {
 })
 
 await check('colour swatch and outline switch', async () => {
-  await page.getByRole('button', { name: 'Colour #c6f432' }).click()
+  await page.getByRole('button', { name: 'Text colour #c6f432' }).click()
   assert((await project(page)).texts.at(-1).style.color === '#c6f432', 'colour not set')
   const sw = page.getByRole('switch', { name: 'Outline' })
   await sw.click()
@@ -368,7 +370,7 @@ await check('ratio popover stays inside the stage on a narrow window', async () 
   await narrow.getByRole('button', { name: 'Aspect ratio', exact: true }).click()
   const dialog = narrow.getByRole('dialog', { name: 'Picture format and background' })
   await dialog.waitFor()
-  const stage = await narrow.locator('canvas[role="img"]').boundingBox()
+  const stage = await narrow.locator('section').filter({ has: narrow.locator('canvas[role="img"]') }).first().boundingBox()
   const box = await dialog.boundingBox()
   assert(stage && box, 'stage or popover not measurable')
   assert(box.x >= stage.x - 0.5, `left ${box.x} < stage ${stage.x}`)

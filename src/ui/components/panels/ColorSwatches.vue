@@ -9,6 +9,8 @@ export default defineComponent({
     modelValue: { type: String, required: true },
     colors: { type: Array as PropType<readonly string[]>, default: () => SWATCHES },
     groupLabel: { type: String, required: true },
+    /** i18n key with an {hex} placeholder, so every swatch group has its own accessible names. */
+    swatchKey: { type: String, required: true },
     customLabel: { type: String, required: true }
   },
   emits: {
@@ -31,7 +33,7 @@ export default defineComponent({
       type="button"
       class="flex size-11 items-center justify-center rounded-lg hover:bg-panel2"
       :aria-pressed="same(modelValue, hex)"
-      :aria-label="$t('text.swatch', { hex })"
+      :aria-label="$t(swatchKey, { hex })"
       :title="hex"
       @click="$emit('update', hex)"
     >

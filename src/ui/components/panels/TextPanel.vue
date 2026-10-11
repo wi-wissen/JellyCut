@@ -49,7 +49,7 @@ export default defineComponent({
         :key="preset.id"
         type="button"
         class="flex flex-col gap-1.5 rounded-lg text-left"
-        :aria-label="presetName(preset.id)"
+        :aria-label="$t('text.presetAria', { name: presetName(preset.id) })"
         @click="add(preset.id)"
       >
         <span class="flex aspect-[16/10] w-full items-center justify-center rounded-lg bg-[#14121f]" aria-hidden="true">

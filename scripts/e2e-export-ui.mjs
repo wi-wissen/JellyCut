@@ -153,10 +153,24 @@ function readFileBytesAsBase64Js() {
   const gifDisabled = await page.getByRole('radio', { name: /GIF/ }).isDisabled()
   check('GIF format is shown but disabled', gifDisabled)
 
+  // Tab stays inside the dialog, wrapping at both ends.
+  let tabOutside = 0
+  for (let i = 0; i < 14; i++) {
+    await page.keyboard.press('Tab')
+    if (!(await page.evaluate(() => !!document.activeElement?.closest('[role=dialog]')))) tabOutside++
+  }
+  check('Tab cycles inside the dialog only', tabOutside === 0, `${tabOutside} presses left the dialog`)
+
   await page.keyboard.press('Escape')
   await dialog(page).waitFor({ state: 'detached', timeout: 3000 }).catch(() => undefined)
   check('Escape closes the dialog', !(await dialog(page).isVisible().catch(() => false)))
   check('focus returns to the Export button', await page.evaluate(() => document.activeElement?.id === 'export-button'))
+
+  // A click on the backdrop closes it while nothing runs.
+  await page.locator('#export-button').click()
+  await waitPhase(page, 'ready', 15_000)
+  await page.mouse.click(5, 5)
+  check('a backdrop click closes the dialog when idle', !(await dialog(page).isVisible().catch(() => false)))
 
   // Reopen and export at 480p, 30 fps, Good.
   await page.locator('#export-button').click()
@@ -247,18 +261,20 @@ function readFileBytesAsBase64Js() {
   await shot(page, 'warning')
 
   // Narrow viewport: the dialog must fit without horizontal scrolling.
-  await page.setViewportSize({ width: 390, height: 800 })
-  await page.waitForTimeout(300)
-  const fit = await page.evaluate(() => {
-    const panel = document.querySelector('[role=dialog]')
-    return {
-      pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-      panelOverflow: panel.scrollWidth - panel.clientWidth,
-      panelWidth: panel.getBoundingClientRect().width
-    }
-  })
-  check('dialog fits 390 px without horizontal overflow', fit.pageOverflow <= 0 && fit.panelOverflow <= 0, JSON.stringify(fit))
-  await shot(page, 'warning-390')
+  for (const width of [390, 360]) {
+    await page.setViewportSize({ width, height: 800 })
+    await page.waitForTimeout(300)
+    const fit = await page.evaluate(() => {
+      const panel = document.querySelector('[role=dialog]')
+      return {
+        pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        panelOverflow: panel.scrollWidth - panel.clientWidth,
+        panelWidth: panel.getBoundingClientRect().width
+      }
+    })
+    check(`dialog fits ${width} px without horizontal overflow`, fit.pageOverflow <= 0 && fit.panelOverflow <= 0, JSON.stringify(fit))
+    if (width === 390) await shot(page, 'warning-390')
+  }
   await page.keyboard.press('Escape')
   await context.close()
 }
@@ -295,13 +311,18 @@ function readFileBytesAsBase64Js() {
 {
   const { context, page, pageErrors } = await newPage({ locale: 'de-DE', initScript: PICKER_OFF })
   await page.goto(APP_URL)
+  await page.locator('#project-menu-trigger').waitFor()
+  await page.locator('#project-menu-trigger').click()
+  await page.getByRole('menuitem', { name: 'Neues Projekt' }).click()
+  await waitFor(async () => (await state(page, '(ed) => ed.project.clips.length')) === 0 && (await state(page, '(ed) => ed.totalDuration')) === 0, 5000)
   await page.locator('#export-button').click()
   await dialog(page).waitFor()
   const text = await dialog(page).innerText()
   check('German title and labels are shown', ['Video exportieren', 'Auflösung', 'Bilder pro Sekunde', 'Qualität', 'Format'].every((s) => text.includes(s)))
   check('German quality names are shown', ['Gut', 'Klein', 'Sehr klein'].every((s) => text.includes(s)))
   await waitPhase(page, 'ready', 15_000)
-  check('an empty project explains that there is nothing to export', (await dialog(page).innerText()).includes('nichts zu exportieren'))
+  const emptyText = await dialog(page).innerText()
+  check('an empty project explains that there is nothing to export', emptyText.includes('nichts zu exportieren'), emptyText.replace(/\n/g, ' | '))
   check('an empty project disables Start export', !(await page.getByRole('button', { name: 'Export starten', exact: true }).isEnabled()))
   check('dialog in German has no bitrate wording', !/kbit|Mbit|bit\/s/i.test(text))
   check('German pass: no uncaught page errors', pageErrors.length === 0, pageErrors.join(' | '))

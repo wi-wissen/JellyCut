@@ -151,7 +151,8 @@ export default defineComponent({
         <ColorSwatches
           :model-value="item.style.color"
           :group-label="$t('text.color')"
-          :custom-label="$t('text.customColor')"
+          swatch-key="text.swatchText"
+          :custom-label="$t('text.customTextColor')"
           @update="setColor"
           @commit="endEdit"
         />
@@ -170,7 +171,8 @@ export default defineComponent({
         <ColorSwatches
           :model-value="item.style.outline ?? defaultOutline"
           :group-label="$t('text.outlineColor')"
-          :custom-label="$t('text.customColor')"
+          swatch-key="text.swatchOutline"
+          :custom-label="$t('text.customOutlineColor')"
           @update="setOutlineColor"
           @commit="endEdit"
         />
@@ -250,7 +252,7 @@ export default defineComponent({
           type="number"
           min="0"
           step="0.1"
-          class="min-h-11 w-full rounded-lg border border-line bg-panel px-2 text-sm tabular-nums text-fg"
+          class="min-h-11 w-full rounded-lg border border-line bg-panel px-2 text-sm [font-variant-numeric:tabular-nums] text-fg"
           :value="startSeconds"
           @change="setStart"
         />
@@ -262,7 +264,7 @@ export default defineComponent({
           type="number"
           min="0.1"
           step="0.1"
-          class="min-h-11 w-full rounded-lg border border-line bg-panel px-2 text-sm tabular-nums text-fg"
+          class="min-h-11 w-full rounded-lg border border-line bg-panel px-2 text-sm [font-variant-numeric:tabular-nums] text-fg"
           :value="durationSeconds"
           @change="setDuration"
         />

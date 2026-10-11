@@ -214,12 +214,14 @@ export const useExportStore = defineStore('export', {
       }
       const fileName = exportFileName(project.name, 'mp4')
       const options = { ...this.options }
+      // The state is reactive (Proxy objects cannot be posted to a worker), so the worker gets a plain copy.
+      const snapshot = JSON.parse(JSON.stringify(project)) as Project
 
       this.progress = null
       this.error = null
       this.phase = 'running'
       try {
-        const run = startExport({ project, files, options }, FONT_SOURCES, (progress) => {
+        const run = startExport({ project: snapshot, files, options }, FONT_SOURCES, (progress) => {
           this.progress = progress
         })
         activeRun = run

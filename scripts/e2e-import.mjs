@@ -74,8 +74,14 @@ await page.locator('#project-menu-trigger').click()
 await page.getByRole('menuitem', { name: 'New project' }).click()
 if (await page.locator('#project-menu-panel').isVisible()) await page.keyboard.press('Escape')
 
-const tile = (name) => page.locator('aside > section').getByRole('button', { name })
-const tileText = async (name) => (await tile(name).textContent()) ?? ''
+const tile = (name) => page.locator('aside section').getByRole('button', { name })
+// Audio files live in the Audio tab; video and images in Media.
+const AUDIO_ONLY = new Set(['music.webm'])
+const openFor = (name) => page.getByRole('button', { name: AUDIO_ONLY.has(name) ? 'Audio' : 'Media', exact: true }).click()
+const tileText = async (name) => {
+  await openFor(name)
+  return (await tile(name).textContent()) ?? ''
+}
 
 /** Reads the editor and media stores through the mounted Vue app. */
 function readState() {
@@ -131,7 +137,10 @@ await check('the + tile opens the file chooser', async () => {
 // --- Import through the file input ---
 const FIRST_BATCH = ['clip-a.webm', 'music.webm', 'still.png', 'clip-b-portrait.mp4']
 await page.locator('input[type=file]').setInputFiles(FIRST_BATCH.map((n) => join(FIXTURES, n)))
-for (const name of FIRST_BATCH) await tile(name).waitFor({ timeout: 15000 })
+for (const name of FIRST_BATCH) {
+  await openFor(name)
+  await tile(name).waitFor({ timeout: 15000 })
+}
 
 await check('tiles show the file names and the durations (m:ss)', async () => {
   for (const name of ['clip-a.webm', 'music.webm', 'clip-b-portrait.mp4']) {
@@ -152,6 +161,7 @@ await check('the h264 file shows the unsupported message exactly when this brows
 
 await check('thumbnails exist for the video and the image', async () => {
   for (const name of ['clip-a.webm', 'still.png']) {
+    await openFor(name)
     await waitUntil(async () => ((await tile(name).locator('img').getAttribute('src')) ?? '').startsWith('data:image/'), `thumbnail of ${name}`, 15000)
   }
 })
@@ -166,6 +176,7 @@ const idImage = await assetId('still.png')
 const idMusic = await assetId('music.webm')
 
 await check('clicking the video tile adds one clip (+1)', async () => {
+  await openFor('clip-a.webm')
   await tile('clip-a.webm').click()
   await waitUntil(async () => (await readState()).clips.length === before.clips.length + 1, 'clip count')
   const added = (await readState()).clips.at(-1)
@@ -174,6 +185,7 @@ await check('clicking the video tile adds one clip (+1)', async () => {
 })
 
 await check('clicking the image tile adds a 5 s clip', async () => {
+  await openFor('still.png')
   await tile('still.png').click()
   await waitUntil(async () => (await readState()).clips.length === before.clips.length + 2, 'clip count')
   const added = (await readState()).clips.at(-1)
@@ -182,6 +194,7 @@ await check('clicking the image tile adds a 5 s clip', async () => {
 })
 
 await check('clicking the audio tile adds one music item', async () => {
+  await openFor('music.webm')
   await tile('music.webm').click()
   await waitUntil(async () => (await readState()).music.length === 1, 'music count')
   assert((await readState()).music[0].assetId === idMusic, 'music item must use the audio asset')
@@ -194,6 +207,7 @@ await check('clicking the unsupported tile adds nothing', async () => {
   }
   const clipsBefore = (await readState()).clips.length
   // Playwright would wait for an aria-disabled button; force the click so the no-op is really tested.
+  await openFor('clip-b-portrait.mp4')
   await tile('clip-b-portrait.mp4').click({ force: true })
   await page.waitForTimeout(200)
   assert((await readState()).clips.length === clipsBefore, 'unsupported asset was added')
@@ -212,15 +226,16 @@ await check('dragging files over the panel shows the drop highlight and dropping
     const file = new File([blob], 'frames.webm', { type: 'video/webm' })
     const data = new DataTransfer()
     data.items.add(file)
-    const section = document.querySelector('aside > section')
+    const section = document.querySelector('aside section')
     section.dispatchEvent(new DragEvent('dragenter', { dataTransfer: data, bubbles: true, cancelable: true }))
     window.__dropData = data
   })
   await page.getByText('Drop files here to import them').waitFor({ timeout: 3000 })
   await page.evaluate(() => {
-    const section = document.querySelector('aside > section')
+    const section = document.querySelector('aside section')
     section.dispatchEvent(new DragEvent('drop', { dataTransfer: window.__dropData, bubbles: true, cancelable: true }))
   })
+  await openFor('frames.webm')
   await tile('frames.webm').waitFor({ timeout: 15000 })
   await waitUntil(async () => (await readState()).status[await assetId('frames.webm')] === 'ready', 'frames.webm ready')
   assert(!(await page.getByText('Drop files here to import them').isVisible()), 'highlight must go away after the drop')
@@ -232,10 +247,12 @@ await check('a garbage file gives a friendly message and the app keeps working',
   writeFileSync(garbage, randomBytes(4000))
   const clipsBefore = (await readState()).clips.length
   await page.locator('input[type=file]').setInputFiles(garbage)
+  await openFor('garbage.mp4')
   await tile('garbage.mp4').waitFor({ timeout: 15000 })
   const text = await tileText('garbage.mp4')
   assert(text.includes(MSG.unsupportedFormat) || text.includes(MSG.noMedia), `no friendly message: "${text}"`)
   assert(!(await page.getByRole('alert').isVisible()), 'an unreadable file must not show the import error box')
+  await openFor('clip-a.webm')
   await tile('clip-a.webm').click()
   await waitUntil(async () => (await readState()).clips.length === clipsBefore + 1, 'clip after garbage import')
 })
@@ -249,13 +266,14 @@ await page.locator('#project-menu-trigger').waitFor()
 
 await check('after a reload the assets are shown as missing with the re-link message', async () => {
   for (const name of ['clip-a.webm', 'music.webm', 'still.png', 'frames.webm']) {
+    await openFor(name)
     await tile(name).waitFor({ timeout: 10000 })
     assert((await tileText(name)).includes(MSG.missing), `${name} misses the re-link message`)
   }
   const after = await readState()
   for (const [id, status] of Object.entries(after.status)) assert(status === 'missing', `${id} is ${status}`)
   assert(after.clips.length === beforeReload.clips.length, 'restored timeline must keep its clips')
-  assert((await page.locator('aside > section').getByRole('button', { name: /Add clip-a.webm to the timeline/ }).count()) === 0, 'missing tiles must not offer adding')
+  assert((await page.locator('aside section').getByRole('button', { name: /Add clip-a.webm to the timeline/ }).count()) === 0, 'missing tiles must not offer adding')
 })
 
 await check('no uncaught page errors', async () => {
