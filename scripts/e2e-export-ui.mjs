@@ -73,6 +73,18 @@ const startButton = (page) => page.getByRole('button', { name: 'Start export', e
 const estimateText = (page) =>
   page.locator('[role=dialog] p', { hasText: /size about/ }).first().innerText()
 
+// The time part of the estimate line, spelled the way the dialog spells it in English.
+const expectedTimeText = (page) =>
+  page.evaluate(async () => {
+    const { formatEstimate } = await import('/src/core/export/estimate.ts')
+    const pinia = document.querySelector('#app').__vue_app__.config.globalProperties.$pinia
+    const f = formatEstimate(pinia._s.get('export').estimatedSeconds)
+    if (f.unit === 'seconds') return `${f.value} s`
+    if (f.unit === 'minutes') return f.seconds ? `${f.value} min ${f.seconds} s` : `${f.value} min`
+    return f.minutes ? `${f.value} h ${f.minutes} min` : `${f.value} h`
+  })
+const exportTimeOf = async (page) => ((await estimateText(page)).match(/export takes about ([^\n]+)/)?.[1] ?? '').trim()
+
 async function setTheme(page, theme) {
   await page.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme)
 }
@@ -150,6 +162,27 @@ function readFileBytesAsBase64Js() {
   await page.getByRole('radio', { name: 'Good', exact: true }).click({ force: true })
   await waitFor(async () => (await estimateText(page)) === est2, 3000)
   check('switching back restores the same estimate', (await estimateText(page)) === est2)
+
+  // Time: resolution and frame rate change it; the line shows it in words that match the store value.
+  const seconds = () => state(page, '(ed, ex) => ex.estimatedSeconds')
+  const sec480 = await seconds()
+  check('the estimate line names the export time', (await exportTimeOf(page)) !== '', await estimateText(page))
+  check('the export time text matches the store estimate', (await exportTimeOf(page)) === (await expectedTimeText(page)), `${await exportTimeOf(page)} vs ${await expectedTimeText(page)}`)
+  check('the calibration hint is shown before any export', (await dialog(page).innerText()).includes('more accurate'))
+  await pickResolution(page, '1080p')
+  await waitFor(async () => (await seconds()) > sec480, 3000)
+  const sec1080 = await seconds()
+  check('1080p takes longer to export than 480p', sec1080 > sec480, `${sec480} s -> ${sec1080} s`)
+  await page.getByRole('radio', { name: '60', exact: true }).click({ force: true })
+  await waitFor(async () => (await seconds()) > sec1080, 3000)
+  const sec1080at60 = await seconds()
+  check('60 fps takes longer to export than 30 fps', sec1080at60 > sec1080, `${sec1080} s -> ${sec1080at60} s`)
+  check('the time text follows the new value', (await exportTimeOf(page)) === (await expectedTimeText(page)), await exportTimeOf(page))
+  await pickResolution(page, '480p')
+  await page.getByRole('radio', { name: '30', exact: true }).click({ force: true })
+  await waitFor(async () => (await seconds()) === sec480, 3000)
+  check('back at 480p/30 the time is the first value again', (await seconds()) === sec480)
+
   const gifDisabled = await page.getByRole('radio', { name: /GIF/ }).isDisabled()
   check('GIF format is shown but disabled', gifDisabled)
 
@@ -177,6 +210,7 @@ function readFileBytesAsBase64Js() {
   await waitPhase(page, 'ready', 15_000)
   await pickResolution(page, '480p')
   await page.getByRole('radio', { name: '30', exact: true }).click({ force: true })
+  const preExportText = await estimateText(page)
   await startButton(page).click()
   let maxFraction = 0
   let sawProgressbar = false
@@ -190,6 +224,9 @@ function readFileBytesAsBase64Js() {
   check('export at 480p/30 finishes in the done state', runDone, `phase=${phaseNow} error=${JSON.stringify(await state(page, '(ed, ex) => ex.error'))}`)
   check('done state shows Save and the file name', runDone && (await page.getByRole('button', { name: 'Save', exact: true }).isVisible()) && (await dialog(page).innerText()).includes('New project.mp4'))
   await shot(page, 'done')
+  const storedCalibration = await page.evaluate(() => localStorage.getItem('jellycut.export.calibration'))
+  const learned = storedCalibration ? JSON.parse(storedCalibration) : {}
+  check('the first export stores a calibration', [learned.avc, learned.software].some((f) => typeof f === 'number' && f > 0), storedCalibration ?? 'nothing stored')
 
   const downloadPromise = page.waitForEvent('download', { timeout: 15_000 }).catch(() => null)
   await page.getByRole('button', { name: 'Save', exact: true }).click().catch(() => undefined)
@@ -222,6 +259,14 @@ function readFileBytesAsBase64Js() {
   // Cancel halfway through a longer export.
   await page.getByRole('button', { name: 'Export again', exact: true }).click()
   await waitPhase(page, 'ready', 5000)
+  // Same options as before the export (480p, 30): the estimate now uses the learned correction.
+  const uncal = await state(page, '(ed, ex) => ex.uncalibratedSeconds')
+  const corrected = await state(page, '(ed, ex) => ex.estimatedSeconds')
+  check('the learned correction changes the estimated time', Math.abs(corrected - uncal) > 0.01, `${uncal} s -> ${corrected} s`)
+  check('the displayed time is the corrected value', (await exportTimeOf(page)) === (await expectedTimeText(page)), await exportTimeOf(page))
+  check('the displayed time differs from the one before the export', (await estimateText(page)) !== preExportText, `${preExportText} | now: ${await estimateText(page)}`)
+  check('the calibration hint is gone after an export', !(await dialog(page).innerText()).includes('more accurate'))
+  await shot(page, 'calibrated')
   await pickResolution(page, '1080p')
   await page.getByRole('radio', { name: '60', exact: true }).click({ force: true })
   await startButton(page).click()
@@ -250,6 +295,12 @@ function readFileBytesAsBase64Js() {
   await page.reload()
   await page.locator('#project-menu-trigger').waitFor()
   await waitFor(async () => (await state(page, '(ed) => ed.project.clips.length')) === 2, 10_000)
+  // Restoring a project with missing media opens the re-link dialog, which covers the page. It is not part of this check.
+  if (await waitFor(async () => await state(page, '(ed, ex, m) => m.relinkOpen'), 5000)) {
+    await page.keyboard.press('Escape')
+    await waitFor(async () => !(await state(page, '(ed, ex, m) => m.relinkOpen')), 2000)
+    await state(page, '(ed, ex, m) => { m.relinkOpen = false }')
+  }
   await page.locator('#export-button').click()
   await dialog(page).waitFor()
   await waitPhase(page, 'ready', 15_000)
@@ -319,6 +370,8 @@ function readFileBytesAsBase64Js() {
   await dialog(page).waitFor()
   const text = await dialog(page).innerText()
   check('German title and labels are shown', ['Video exportieren', 'Auflösung', 'Bilder pro Sekunde', 'Qualität', 'Format'].every((s) => text.includes(s)))
+  check('German estimate line names the export time', /Export dauert ca\. \S/.test(text) && !text.includes('export takes'), text.replace(/\n/g, ' | '))
+  check('German calibration hint is shown', text.includes('Die Schätzung wird nach dem ersten Export'))
   check('German quality names are shown', ['Gut', 'Klein', 'Sehr klein'].every((s) => text.includes(s)))
   await waitPhase(page, 'ready', 15_000)
   const emptyText = await dialog(page).innerText()

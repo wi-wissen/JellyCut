@@ -128,7 +128,7 @@
     },
     "close": "Schließen",
     "pictureFit": {
-      "title": "Bildanpassung",
+      "title": "Bildanpassung, alle Clips",
       "chip": "Bildanpassung: {mode}",
       "chipAria": "Bildanpassung, aktuell {mode}. Öffnet die Optionen zur Bildanpassung",
       "explain": "Einpassen zeigt das ganze Bild, Füllen schneidet es zu, damit es den Bildschirm ausfüllt",
@@ -252,7 +252,8 @@
     "dragHint": "Ziehe den Text im Bild, um ihn zu platzieren",
     "posLeft": "Links",
     "posCenter": "Mitte",
-    "posRight": "Rechts"
+    "posRight": "Rechts",
+    "fontSample": "Aa Hallo"
   },
   "music": {
     "header": "Eigener Ton · {name}",
@@ -285,7 +286,7 @@
       "gif": "GIF",
       "soon": "Demnächst"
     },
-    "estimate": "Dauer {duration} · Größe ca. {size}",
+    "estimate": "Dauer {duration} · Größe ca. {size} · Export dauert ca. {time}",
     "estimateNote": "Schätzung",
     "encoder": "Codec {codec}",
     "codecs": {
@@ -312,7 +313,15 @@
       "missing": "Für den Export fehlen Dateien: {names}. Importiere sie in der Bibliothek erneut.",
       "unsupported": "Dieser Browser kann dieses Projekt nicht exportieren.",
       "failed": "Der Export ist fehlgeschlagen. {message}"
-    }
+    },
+    "time": {
+      "seconds": "{value} Sek.",
+      "minutes": "{value} Min.",
+      "minutesSeconds": "{value} Min. {seconds} Sek.",
+      "hours": "{value} Std.",
+      "hoursMinutes": "{value} Std. {minutes} Min."
+    },
+    "calibrationHint": "Die Schätzung wird nach dem ersten Export auf diesem Computer genauer."
   },
   "record": {
     "title": "Aufnahme",
@@ -437,6 +446,48 @@
       "forget": "Ordner vergessen",
       "importFromFolder": "Aus Arbeitsordner importieren…",
       "needsAccess": "Der Browser fragt nach dem Start erneut nach dem Zugriff."
+    }
+  },
+  "colors": {
+    "picker": "Farbauswahl",
+    "more": "Weitere Farben",
+    "recent": "Zuletzt benutzt",
+    "defaults": "Standardfarben",
+    "palette": "Tailwind-Palette",
+    "hex": "Hex-Farbe",
+    "hexHint": "#RGB oder #RRGGBB",
+    "hexInvalid": "Keine Farbe. Verwende #RGB oder #RRGGBB.",
+    "custom": "Eigene Farbe (Systemauswahl)",
+    "swatch": "Farbe {hex}",
+    "cell": "{hue} {shade} {hex}",
+    "neutral": "{name} {hex}",
+    "white": "Weiß",
+    "black": "Schwarz",
+    "gridHint": "Pfeiltasten bewegen, Enter wählt, Escape schließt",
+    "close": "Schließen",
+    "hues": {
+      "red": "Rot",
+      "orange": "Orange",
+      "amber": "Bernstein",
+      "yellow": "Gelb",
+      "lime": "Limette",
+      "green": "Grün",
+      "emerald": "Smaragd",
+      "teal": "Türkis",
+      "cyan": "Cyan",
+      "sky": "Himmelblau",
+      "blue": "Blau",
+      "indigo": "Indigo",
+      "violet": "Violett",
+      "purple": "Lila",
+      "fuchsia": "Fuchsia",
+      "pink": "Pink",
+      "rose": "Rosa",
+      "slate": "Schiefer",
+      "gray": "Grau",
+      "zinc": "Zink",
+      "neutral": "Neutral",
+      "stone": "Stein"
     }
   }
 }

@@ -12,7 +12,7 @@ import {
   textLineHeightPx,
   textPadPx,
   textRect,
-  THIRDS_GUIDES,
+  SNAP_GUIDES,
   type Box
 } from './layout'
 
@@ -174,9 +174,11 @@ describe('gesture helpers', () => {
   })
 
   it('snaps to the nearest guide within the threshold only', () => {
-    expect(snapToGuides(0.495, THIRDS_GUIDES, 0.01)).toEqual({ value: 0.5, guide: 0.5 })
-    expect(snapToGuides(0.45, THIRDS_GUIDES, 0.01)).toEqual({ value: 0.45, guide: null })
-    expect(snapToGuides(0.34, THIRDS_GUIDES, 0.02).guide).toBeCloseTo(1 / 3, 9)
+    expect(snapToGuides(0.495, SNAP_GUIDES, 0.01)).toEqual({ value: 0.5, guide: 0.5 })
+    expect(snapToGuides(0.45, SNAP_GUIDES, 0.01)).toEqual({ value: 0.45, guide: null })
+    expect(snapToGuides(0.34, SNAP_GUIDES, 0.02).guide).toBeCloseTo(1 / 3, 9)
+    expect(snapToGuides(0.76, SNAP_GUIDES, 0.02).guide).toBe(0.75)
+    expect(snapToGuides(0.5, SNAP_GUIDES, 0.0).guide).toBe(0.5)
   })
 
   it('locks a drag to the dominant axis', () => {

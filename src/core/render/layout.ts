@@ -258,5 +258,9 @@ export function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
 }
 
-/** Centre line and the two rule-of-thirds lines, as fractions of the output (the centre is included). */
-export const THIRDS_GUIDES: readonly number[] = [1 / 3, 0.5, 2 / 3]
+/**
+ * Snap lines for an item's centre, as fractions of the output on each axis: quarters, thirds and the
+ * centre line (the centre is the strong one).
+ */
+export const SNAP_GUIDES: readonly number[] = [0.25, 1 / 3, 0.5, 2 / 3, 0.75]
+export const STRONG_GUIDE = 0.5

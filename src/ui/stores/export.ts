@@ -3,6 +3,12 @@ import type { AudioCodec, VideoCodec } from 'mediabunny'
 import { exportFileName } from '../../core/export/filename'
 import { missingAssetsInUse, type AssetStatusMap } from '../../core/export/format'
 import {
+  estimateExportSeconds,
+  sourceDecodeLoad,
+  updateCalibration,
+  type EstimateCodec
+} from '../../core/export/estimate'
+import {
   EXPORT_FPS,
   EXPORT_QUALITIES,
   EXPORT_RESOLUTIONS,
@@ -38,6 +44,13 @@ export interface ExportResultInfo {
 }
 
 const STORAGE_KEY = 'jellycut.export'
+const CALIBRATION_KEY = 'jellycut.export.calibration'
+
+/** AVC is the measured hardware path; VP9 and AV1 are software encoders with their own correction. */
+export type CodecFamily = 'avc' | 'software'
+export type Calibration = Record<CodecFamily, number | null>
+const MIN_FACTOR = 0.1
+const MAX_FACTOR = 10
 
 // The file and the running export are large or not serialisable: they stay out of Pinia state.
 let activeRun: RunningExport | null = null
@@ -70,6 +83,51 @@ function writeStoredOptions(options: ExportOptions): void {
   } catch {
     // Without storage the options simply do not survive a reload.
   }
+}
+
+function usableFactor(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.min(MAX_FACTOR, Math.max(MIN_FACTOR, value)) : null
+}
+
+function readCalibration(): Calibration {
+  const empty: Calibration = { avc: null, software: null }
+  try {
+    const raw = localStorage.getItem(CALIBRATION_KEY)
+    if (!raw) return empty
+    const parsed = JSON.parse(raw) as { avc?: unknown; software?: unknown }
+    return { avc: usableFactor(parsed.avc), software: usableFactor(parsed.software) }
+  } catch {
+    return empty
+  }
+}
+
+function writeCalibration(calibration: Calibration): void {
+  try {
+    localStorage.setItem(CALIBRATION_KEY, JSON.stringify(calibration))
+  } catch {
+    // Without storage the correction only lasts for this session.
+  }
+}
+
+function familyOf(codec: string | null | undefined): CodecFamily {
+  return codec === 'avc' || codec == null ? 'avc' : 'software'
+}
+
+function estimateCodecOf(video: string | null | undefined): EstimateCodec {
+  return video === 'vp9' || video === 'av1' ? video : 'avc'
+}
+
+/** Expected export time for the project and options, without the learned correction. */
+function predictSeconds(project: Project, options: ExportOptions, codec: EstimateCodec, durationMicros: number): number {
+  const { width, height } = outputSize(project.format.ratio, options.resolution)
+  return estimateExportSeconds({
+    width,
+    height,
+    fps: options.fps,
+    durationMicros,
+    decodeMegapixels: sourceDecodeLoad(project),
+    codec
+  })
 }
 
 function statusMap(project: Project): AssetStatusMap {
@@ -117,13 +175,29 @@ export const useExportStore = defineStore('export', {
     result: null as ExportResultInfo | null,
     error: null as ExportMessage | null,
     encoders: null as EncoderInfo | null,
-    inWorker: false
+    inWorker: false,
+    calibration: readCalibration() as Calibration
   }),
   getters: {
     /** Estimated file size for the current options and the project length. */
     estimatedBytes(state): number {
       const editor = useEditorStore()
       return estimateFileSize(state.options, editor.project.format.ratio, editor.totalDuration)
+    },
+    /** Expected export time without the correction learned on this computer. */
+    uncalibratedSeconds(state): number {
+      const editor = useEditorStore()
+      return predictSeconds(editor.project, state.options, estimateCodecOf(state.encoders?.video), editor.totalDuration)
+    },
+    /** Expected export time in seconds, corrected by the factor learned from earlier exports on this computer. */
+    estimatedSeconds(state): number {
+      const editor = useEditorStore()
+      const factor = state.calibration[familyOf(state.encoders?.video)] ?? 1
+      return predictSeconds(editor.project, state.options, estimateCodecOf(state.encoders?.video), editor.totalDuration) * factor
+    },
+    /** False until one export on this computer has taught the estimate its speed. */
+    hasCalibration(state): boolean {
+      return state.calibration[familyOf(state.encoders?.video)] !== null
     },
     missingNames(): string[] {
       return missingInProject(useEditorStore().project)
@@ -214,6 +288,8 @@ export const useExportStore = defineStore('export', {
       }
       const fileName = exportFileName(project.name, 'mp4')
       const options = { ...this.options }
+      // Uncorrected prediction for this run, so the learned factor is measured against the default rates.
+      const predicted = predictSeconds(project, options, estimateCodecOf(this.encoders?.video), editor.totalDuration)
       // The state is reactive (Proxy objects cannot be posted to a worker), so the worker gets a plain copy.
       const snapshot = JSON.parse(JSON.stringify(project)) as Project
 
@@ -230,6 +306,7 @@ export const useExportStore = defineStore('export', {
         resultBlob = result.blob
         this.result = { size: result.blob.size, fileName }
         this.phase = 'done'
+        this.learnCalibration(result.videoCodec, predicted, result.elapsedMs)
       } catch (error) {
         if (error instanceof ExportCancelled) this.phase = 'cancelled'
         else if (error instanceof ExportUnsupported) this.fail({ key: 'export.errors.unsupported', params: {} })
@@ -241,6 +318,15 @@ export const useExportStore = defineStore('export', {
 
     cancel(): void {
       if (this.phase === 'running') activeRun?.cancel()
+    },
+
+    /** Takes one finished export as a sample of this computer's speed for its codec family. */
+    learnCalibration(codec: string, predictedSeconds: number, elapsedMs: number): void {
+      const family = familyOf(codec)
+      const next = updateCalibration(this.calibration[family], predictedSeconds, elapsedMs / 1000)
+      if (next === this.calibration[family]) return
+      this.calibration = { ...this.calibration, [family]: next }
+      writeCalibration(this.calibration)
     },
 
     /** Offers the finished file: a save dialog where the browser has one, else a download. */

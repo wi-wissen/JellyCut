@@ -234,12 +234,10 @@ export default defineComponent({
           </button>
         </template>
       </div>
-      <p v-if="caps.directoryPicker" class="px-2.5 pb-1 text-xs text-muted">
-        {{ folder ? $t('project.folderCurrent', { name: folder.name }) : $t('project.folderNone') }}
-      </p>
-      <p v-if="caps.directoryPicker && folder && folder.permission !== 'granted'" class="px-2.5 pb-1 text-xs text-muted">
-        {{ $t('relink.folder.needsAccess') }}
-      </p>
+      <div v-if="caps.directoryPicker" class="px-2.5 pb-1 text-xs text-muted">
+        <p>{{ folder ? $t('project.folderCurrent', { name: folder.name }) : $t('project.folderNone') }}</p>
+        <p v-if="folder && folder.permission !== 'granted'">{{ $t('relink.folder.needsAccess') }}</p>
+      </div>
       <p v-else class="mt-2 border-t border-line px-2.5 pt-2 text-xs text-muted">
         {{ $t('project.browserInfo') }}
       </p>

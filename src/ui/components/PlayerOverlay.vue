@@ -15,7 +15,8 @@ import {
   scaleFromHandle,
   snapToGuides,
   textRect,
-  THIRDS_GUIDES,
+  SNAP_GUIDES,
+  STRONG_GUIDE,
   type Box,
   type TextBox,
   type TextLayerInput,
@@ -88,7 +89,7 @@ export default defineComponent({
     format: { type: Object as PropType<Project['format']>, required: true }
   },
   data() {
-    return { guideX: null as number | null, guideY: null as number | null, fontTick: 0, corners: CORNERS }
+    return { guideX: null as number | null, guideY: null as number | null, dragging: false, fontTick: 0, corners: CORNERS, snapGuides: SNAP_GUIDES, strongGuide: STRONG_GUIDE }
   },
   computed: {
     ...mapState(useEditorStore, ['project', 'selection', 'selectedClip', 'playheadMicros']),
@@ -210,6 +211,7 @@ export default defineComponent({
     startPress(event: PointerEvent, partial: Omit<Drag, 'pointerX' | 'pointerY' | 'outPerPx' | 'moved'>): void {
       ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
       drag = { ...partial, pointerX: event.clientX, pointerY: event.clientY, outPerPx: this.outPerPx(), moved: false }
+      this.dragging = true
       this.beginGesture()
     },
     onTextMoveDown(event: PointerEvent, view: BoxView): void {
@@ -290,49 +292,54 @@ export default defineComponent({
       if (!d.moved && dxPx === 0 && dyPx === 0) return
       d.moved = true
       if (d.kind === 'move') {
-        if (d.target === 'text') this.dragText(d, dxPx, dyPx, event.shiftKey)
-        else this.dragClip(d, dxPx, dyPx, event.shiftKey)
+        if (d.target === 'text') this.dragText(d, dxPx, dyPx, event.shiftKey, event.altKey)
+        else this.dragClip(d, dxPx, dyPx, event.shiftKey, event.altKey)
       } else {
         this.scaleBox(d, event)
       }
     },
-    /** Moves the text centre; Shift locks the axis, both axes snap to the centre and thirds lines. */
-    dragText(d: Drag, dxPx: number, dyPx: number, shift: boolean): void {
+    /**
+     * Moves the text anchor. Shift locks the dominant axis. Unless Alt is held, the centre snaps to the
+     * centre, thirds and quarter lines on both axes within 8 screen pixels.
+     */
+    dragText(d: Drag, dxPx: number, dyPx: number, shift: boolean, alt: boolean): void {
       const { dx, dy, lockX, lockY } = lockAxis(dxPx, dyPx, shift)
       const delta = dragToTransformDelta(dx, dy, this.outW, this.outH)
       let x = clamp(d.originX + delta.x, 0, 1)
       let y = clamp(d.originY + delta.y, 0, 1)
-      let guideX: number | null = null
-      let guideY: number | null = null
-      // The snap distance is 8 screen pixels, whatever the preview scale.
+      if (lockX) x = d.originX
+      if (lockY) y = d.originY
+      const snap = this.snapAxes(x, y, d, alt, lockX, lockY)
+      const id = d.id
+      this.editProject((base) => updateText(base, id, { pos: { x: snap.x, y: snap.y } }), `text-drag:${id}`)
+    },
+    dragClip(d: Drag, dxPx: number, dyPx: number, shift: boolean, alt: boolean): void {
+      const { dx, dy, lockX, lockY } = lockAxis(dxPx, dyPx, shift)
+      const delta = dragToTransformDelta(dx, dy, this.outW, this.outH)
+      // transform.x/y are offsets from the centre, so the picture centre is 0.5 + x.
+      let x = clamp(d.originX + delta.x, -1, 1)
+      let y = clamp(d.originY + delta.y, -1, 1)
+      if (lockX) x = d.originX
+      if (lockY) y = d.originY
+      const snap = this.snapAxes(clamp(x + 0.5, 0, 1), clamp(y + 0.5, 0, 1), d, alt, lockX, lockY)
+      const id = d.id
+      const transform = { x: snap.x - 0.5, y: snap.y - 0.5 }
+      this.editProject((base) => setClipProps(base, id, { transform }), `clip-move:${id}`)
+    },
+    /** Snaps the centre (fractions of the output) to the guide lines; shows the guide that was hit. */
+    snapAxes(x: number, y: number, d: Drag, alt: boolean, lockX: boolean, lockY: boolean): { x: number; y: number } {
+      if (alt) {
+        this.guideX = null
+        this.guideY = null
+        return { x, y }
+      }
       const snapX = (SNAP_PX * d.outPerPx) / this.outW
       const snapY = (SNAP_PX * d.outPerPx) / this.outH
-      if (!lockX) {
-        const s = snapToGuides(x, THIRDS_GUIDES, snapX)
-        x = s.value
-        guideX = s.guide
-      } else {
-        x = d.originX
-      }
-      if (!lockY) {
-        const s = snapToGuides(y, THIRDS_GUIDES, snapY)
-        y = s.value
-        guideY = s.guide
-      } else {
-        y = d.originY
-      }
-      this.guideX = guideX
-      this.guideY = guideY
-      const id = d.id
-      this.editProject((base) => updateText(base, id, { pos: { x, y } }), `text-drag:${id}`)
-    },
-    dragClip(d: Drag, dxPx: number, dyPx: number, shift: boolean): void {
-      const { dx, dy } = lockAxis(dxPx, dyPx, shift)
-      const delta = dragToTransformDelta(dx, dy, this.outW, this.outH)
-      const x = clamp(d.originX + delta.x, -1, 1)
-      const y = clamp(d.originY + delta.y, -1, 1)
-      const id = d.id
-      this.editProject((base) => setClipProps(base, id, { transform: { x, y } }), `clip-move:${id}`)
+      const sx = lockX ? { value: x, guide: null } : snapToGuides(x, SNAP_GUIDES, snapX)
+      const sy = lockY ? { value: y, guide: null } : snapToGuides(y, SNAP_GUIDES, snapY)
+      this.guideX = sx.guide
+      this.guideY = sy.guide
+      return { x: sx.value, y: sy.value }
     },
     scaleBox(d: Drag, event: PointerEvent): void {
       if (!d.corner) return
@@ -361,6 +368,7 @@ export default defineComponent({
     },
     endPress(): void {
       drag = null
+      this.dragging = false
       this.guideX = null
       this.guideY = null
       this.endGesture()
@@ -436,16 +444,37 @@ function arrowDelta(key: string, step: number): Point | null {
     <!-- Clicking the picture selects; boxes sit above this layer and take their own pointer events. -->
     <div class="pointer-events-auto absolute inset-0" data-role="pick" @pointerdown="onPictureDown" />
 
+    <!-- While dragging, every snap line is faint; the one being snapped to is bright. The centre line is the strong one. -->
+    <template v-if="dragging">
+      <div
+        v-for="g in snapGuides"
+        :key="`fx-${g}`"
+        class="pointer-events-none absolute inset-y-0 z-[8] w-px -translate-x-px bg-signal/30"
+        :style="{ left: `${g * 100}%` }"
+        data-role="guide-candidate-x"
+        aria-hidden="true"
+      />
+      <div
+        v-for="g in snapGuides"
+        :key="`fy-${g}`"
+        class="pointer-events-none absolute inset-x-0 z-[8] h-px -translate-y-px bg-signal/30"
+        :style="{ top: `${g * 100}%` }"
+        data-role="guide-candidate-y"
+        aria-hidden="true"
+      />
+    </template>
     <div
       v-if="guideX !== null"
-      class="pointer-events-none absolute inset-y-0 z-[9] w-px -translate-x-px bg-signal shadow-[0_0_0_1px_rgba(20,18,31,0.5)]"
+      class="pointer-events-none absolute inset-y-0 z-[9] -translate-x-px bg-signal shadow-[0_0_0_1px_rgba(20,18,31,0.5)]"
+      :class="guideX === strongGuide ? 'w-[2px]' : 'w-px'"
       :style="{ left: `${(guideX ?? 0) * 100}%` }"
       data-role="guide-x"
       aria-hidden="true"
     />
     <div
       v-if="guideY !== null"
-      class="pointer-events-none absolute inset-x-0 z-[9] h-px -translate-y-px bg-signal shadow-[0_0_0_1px_rgba(20,18,31,0.5)]"
+      class="pointer-events-none absolute inset-x-0 z-[9] -translate-y-px bg-signal shadow-[0_0_0_1px_rgba(20,18,31,0.5)]"
+      :class="guideY === strongGuide ? 'h-[2px]' : 'h-px'"
       :style="{ top: `${(guideY ?? 0) * 100}%` }"
       data-role="guide-y"
       aria-hidden="true"

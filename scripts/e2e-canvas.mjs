@@ -247,6 +247,44 @@ const snapped = await st('(ed) => ed.selectedItem.pos.x')
 check('dragging near the centre line snaps to it and shows the guide', near(snapped, 0.5, 1e-9) && guideShown, JSON.stringify({ snapped, guideShown }))
 check('the guide disappears when the drag ends', (await page.locator('[data-role=guide-x]').count()) === 0)
 
+// (5b) Snapping on both axes: vertical centre, quarters, thirds; Alt turns snapping off.
+async function dragTextTo(fx, fy, alt = false) {
+  // Moves the text so that its anchor ends at (fx, fy) (fractions), grabbing it left of its centre.
+  const ov = await rectOf('[data-player-overlay]')
+  const tbx = await rectOf('[data-role=text-box]')
+  const cur = await st('(ed) => ({ ...ed.selectedItem.pos })')
+  const from = { x: tbx.cx - tbx.w * 0.25, y: tbx.cy }
+  if (alt) await page.keyboard.down('Alt')
+  await page.mouse.move(from.x, from.y)
+  await page.mouse.down()
+  for (let i = 1; i <= 6; i++) {
+    await page.mouse.move(from.x + ((fx - cur.x) * ov.w * i) / 6, from.y + ((fy - cur.y) * ov.h * i) / 6)
+  }
+  const guides = { x: await page.locator('[data-role=guide-x]').count(), y: await page.locator('[data-role=guide-y]').count() }
+  await page.mouse.up()
+  if (alt) await page.keyboard.up('Alt')
+  await page.waitForTimeout(120)
+  return { pos: await st('(ed) => ({ ...ed.selectedItem.pos })'), guides }
+}
+for (const [name, target, axis] of [
+  ['vertical centre line', [0.3, 0.5 + 0.003], 'y'],
+  ['horizontal quarter line 3/4', [0.75 - 0.003, 0.3], 'x'],
+  ['horizontal third line 1/3', [1 / 3 + 0.002, 0.3], 'x'],
+  ['vertical quarter line 1/4', [0.3, 0.25 - 0.002], 'y']
+]) {
+  await st('(ed) => ed.updateSelectedText({ pos: { x: 0.3, y: 0.3 } })')
+  await page.waitForTimeout(120)
+  const r = await dragTextTo(target[0], target[1])
+  const snappedValue = axis === 'x' ? r.pos.x : r.pos.y
+  const expected = name.includes('3/4') ? 0.75 : name.includes('1/3') ? 1 / 3 : name.includes('1/4') ? 0.25 : 0.5
+  const guideShown = axis === 'x' ? r.guides.x === 1 : r.guides.y === 1
+  check(`snaps to the ${name} and shows its guide`, near(snappedValue, expected, 1e-9) && guideShown, JSON.stringify({ r, expected }))
+}
+await st('(ed) => ed.updateSelectedText({ pos: { x: 0.3, y: 0.3 } })')
+await page.waitForTimeout(120)
+const altRun = await dragTextTo(0.5 + 0.003, 0.3, true)
+check('holding Alt disables snapping', near(altRun.pos.x, 0.503, 0.002) && altRun.guides.x === 0, JSON.stringify(altRun))
+
 // (6) Clip drag and scale: transform changes and each gesture is one undo step.
 await st('(ed, me, id) => { ed.select({ kind: "clip", id }); ed.setSelectedClipProps({ transform: { x: 0, y: 0, scale: 1 } }) }', clipId)
 await page.waitForSelector('[data-role=clip-box]')
@@ -257,12 +295,12 @@ const pastC0 = await st('(ed) => ed.history.past.length')
 const gc = { x: cb.cx - cb.w * 0.2, y: cb.cy - cb.h * 0.2 }
 await page.mouse.move(gc.x, gc.y)
 await page.mouse.down()
-for (let i = 1; i <= 6; i++) await page.mouse.move(gc.x + (80 * i) / 6, gc.y + (40 * i) / 6)
+for (let i = 1; i <= 6; i++) await page.mouse.move(gc.x + (0.1 * ovc.w * i) / 6, gc.y + (0.05 * ovc.h * i) / 6)
 await page.mouse.up()
 await page.waitForTimeout(200)
 const tr1 = await st('(ed, me, id) => ({ ...ed.project.clips.find((c) => c.id === id).transform })', clipId)
 check('dragging the picture moves transform x/y by the dragged fraction (+-1 %)',
-  near(tr1.x, 80 / ovc.w, 0.01) && near(tr1.y, 40 / ovc.h, 0.01), JSON.stringify(tr1))
+  near(tr1.x, 0.1, 0.01) && near(tr1.y, 0.05, 0.01), JSON.stringify(tr1))
 const cbS = await rectOf('[data-role=clip-box]')
 const hs = await page.locator('[data-role=clip-box] button[aria-label=Scale]').all()
 const sb = await hs[0].boundingBox()
@@ -285,6 +323,24 @@ await page.keyboard.press('Control+z')
 await page.waitForTimeout(150)
 const tr4 = await st('(ed, me, id) => ({ ...ed.project.clips.find((c) => c.id === id).transform })', clipId)
 check('a second Ctrl+Z undoes the move', near(tr4.x, 0, 1e-9) && near(tr4.y, 0, 1e-9) && near(tr4.scale, 1, 1e-9), JSON.stringify(tr4))
+
+// (6b) A picture snaps its centre to the centre line.
+await st('(ed, me, t) => ed.setSelectedClipProps({ transform: t })', { x: 0.1, y: 0 })
+await page.waitForTimeout(150)
+{
+  const ov = await rectOf('[data-player-overlay]')
+  const cbc = await rectOf('[data-role=clip-box]')
+  const from = { x: cbc.cx - cbc.w * 0.2, y: cbc.cy - cbc.h * 0.2 }
+  const dx = (0.5 + 0.003 - 0.6) * ov.w
+  await page.mouse.move(from.x, from.y)
+  await page.mouse.down()
+  for (let i = 1; i <= 6; i++) await page.mouse.move(from.x + (dx * i) / 6, from.y)
+  await page.mouse.up()
+  await page.waitForTimeout(120)
+  const tr = await st('(ed, me, id) => ({ ...ed.project.clips.find((c) => c.id === id).transform })', clipId)
+  check('a picture snaps its centre to the centre line', near(tr.x, 0, 1e-9), JSON.stringify(tr))
+  await st('(ed, me, t) => ed.setSelectedClipProps({ transform: t })', { x: 0, y: 0 })
+}
 
 // (7) Keyboard nudge of the text box.
 await st('(ed, me, id) => ed.select({ kind: "text", id })', await st('(ed) => ed.project.texts[0].id'))
@@ -341,14 +397,69 @@ const layout = await page.evaluate(() => {
   return {
     content: pick(document.querySelector('textarea')),
     swatches: pick(document.querySelector('[role=group][aria-label="Colour"]')),
-    font: pick(document.querySelector('select')),
+    font: pick(document.querySelector('[id^=text-font-]')),
     position: pick(document.querySelector('[role=group][aria-label="Position"]')),
+    hint: pick([...document.querySelectorAll('p')].find((p) => /Drag the text/.test(p.textContent))),
     viewport: visibleBottom
   }
 })
-const inView = ['content', 'swatches', 'font', 'position'].every((k) => layout[k] && layout[k].top >= 0 && layout[k].bottom <= layout.viewport)
-check('content, colours, font and position buttons are visible at 1440x900 without scrolling', inView, JSON.stringify(layout))
+const inView = ['content', 'swatches', 'font', 'position', 'hint'].every((k) => layout[k] && layout[k].top >= 0 && layout[k].bottom <= layout.viewport)
+check('content, colours, font, position buttons and their hint are visible at 1440x900 without scrolling', inView, JSON.stringify(layout))
 await page.screenshot({ path: join(SHOTS, 'canvas-check-text-1440.png') })
+
+// (12) Colour picker: palette cell, hex field (live and invalid), native input, arrow keys; font listbox.
+await st('(ed, me, id) => ed.select({ kind: "text", id })', await st('(ed) => ed.project.texts[0].id'))
+await page.waitForSelector('textarea')
+await page.getByRole('button', { name: 'More colours' }).first().click()
+await page.waitForTimeout(150)
+await page.getByRole('gridcell', { name: 'Blue 500 #2b7fff' }).click()
+let colour = await st('(ed) => ed.selectedItem.style.color')
+check('a palette cell sets the text colour (Blue 500 #2b7fff)', colour === '#2b7fff', colour)
+await page.getByRole('button', { name: 'More colours' }).first().click()
+await page.getByRole('textbox', { name: 'Hex colour' }).fill('zzz')
+await page.waitForTimeout(100)
+colour = await st('(ed) => ed.selectedItem.style.color')
+check('an invalid hex value shows an error and keeps the colour', colour === '#2b7fff' && (await page.getByRole('alert').count()) > 0, colour)
+await page.getByRole('textbox', { name: 'Hex colour' }).fill('#f0a')
+await page.waitForTimeout(100)
+colour = await st('(ed) => ed.selectedItem.style.color')
+check('a valid short hex value (#f0a) sets the colour as #ff00aa', colour === '#ff00aa', colour)
+await page.getByRole('gridcell', { name: 'Blue 500 #2b7fff' }).focus().catch(() => {})
+await page.getByRole('textbox', { name: 'Hex colour' }).focus()
+await page.keyboard.press('Escape')
+await page.waitForTimeout(100)
+await page.getByRole('button', { name: 'More colours' }).first().click()
+await page.getByRole('gridcell', { name: 'Red 500 #fb2c36' }).focus()
+await page.keyboard.press('ArrowRight')
+const focusedName = await page.evaluate(() => document.activeElement?.getAttribute('aria-label'))
+check('arrow keys move through the palette grid', focusedName === 'Red 600 #e7000b', String(focusedName))
+await page.keyboard.press('Enter')
+await page.waitForTimeout(100)
+const enterColour = await st('(ed) => ed.selectedItem.style.color')
+check('Enter selects the focused palette cell', enterColour === '#e7000b', enterColour)
+await page.getByRole('button', { name: 'More colours' }).first().click()
+await page.keyboard.press('Escape')
+await page.waitForTimeout(100)
+check('Escape closes the colour popover and returns focus to its button',
+  (await page.getByRole('dialog', { name: 'Colour' }).count()) === 0 &&
+    (await page.evaluate(() => document.activeElement?.getAttribute('aria-label'))) === 'More colours')
+await page.getByRole('button', { name: 'More colours' }).first().click()
+const nativeCount = await page.locator('input[type=color][aria-label="Custom colour (system picker)"]').count()
+check('the native colour input is offered as the third option', nativeCount >= 1)
+await page.keyboard.press('Escape')
+
+// Font listbox
+await page.locator('[id^=text-font-]').click()
+const options = await page.getByRole('listbox', { name: 'Font' }).getByRole('option').all()
+const fontsRendered = []
+for (const o of options) fontsRendered.push(await o.evaluate((el) => getComputedStyle(el.querySelector('span')).fontFamily))
+check('font listbox lists every curated font in its own typeface', options.length === 8 && fontsRendered.every((f, i) => f.includes(['Sora','Inter','Lora','Bebas Neue','Pacifico','Caveat','Fredoka','DM Mono'][i])), JSON.stringify(fontsRendered))
+await page.getByRole('option', { name: /Lora/ }).click()
+const font = await st('(ed) => ed.selectedItem.style.font')
+check('choosing a font in the listbox sets the font', font === 'Lora', font)
+await page.locator('[id^=text-font-]').click()
+await page.keyboard.press('Escape')
+check('Escape closes the font listbox', (await page.getByRole('listbox').count()) === 0)
 
 // (11) No uncaught page errors.
 check('no uncaught page errors', errors.length === 0, errors.join(' | '))

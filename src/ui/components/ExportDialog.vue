@@ -5,6 +5,7 @@ import { useEditorStore } from '../stores/editor'
 import { useExportStore } from '../stores/export'
 import { EXPORT_FPS, EXPORT_QUALITIES, EXPORT_RESOLUTIONS } from '../../core/export/presets'
 import { formatBytes, formatClock, formatEta } from '../../core/export/format'
+import { formatEstimate } from '../../core/export/estimate'
 
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
 const TRIGGER_ID = 'export-button'
@@ -31,6 +32,8 @@ export default defineComponent({
       'encoders',
       'inWorker',
       'estimatedBytes',
+      'estimatedSeconds',
+      'hasCalibration',
       'missingNames',
       'canStart'
     ]),
@@ -43,6 +46,19 @@ export default defineComponent({
     },
     sizeText(): string {
       return formatBytes(this.estimatedBytes, this.locale)
+    },
+    /** Quality only changes the size; resolution and frame rate change the time. */
+    estimateTimeText(): string {
+      const time = formatEstimate(this.estimatedSeconds)
+      if (time.unit === 'seconds') return this.$t('export.time.seconds', { value: time.value })
+      if (time.unit === 'minutes') {
+        return time.seconds
+          ? this.$t('export.time.minutesSeconds', { value: time.value, seconds: time.seconds })
+          : this.$t('export.time.minutes', { value: time.value })
+      }
+      return time.minutes
+        ? this.$t('export.time.hoursMinutes', { value: time.value, minutes: time.minutes })
+        : this.$t('export.time.hours', { value: time.value })
     },
     optionsDisabled(): boolean {
       return this.phase !== 'ready' && this.phase !== 'checking'
@@ -236,9 +252,10 @@ export default defineComponent({
 
             <template v-else-if="phase === 'ready' || phase === 'running'">
               <p class="mb-1 flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
-                <span>{{ $t('export.estimate', { duration: durationText, size: sizeText }) }}</span>
+                <span>{{ $t('export.estimate', { duration: durationText, size: sizeText, time: estimateTimeText }) }}</span>
                 <small class="text-xs text-muted">{{ $t('export.estimateNote') }}</small>
               </p>
+              <p v-if="!hasCalibration" class="mb-3 text-xs text-muted">{{ $t('export.calibrationHint') }}</p>
               <p v-if="encoders?.video" class="mb-3 text-xs text-muted">
                 {{ $t('export.encoder', { codec: codecLabel }) }}
                 <span v-if="codecFallback" class="block">{{ $t('export.codecNote') }}</span>

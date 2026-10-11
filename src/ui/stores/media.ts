@@ -71,10 +71,18 @@ export function getAssetFile(assetId: string): File | undefined {
   return files.get(assetId)
 }
 
-/** Used assets that have no file in this session, in project order. */
+// Assets of the built-in demo project. They never point at files the user imported, so there is nothing to re-link.
+const DEMO_ASSET_ID = /^asset-(intro|beach|interview|music)$/
+
+/** Whether the asset came from the user's own import (not from the built-in demo project). */
+export function isUserAsset(asset: Asset): boolean {
+  return !DEMO_ASSET_ID.test(asset.id)
+}
+
+/** Used user assets that have no file in this session, in project order. This is what re-linking is about. */
 export function missingUsedAssets(project: Project, status: Record<string, MediaStatus | undefined>): Asset[] {
   const used = usedAssetIds(project)
-  return project.assets.filter((a) => used.has(a.id) && status[a.id] !== 'ready')
+  return project.assets.filter((a) => isUserAsset(a) && used.has(a.id) && status[a.id] !== 'ready')
 }
 
 function rebuildProvider(): void {
@@ -580,7 +588,7 @@ export const useMediaStore = defineStore('media', {
     replan(): RelinkPlan {
       const candidates = Array.from(pool.values(), (entry) => entry.candidate)
       const project = useEditorStore().project
-      const plan = planRelink(project, this.status, candidates)
+      const plan = planRelink({ ...project, assets: project.assets.filter(isUserAsset) }, this.status, candidates)
       this.relinkPlan = plan
       this.relinkLabels = candidateLabels()
       // Choices for assets that are no longer ambiguous or candidates that are gone are dropped.

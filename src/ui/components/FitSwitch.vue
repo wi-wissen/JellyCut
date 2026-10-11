@@ -47,6 +47,5 @@ export default defineComponent({
       </button>
     </div>
     <p class="text-[12px] leading-snug text-fg">{{ $t('player.pictureFit.explain') }}</p>
-    <p class="text-[11px] leading-snug text-muted">{{ $t('player.pictureFit.scope') }}</p>
   </section>
 </template>

@@ -4,9 +4,9 @@ import { mapActions } from 'pinia'
 import BackLink from './BackLink.vue'
 import RangeField from './RangeField.vue'
 import ToggleSwitch from './ToggleSwitch.vue'
-import ColorSwatches from './ColorSwatches.vue'
+import ColorPicker from './ColorPicker.vue'
+import FontSelect from './FontSelect.vue'
 import { useEditorStore } from '../../stores/editor'
-import { CURATED_FONTS } from '../../../core/text/fonts'
 import { TEXT_ANIMATIONS, type TextAnimation } from '../../../core/render/types'
 import type { TextItem } from '../../../core/project/types'
 import { secondsToMicros } from '../../../core/time'
@@ -31,13 +31,12 @@ const POSITION_TOLERANCE = 0.01
  */
 export default defineComponent({
   name: 'TextProperties',
-  components: { BackLink, RangeField, ToggleSwitch, ColorSwatches },
+  components: { BackLink, RangeField, ToggleSwitch, ColorPicker, FontSelect },
   props: {
     item: { type: Object as PropType<TextItem>, required: true }
   },
   data() {
     return {
-      fonts: CURATED_FONTS,
       animations: TEXT_ANIMATIONS,
       rows: ROWS,
       columns: COLUMNS,
@@ -73,8 +72,8 @@ export default defineComponent({
     onContent(event: Event): void {
       this.updateSelectedText({ text: (event.target as HTMLTextAreaElement).value }, this.keyFor('content'))
     },
-    onFont(event: Event): void {
-      this.updateSelectedText({ style: { font: (event.target as HTMLSelectElement).value } })
+    setFont(font: string): void {
+      this.updateSelectedText({ style: { font } })
     },
     onSize(size: number): void {
       this.updateSelectedText({ style: { size: Math.round(size) } }, this.keyFor('size'))
@@ -127,7 +126,7 @@ export default defineComponent({
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
+  <div class="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto p-3">
     <div class="flex min-w-0 items-center justify-between gap-2">
       <BackLink />
       <h2 class="min-w-0 truncate text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">{{ header }}</h2>
@@ -147,11 +146,9 @@ export default defineComponent({
 
     <section class="flex flex-col gap-1.5 border-t border-line pt-2.5">
       <span class="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">{{ $t('text.color') }}</span>
-      <ColorSwatches
+      <ColorPicker
         :model-value="item.style.color"
         :group-label="$t('text.color')"
-        swatch-key="text.swatchText"
-        :custom-label="$t('text.customTextColor')"
         @update="setColor"
         @commit="endEdit"
       />
@@ -172,16 +169,7 @@ export default defineComponent({
 
     <section class="flex items-center gap-3 border-t border-line pt-2.5">
       <label :for="`text-font-${item.id}`" class="shrink-0 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">{{ $t('text.font') }}</label>
-      <select
-        :id="`text-font-${item.id}`"
-        class="min-h-11 min-w-0 flex-1 rounded-lg border border-line bg-panel px-2 text-sm text-fg"
-        :value="item.style.font"
-        @change="onFont"
-      >
-        <option v-for="font in fonts" :key="font.family" :value="font.family" :style="{ fontFamily: `'${font.family}'`, fontWeight: font.weight }">
-          {{ font.family }}
-        </option>
-      </select>
+      <FontSelect :id="`text-font-${item.id}`" class="min-w-0 flex-1" :model-value="item.style.font" @update="setFont" />
     </section>
 
     <section class="flex flex-col gap-1.5 border-t border-line pt-2.5">
@@ -222,12 +210,10 @@ export default defineComponent({
         :checked="outlineOn"
         @toggle="toggleOutline"
       />
-      <ColorSwatches
+      <ColorPicker
         v-if="outlineOn"
         :model-value="item.style.outline ?? defaultOutline"
         :group-label="$t('text.outlineColor')"
-        swatch-key="text.swatchOutline"
-        :custom-label="$t('text.customOutlineColor')"
         @update="setOutlineColor"
         @commit="endEdit"
       />

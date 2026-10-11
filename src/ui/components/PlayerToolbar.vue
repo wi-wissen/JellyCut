@@ -3,6 +3,7 @@ import { defineComponent } from 'vue'
 import { mapActions, mapState } from 'pinia'
 import Icon from './Icon.vue'
 import FitSwitch from './FitSwitch.vue'
+import ColorPicker from './panels/ColorPicker.vue'
 import { useEditorStore } from '../stores/editor'
 import { formatForRatio, projectFit } from '../../core/project/format'
 import type { FitMode, FormatRatio } from '../../core/project/types'
@@ -31,7 +32,7 @@ const STAGE_MARGIN = 8
 /** Ratio chip and picture fit chip. One popover shows whichever chip was used. */
 export default defineComponent({
   name: 'PlayerToolbar',
-  components: { Icon, FitSwitch },
+  components: { Icon, FitSwitch, ColorPicker },
   data() {
     return {
       panel: null as Panel | null,
@@ -148,8 +149,8 @@ export default defineComponent({
     chooseColor(): void {
       this.setBackground({ type: 'color', color: this.colorValue })
     },
-    onColorInput(event: Event): void {
-      this.setBackground({ type: 'color', color: (event.target as HTMLInputElement).value }, 'background-color')
+    onBackgroundPick(color: string): void {
+      this.setBackground({ type: 'color', color }, 'background-color')
     },
     onColorCommit(): void {
       this.endGesture()
@@ -240,7 +241,7 @@ export default defineComponent({
               <span class="truncate">{{ $t('player.blurBackground') }}</span>
             </button>
             <div
-              class="flex min-h-11 items-center gap-1 rounded-lg pl-2 pr-1"
+              class="flex min-h-11 items-center gap-2 rounded-lg px-2"
               :class="!isBlur ? 'bg-panel2 ring-1 ring-fill' : ''"
             >
               <button
@@ -253,17 +254,15 @@ export default defineComponent({
                 <span class="size-4 shrink-0 rounded-full border border-line" :style="{ background: colorValue }" aria-hidden="true" />
                 <span class="truncate">{{ $t('player.colorBackground') }}</span>
               </button>
-              <label class="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-lg hover:bg-panel2" :title="$t('player.backgroundColor')">
-                <span class="sr-only">{{ $t('player.backgroundColor') }}</span>
-                <input
-                  type="color"
-                  class="size-6 cursor-pointer border-0 bg-transparent p-0"
-                  :value="colorValue"
-                  @input="onColorInput"
-                  @change="onColorCommit"
-                />
-              </label>
             </div>
+            <ColorPicker
+              v-if="!isBlur"
+              :model-value="colorValue"
+              :group-label="$t('player.backgroundColor')"
+              :popover="false"
+              @update="onBackgroundPick"
+              @commit="onColorCommit"
+            />
           </div>
         </template>
 
