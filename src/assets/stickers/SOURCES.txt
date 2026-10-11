@@ -1,0 +1,90 @@
+# Sticker id -> folder in https://github.com/microsoft/fluentui-emoji (assets/<folder>/3D), commit 1ffb34c752ecf5d402f04cfb4b392c77f57c54bc
+# Converted from PNG to lossy WebP (quality 88), same 256 x 256 size.
+grin	Grinning face
+heartEyes	Smiling face with heart-eyes
+laugh	Face with tears of joy
+cool	Smiling face with sunglasses
+wink	Winking face
+starStruck	Star-struck
+party	Partying face
+thinking	Thinking face
+scream	Face screaming in fear
+cry	Loudly crying face
+exploding	Exploding head
+heart	Red heart
+sparklingHeart	Sparkling heart
+heartArrow	Heart with arrow
+thumbsUp	Thumbs up/Default
+clap	Clapping hands/Default
+wave	Waving hand/Default
+victory	Victory hand/Default
+okHand	Ok hand/Default
+muscle	Flexed biceps/Default
+dog	Dog face
+cat	Cat face
+panda	Panda
+fox	Fox
+unicorn	Unicorn
+rabbit	Rabbit face
+lion	Lion
+penguin	Penguin
+frog	Frog
+butterfly	Butterfly
+owl	Owl
+dino	T-rex
+partyPopper	Party popper
+balloon	Balloon
+cake	Birthday cake
+gift	Wrapped gift
+fireworks	Fireworks
+trophy	Trophy
+medal	1st place medal
+crown	Crown
+sparkles	Sparkles
+sun	Sun
+rainbow	Rainbow
+cloud	Cloud
+rain	Cloud with rain
+lightning	High voltage
+fire	Fire
+sunflower	Sunflower
+clover	Four leaf clover
+cherryBlossom	Cherry blossom
+tree	Evergreen tree
+pizza	Pizza
+burger	Hamburger
+fries	French fries
+iceCream	Ice cream
+doughnut	Doughnut
+apple	Red apple
+strawberry	Strawberry
+cookie	Cookie
+popcorn	Popcorn
+watermelon	Watermelon
+check	Check mark button
+cross	Cross mark
+exclamation	Red exclamation mark
+question	Red question mark
+hundred	Hundred points
+arrowRight	Right arrow
+arrowLeft	Left arrow
+arrowUp	Up arrow
+star	Star
+warning	Warning
+speech	Speech balloon
+boom	Collision
+books	Books
+pencil	Pencil
+memo	Memo
+gradCap	Graduation cap
+lightbulb	Light bulb
+microphone	Microphone
+clapper	Clapper board
+camera	Camera
+headphone	Headphone
+laptop	Laptop
+megaphone	Megaphone
+globe	Globe showing europe-africa
+rocket	Rocket
+magnifier	Magnifying glass tilted left
+school	School

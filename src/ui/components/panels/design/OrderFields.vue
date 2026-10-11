@@ -45,6 +45,7 @@ export default defineComponent({
           <span class="min-w-0 truncate">{{ $t(step.key) }}</span>
         </button>
       </div>
+      <p class="text-[11px] text-muted" data-role="order-lane-hint">{{ $t('design.orderLaneHint') }}</p>
     </template>
   </div>
 </template>

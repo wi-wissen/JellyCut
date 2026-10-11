@@ -156,3 +156,26 @@ describe('gainAt', () => {
     expect(gainAt([{ t: 5, gain: 0 }, { t: 5, gain: 1 }], 5)).toBe(1)
   })
 })
+
+describe('planAudioSegments: mute and tempo limits', () => {
+  it('a muted music item has no sound; unmuting brings it back', () => {
+    const base = project([asset('m', 'audio')], [], [music('m1', 'm', 0, 0, 5 * S)])
+    expect(plan(base)).toHaveLength(1)
+    expect(plan({ ...base, music: [{ ...base.music[0]!, muted: true }] })).toHaveLength(0)
+    expect(plan({ ...base, music: [{ ...base.music[0]!, muted: false }] })).toHaveLength(1)
+  })
+
+  it('a clip at 4x keeps its sound, above 4x it is silent', () => {
+    const at4 = project([asset('v', 'video')], [clip('c1', 'v', 0, 8 * S, 0, { speed: 4 })])
+    const above = project([asset('v', 'video')], [clip('c1', 'v', 0, 8 * S, 0, { speed: 4.5 })])
+    expect(plan(at4)).toHaveLength(1)
+    expect(plan(above)).toHaveLength(0)
+  })
+
+  it('a clip at 20x has no sound and a slow clip at 0.1x keeps it', () => {
+    const fast = project([asset('v', 'video')], [clip('c1', 'v', 0, 8 * S, 0, { speed: 20 })])
+    const slow = project([asset('v', 'video')], [clip('c1', 'v', 0, 8 * S, 0, { speed: 0.1 })])
+    expect(plan(fast)).toHaveLength(0)
+    expect(plan(slow)).toHaveLength(1)
+  })
+})

@@ -5,6 +5,11 @@ import { STICKER_SHAPE_IDS } from '../render/stickerShapes'
 /** Built-in vector stickers offered in the panel. Names are translated in the UI (overlays3.sticker). */
 export const STICKER_IDS = STICKER_SHAPE_IDS
 
+/** The plain geometric stickers that stay in the gallery (they take a colour); the others are still valid in old projects. */
+export const BASIC_STICKER_IDS: readonly (typeof STICKER_IDS)[number][] = [
+  'star', 'heart', 'check', 'cross', 'arrowRight', 'arrowUp', 'speech', 'thought', 'exclamation', 'question', 'badge1', 'badge2', 'badge3'
+]
+
 export const SHAPE_KINDS: readonly ShapeOverlay['shape'][] = ['rect', 'ellipse', 'arrow']
 
 /** Pen and outline widths as fractions of the output height. */
@@ -13,6 +18,8 @@ export type LineWidthId = keyof typeof LINE_WIDTHS
 
 export const DEFAULT_OVERLAY_COLOR = '#ff5ca8'
 export const DEFAULT_STICKER_SIZE = 0.12
+/** Picture stickers fill their whole box, so they start bigger than the glyph-sized emoji. */
+export const DEFAULT_IMAGE_STICKER_SIZE = 0.18
 export const DEFAULT_SHAPE_SIZE = { width: 0.3, height: 0.2 } as const
 export const DEFAULT_OVERLAY_DURATION = 3_000_000
 

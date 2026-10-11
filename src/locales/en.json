@@ -78,6 +78,7 @@
     "rotate": "Rotate",
     "speed": "Speed",
     "mute": "Mute",
+    "unmute": "Unmute",
     "delete": "Delete",
     "fineCutNeedsClip": "Move the playhead onto a video clip first"
   },
@@ -168,6 +169,7 @@
     "volume": "Volume",
     "originalAudio": "Original audio",
     "tempo": "Tempo",
+    "tempoChange": "Change tempo",
     "transition": "Transition at the cut",
     "noTransition": "No transition",
     "transitionSummary": "{name} · {seconds}",
@@ -184,6 +186,20 @@
     "freezeAction": "Freeze frame at playhead",
     "freezeHint": "Move the playhead onto this clip to freeze the picture there.",
     "freezeNote": "Freeze frame: the picture is held for its length, without sound."
+  },
+  "speedDialog": {
+    "title": "Change tempo",
+    "current": "Current: {value}",
+    "presets": "Quick choice",
+    "custom": "Own speed",
+    "unit": "x",
+    "placeholder": "e.g. 20",
+    "apply": "Apply",
+    "close": "Close",
+    "rangeError": "Please enter a number from {min} to {max}.",
+    "invalidError": "Please enter a number only, for example 20 or 0.5.",
+    "tooShort": "At this tempo the clip would be too short. Choose a slower tempo.",
+    "soundNote": "From {max}x the clip has no sound, because it would be too fast to follow."
   },
   "transitions": {
     "title": "Transitions",
@@ -208,7 +224,8 @@
     "header": "Own sound · {name}",
     "volume": "Volume",
     "fadeIn": "Fade in",
-    "fadeOut": "Fade out"
+    "fadeOut": "Fade out",
+    "sound": "Sound"
   },
   "export": {
     "resolutionValue": "{value}p",

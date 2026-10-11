@@ -2,6 +2,7 @@ import type { Asset, Clip, MusicItem, Project } from '../project/types'
 import type { PlannedTimeline } from '../render/scene'
 import type { Micros } from '../time'
 import { clipEnd } from '../timeline/edit'
+import { hasClipSound } from '../timeline/speed'
 
 /** Click-protection ramp at every audio cut and for music without an explicit fade. */
 export const CUT_FADE: Micros = 15_000
@@ -99,7 +100,7 @@ function clipSegment(clip: Clip, asset: Asset | undefined, ramps: TransitionRamp
   if (!asset || asset.kind !== 'video' || asset.hasAudio === false) return null
   // A freeze frame has no sound of its own.
   if (clip.still !== undefined) return null
-  if (clip.muted || clip.volume <= 0) return null
+  if (clip.muted || clip.volume <= 0 || !hasClipSound(clip.speed)) return null
 
   const start = clip.start
   const end = clipEnd(clip)
@@ -124,7 +125,7 @@ function clipSegment(clip: Clip, asset: Asset | undefined, ramps: TransitionRamp
 }
 
 function musicSegment(item: MusicItem, asset: Asset | undefined): AudioSegment | null {
-  if (!asset || item.volume <= 0) return null
+  if (!asset || item.volume <= 0 || item.muted === true) return null
   const length = item.srcOut - item.srcIn
   if (length < 1) return null
 

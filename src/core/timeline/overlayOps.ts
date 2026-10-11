@@ -10,6 +10,7 @@ import type {
 } from '../project/types'
 import type { Micros } from '../time'
 import { canonicalAnimation, type InAnimation, type OutAnimation } from '../render/animations'
+import { isStickerImageId } from '../render/stickerImages'
 import { stickerShape, type StickerShapeId } from '../render/stickerShapes'
 import {
   DEFAULT_MEDIA_BORDER_COLOR,
@@ -18,6 +19,7 @@ import {
   DEFAULT_REGION_RADIUS,
   DEFAULT_REGION_SIZE,
   DEFAULT_REGION_STRENGTH,
+  DEFAULT_IMAGE_STICKER_SIZE,
   DEFAULT_SHAPE_SIZE,
   DEFAULT_STICKER_SIZE,
   LINE_WIDTHS,
@@ -143,6 +145,23 @@ export function addVectorSticker(
     shape,
     color: color.toLowerCase(),
     outline: outline === null ? null : outline.toLowerCase()
+  }
+  return { ...project, overlays: [...project.overlays, item] }
+}
+
+/** Adds a picture sticker of the catalog (core/render/stickerImages). Refused for unknown ids and reused ids. */
+export function addImageSticker(project: Project, newId: string, start: Micros, imageId: string, pos = { x: 0.5, y: 0.5 }): Project {
+  if (!validId(project, newId) || !Number.isFinite(start) || !isStickerImageId(imageId)) return project
+  const item: StickerOverlay = {
+    id: newId,
+    kind: 'sticker',
+    start: Math.max(0, Math.round(start)),
+    duration: DEFAULT_OVERLAY_DURATION,
+    pos: clampPos(pos),
+    scale: 1,
+    rotation: 0,
+    size: DEFAULT_IMAGE_STICKER_SIZE,
+    imageId
   }
   return { ...project, overlays: [...project.overlays, item] }
 }

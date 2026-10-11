@@ -108,6 +108,8 @@ export interface MusicItem {
   volume: number
   fadeIn: Micros
   fadeOut: Micros
+  /** Silent item. Missing in older projects, which means not muted. */
+  muted?: boolean
 }
 
 /** Animation that runs for the whole time the overlay is on screen. */
@@ -134,9 +136,9 @@ export interface OverlayBase {
 }
 
 /**
- * A sticker is either an emoji (legacy, drawn with the system emoji font) or a vector shape of the
- * built-in set (core/render/stickerShapes), filled with `color` and optionally outlined. Exactly one of
- * `emoji` and `shape` is set.
+ * A sticker is an emoji (legacy, drawn with the system emoji font), a vector shape of the built-in set
+ * (core/render/stickerShapes), filled with `color` and optionally outlined, or a picture of the sticker
+ * catalog (core/render/stickerImages). Exactly one of `emoji`, `shape` and `imageId` is set.
  */
 export interface StickerOverlay extends OverlayBase {
   kind: 'sticker'
@@ -144,6 +146,8 @@ export interface StickerOverlay extends OverlayBase {
   size: number
   emoji?: string
   shape?: StickerShapeId
+  /** Id in the picture catalog (core/render/stickerImages). */
+  imageId?: string
   /** #RRGGBB fill of a vector sticker. */
   color?: string
   /** #RRGGBB outline of a vector sticker, or null for none. */

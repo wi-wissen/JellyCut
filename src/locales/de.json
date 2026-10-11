@@ -78,6 +78,7 @@
     "rotate": "Drehen",
     "speed": "Tempo",
     "mute": "Ton aus",
+    "unmute": "Ton an",
     "delete": "Löschen",
     "fineCutNeedsClip": "Setze den Abspielkopf zuerst auf einen Videoclip"
   },
@@ -168,6 +169,7 @@
     "volume": "Lautstärke",
     "originalAudio": "Originalton",
     "tempo": "Tempo",
+    "tempoChange": "Tempo ändern",
     "transition": "Übergang am Schnitt",
     "noTransition": "Kein Übergang",
     "transitionSummary": "{name} · {seconds}",
@@ -184,6 +186,20 @@
     "freezeAction": "Standbild am Abspielkopf",
     "freezeHint": "Setze den Abspielkopf auf diesen Clip, um dort das Bild anzuhalten.",
     "freezeNote": "Standbild: Das Bild steht für die ganze Länge, ohne Ton."
+  },
+  "speedDialog": {
+    "title": "Tempo ändern",
+    "current": "Aktuell: {value}",
+    "presets": "Schnellwahl",
+    "custom": "Eigene Geschwindigkeit",
+    "unit": "x",
+    "placeholder": "z. B. 20",
+    "apply": "Übernehmen",
+    "close": "Schließen",
+    "rangeError": "Bitte eine Zahl von {min} bis {max} eingeben.",
+    "invalidError": "Bitte nur eine Zahl eingeben, zum Beispiel 20 oder 0,5.",
+    "tooShort": "Bei diesem Tempo wäre der Clip zu kurz. Wähle ein langsameres Tempo.",
+    "soundNote": "Ab {max}x hat der Clip keinen Ton, weil er zu schnell zum Verstehen wäre."
   },
   "transitions": {
     "title": "Übergänge",
@@ -208,7 +224,8 @@
     "header": "Eigener Ton · {name}",
     "volume": "Lautstärke",
     "fadeIn": "Einblenden",
-    "fadeOut": "Ausblenden"
+    "fadeOut": "Ausblenden",
+    "sound": "Ton"
   },
   "export": {
     "resolutionValue": "{value}p",

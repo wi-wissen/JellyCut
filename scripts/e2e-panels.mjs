@@ -7,7 +7,7 @@ import { createServer } from 'vite'
 import { existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
-const PORT = 5189
+const PORT = Number(process.env.E2E_PORT ?? 5189)
 const APP_URL = `http://localhost:${PORT}/app/`
 const SHOT_DIR =
   process.env.SHOT_DIR ?? '/tmp/claude-0/-home-user-JellyCut/8ac8332d-b077-5711-8558-272fe1bb4e47/scratchpad'
@@ -147,15 +147,15 @@ await check('"Original audio" switch mutes and unmutes the clip', async () => {
   assert(clipNamed(await project(page), 'Beach.mp4').muted === false, 'still muted')
 })
 
-await check('tempo slider steps over SPEED_STEPS and shows 1.5x', async () => {
-  const slider = page.locator('aside').getByRole('slider', { name: 'Tempo' })
-  await slider.focus()
-  await page.keyboard.press('ArrowRight')
-  await page.keyboard.press('ArrowRight')
+await check('tempo: the dialog sets 1.5x from a quick choice and shows it', async () => {
+  await page.locator('aside').getByRole('button', { name: 'Change tempo' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Change tempo' })
+  await dialog.waitFor()
+  await dialog.locator('[data-speed="1.5"]').click()
+  await dialog.waitFor({ state: 'detached' })
   assert(clipNamed(await project(page), 'Beach.mp4').speed === 1.5, `speed ${clipNamed(await project(page), 'Beach.mp4').speed}`)
-  assert((await slider.getAttribute('aria-valuetext')) === '1.5x', `valuetext ${await slider.getAttribute('aria-valuetext')}`)
-  await page.keyboard.press('ArrowLeft')
-  await page.keyboard.press('ArrowLeft')
+  await page.locator('aside').getByRole('button', { name: 'Change tempo' }).click()
+  await page.getByRole('dialog', { name: 'Change tempo' }).locator('[data-speed="1"]').click()
   assert(clipNamed(await project(page), 'Beach.mp4').speed === 1, 'speed not back to 1')
 })
 

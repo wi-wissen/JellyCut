@@ -42,6 +42,7 @@ For every site, read the licence or terms page itself and confirm the statements
 - [ ] German and English texts say the same thing.
 - [ ] The school note (rules also apply when publishing outside school) still reflects the school's policy.
 - [ ] The "what not to use" list and the rights notes live on `/help/rights/`. Check them against the same sources (no legal advice claims).
+- [ ] Sticker artwork: https://github.com/microsoft/fluentui-emoji is still MIT (LICENSE file text unchanged), and `/help/tech/` still credits it.
 - [ ] `/help/tech/`: each library or browser link still points to the project's official site, package homepage or MDN, and the version statements still match `package.json`.
 
 ## 5. Technical

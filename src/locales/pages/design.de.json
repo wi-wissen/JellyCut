@@ -30,6 +30,7 @@
     "backward": "Eine Ebene zurück",
     "toBack": "Ganz nach hinten",
     "orderHint": "Texte liegen immer über Aufklebern, Formen und Bildern.",
+    "orderLaneHint": "Vorne = oben in der Zeitleiste.",
     "duplicate": "Duplizieren",
     "delete": "Löschen",
     "areaShape": "Form des Bereichs",

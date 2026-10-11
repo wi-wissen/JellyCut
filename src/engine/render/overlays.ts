@@ -1,6 +1,7 @@
 import type { ShapeOverlay, StickerOverlay, StrokeOverlay } from '../../core/project/types'
 import { overlayBounds } from '../../core/render/overlayLayout'
 import { STICKER_GRID, stickerShape } from '../../core/render/stickerShapes'
+import { stickerBitmap } from './stickerImages'
 import { createCanvas, type Canvas2D, type Ctx2D } from './text'
 
 /** System emoji fonts only; nothing is loaded from the network. */
@@ -26,7 +27,9 @@ export function overlayRasterKey(item: DrawnOverlay, outH: number): string {
   if (known && known.outH === outH) return known.key
   let key: string
   if (item.kind === 'sticker') {
-    key = item.emoji !== undefined
+    key = item.imageId !== undefined
+      ? JSON.stringify([item.kind, 'image', item.imageId, item.size, outH])
+      : item.emoji !== undefined
       ? JSON.stringify([item.kind, item.emoji, item.size, outH])
       : JSON.stringify([item.kind, item.shape, item.size, item.color, item.outline ?? null, outH])
   } else if (item.kind === 'shape') key = JSON.stringify([item.kind, item.shape, item.width, item.height, item.lineWidth, item.color, outH])
@@ -58,7 +61,13 @@ export function rasterizeOverlay(item: DrawnOverlay, outH: number): OverlayRaste
   const Y = (y: number) => (y - b.minY) * k
 
   if (item.kind === 'sticker') {
-    if (item.emoji !== undefined) {
+    if (item.imageId !== undefined) {
+      // Not decoded yet: draw nothing (and cache nothing); the next frame asks again.
+      const bitmap = stickerBitmap(item.imageId)
+      if (!bitmap) return null
+      ctx.imageSmoothingQuality = 'high'
+      ctx.drawImage(bitmap, 0, 0, width, height)
+    } else if (item.emoji !== undefined) {
       ctx.font = `${item.size * k}px ${EMOJI_FONT}`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'

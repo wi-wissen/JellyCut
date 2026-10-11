@@ -7,7 +7,7 @@ import { createServer } from 'vite'
 import { existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
-const PORT = 5270
+const PORT = Number(process.env.E2E_PORT ?? 5270)
 const BASE = `http://localhost:${PORT}`
 const APP_URL = `${BASE}/app/`
 const SHOT_DIR =

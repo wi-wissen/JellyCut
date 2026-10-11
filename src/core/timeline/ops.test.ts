@@ -8,7 +8,6 @@ import {
   deleteItem,
   duplicateItem,
   moveText,
-  nextSpeed,
   projectIds,
   reorderVideoClip,
   setClipProps,
@@ -455,17 +454,33 @@ describe('setClipProps', () => {
   })
 })
 
-describe('nextSpeed', () => {
-  it('cycles 0.5x, 1x, 1.5x, 2x and wraps', () => {
-    expect(nextSpeed(0.5)).toBe(1)
-    expect(nextSpeed(1)).toBe(1.5)
-    expect(nextSpeed(1.5)).toBe(2)
-    expect(nextSpeed(2)).toBe(0.5)
+describe('speed range', () => {
+  it('accepts the boundaries 0.1x and 100x and 20x', () => {
+    const project = fixture()
+    expect(setClipProps(project, 'c1', { speed: 0.1 }).clips[0]!.speed).toBe(0.1)
+    expect(setClipProps(project, 'c1', { speed: 100 }).clips[0]!.speed).toBe(100)
+    expect(setClipProps(project, 'c1', { speed: 20 }).clips[0]!.speed).toBe(20)
   })
 
-  it('goes to the next step above an unlisted speed', () => {
-    expect(nextSpeed(1.25)).toBe(1.5)
-    expect(nextSpeed(3)).toBe(0.5)
+  it('rejects speeds just outside the range', () => {
+    const project = fixture()
+    expect(setClipProps(project, 'c1', { speed: 0.09 })).toBe(project)
+    expect(setClipProps(project, 'c1', { speed: 100.01 })).toBe(project)
+  })
+
+  it('a 8 s source at 100x is an 80 ms timeline clip; a shorter source at 100x is rejected', () => {
+    const project = fixture()
+    expect(setClipProps(project, 'c1', { speed: 100 }).clips[0]!.speed).toBe(100)
+    const tiny = { ...project, clips: project.clips.map((c) => (c.id === 'c1' ? { ...c, srcOut: c.srcIn + 40 } : c)) }
+    expect(setClipProps(tiny, 'c1', { speed: 100 })).toBe(tiny)
+  })
+
+  it('20x of a 10 s source is a 0.5 s timeline length, in whole microseconds', () => {
+    const next = setClipProps(fixture(), 'c3', { speed: 20 })
+    const c3 = next.clips.find((c) => c.id === 'c3')!
+    expect(c3.speed).toBe(20)
+    expect(clipEnd(c3) - c3.start).toBe(Math.round((c3.srcOut - c3.srcIn) / 20))
+    expect(Number.isSafeInteger(clipEnd(c3))).toBe(true)
   })
 })
 

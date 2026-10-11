@@ -12,6 +12,8 @@
       "buildText": "Diese Werkzeuge braucht man nur zum Entwickeln, nicht zum Benutzen der Seite.",
       "browserTitle": "Browser-Funktionen",
       "browserText": "Der Browser stellt diese Funktionen bereit. Jelly Cut nutzt sie direkt.",
+      "artworkTitle": "Grafiken: Aufkleber",
+      "artworkText": "Die Bild-Aufkleber sind die Fluent Emoji (3D-Stil) von Microsoft. Sie dürfen unter der MIT-Lizenz frei genutzt werden. Die Lizenz verlangt, den Urheberrechtsvermerk „Copyright (c) Microsoft Corporation“ mitzuliefern: Er steht im Lizenztext im Quellcode. In deinen Videos dürfen die Aufkleber ohne Nennung vorkommen.",
       "sourceTitle": "Quellcode",
       "sourceText": "Der Quellcode steht öffentlich auf GitHub. Dort kannst du nachlesen, wie alles zusammenhängt.",
       "items": {
@@ -34,7 +36,9 @@
         "workers": "Rechnet im Hintergrund, damit die Oberfläche flüssig bleibt. Der Export läuft so in einem eigenen Worker.",
         "fsa": "Lässt dich Dateien nach deiner Auswahl öffnen und speichern.",
         "indexeddb": "Eine kleine Datenbank im Browser, in der Projekte auf deinem Gerät gespeichert bleiben.",
-        "sw": "Speichert die Seite für die Nutzung ohne Netz. Man nennt das eine PWA (Progressive Web App)."
+        "sw": "Speichert die Seite für die Nutzung ohne Netz. Man nennt das eine PWA (Progressive Web App).",
+        "fluent": "Die Aufkleber-Bilder in der Galerie, gestaltet von Microsoft.",
+        "mit": "Die Lizenz dieser Bilder: freie Nutzung, solange der Lizenztext mit dem Urheberrechtsvermerk dabei bleibt."
       },
       "sourceLink": "Quellcode auf GitHub"
     }

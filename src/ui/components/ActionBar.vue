@@ -4,6 +4,7 @@ import { mapActions, mapState } from 'pinia'
 import Icon from './Icon.vue'
 import { useEditorStore } from '../stores/editor'
 import { useFineCutStore } from '../stores/fineCut'
+import { useSpeedDialogStore } from '../stores/speedDialog'
 import { clipForFineCut } from '../../core/timeline/fineCut'
 
 type ActionKey = 'split' | 'fineCut' | 'duplicate' | 'flip' | 'rotate' | 'speed' | 'mute' | 'delete'
@@ -33,6 +34,10 @@ export default defineComponent({
   },
   computed: {
     ...mapState(useEditorStore, ['timecode', 'isPlaying', 'selection', 'selectedClip', 'canSplitAtPlayhead', 'project', 'playheadMicros']),
+    /** Same toggle as the item menu: the label names the action, so it changes with the state. */
+    muteLabel(): string {
+      return this.$t(this.selectedClip?.muted ? 'actions.unmute' : 'actions.mute')
+    },
     playLabel(): string {
       return this.$t(this.isPlaying ? 'actions.pause' : 'actions.play')
     },
@@ -42,6 +47,7 @@ export default defineComponent({
   },
   methods: {
     ...mapActions(useFineCutStore, { openFineCut: 'open' }),
+    ...mapActions(useSpeedDialogStore, { openSpeed: 'openFor' }),
     ...mapActions(useEditorStore, [
       'togglePlaying',
       'stepFrame',
@@ -50,9 +56,13 @@ export default defineComponent({
       'deleteSelected',
       'flipSelected',
       'rotateSelected',
-      'cycleSpeedSelected',
       'toggleMuteSelected'
     ]),
+    labelFor(key: ActionKey): string {
+      if (key === 'speed') return this.speedValue
+      if (key === 'mute') return this.muteLabel
+      return this.$t(`actions.${key}`)
+    },
     /** Actions that need a suitable selection are disabled (aria-disabled) without one. */
     enabled(key: ActionKey): boolean {
       switch (key) {
@@ -71,7 +81,6 @@ export default defineComponent({
       }
     },
     pressed(key: ActionKey): boolean | undefined {
-      if (key === 'mute') return this.selectedClip?.muted ?? false
       if (key === 'flip') return this.selectedClip?.transform.flipX ?? false
       return undefined
     },
@@ -94,7 +103,7 @@ export default defineComponent({
           this.rotateSelected()
           break
         case 'speed':
-          this.cycleSpeedSelected()
+          if (this.selectedClip) this.openSpeed(this.selectedClip.id)
           break
         case 'mute':
           this.toggleMuteSelected()
@@ -149,7 +158,7 @@ export default defineComponent({
         enabled(action.key) ? '' : 'cursor-not-allowed opacity-40'
       ]"
       :id="action.key === 'fineCut' ? 'fine-cut-button' : undefined"
-      :aria-haspopup="action.key === 'fineCut' ? 'dialog' : undefined"
+      :aria-haspopup="action.key === 'fineCut' || action.key === 'speed' ? 'dialog' : undefined"
       :aria-disabled="!enabled(action.key)"
       :aria-pressed="pressed(action.key)"
       :aria-label="action.key === 'speed' ? `${$t('actions.speed')}: ${speedValue}` : undefined"
@@ -157,7 +166,7 @@ export default defineComponent({
       @click="run(action.key)"
     >
       <Icon :name="action.icon" class="size-[18px]" />
-      <span>{{ action.key === 'speed' ? speedValue : $t(`actions.${action.key}`) }}</span>
+      <span>{{ labelFor(action.key) }}</span>
     </button>
   </div>
 </template>

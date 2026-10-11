@@ -30,6 +30,7 @@
     "backward": "Back one",
     "toBack": "To back",
     "orderHint": "Text always lies above stickers, shapes and pictures.",
+    "orderLaneHint": "Front = top lane in the timeline.",
     "duplicate": "Duplicate",
     "delete": "Delete",
     "areaShape": "Area shape",

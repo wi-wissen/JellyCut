@@ -3,6 +3,7 @@ import { frameDuration, type Micros } from '../time'
 import { clipEnd, findClipAt, rippleClose, splitClip, trimClipEnd, trimClipStart } from './edit'
 import { IMAGE_MAX_DURATION } from './insert'
 import { duplicateOverlay } from './overlayOps'
+import { isSpeedInRange, timelineLength } from './speed'
 
 export type ItemKind = 'clip' | 'text' | 'music' | 'overlay'
 export interface ItemRef {
@@ -17,14 +18,8 @@ export interface ClipPatch {
   transform?: Partial<Transform>
 }
 
-export const SPEED_STEPS: readonly number[] = [0.5, 1, 1.5, 2]
 const MAX_VOLUME = 2
 const FIT_MODES: readonly FitMode[] = ['fit', 'fill']
-
-/** Next step of the speed cycle; any speed above the last step wraps to the first. */
-export function nextSpeed(speed: number): number {
-  return SPEED_STEPS.find((step) => step > speed) ?? SPEED_STEPS[0] ?? 1
-}
 
 export function projectIds(project: Project): Set<string> {
   return new Set([
@@ -190,8 +185,8 @@ export function setClipProps(project: Project, clipId: string, patch: ClipPatch)
     if (patch.speed !== undefined) {
       // A freeze frame always runs at speed 1.
       if (clip.still !== undefined) return null
-      if (!isPositive(patch.speed)) return null
-      if (Math.round((clip.srcOut - clip.srcIn) / patch.speed) < 1) return null
+      if (!isSpeedInRange(patch.speed)) return null
+      if (timelineLength(clip.srcOut - clip.srcIn, patch.speed) < 1) return null
       next = { ...next, speed: patch.speed }
     }
     if (patch.transform !== undefined) {

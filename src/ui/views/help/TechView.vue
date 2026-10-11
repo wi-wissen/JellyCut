@@ -31,6 +31,11 @@ const BUILD: TechLink[] = [
   { key: 'pages', name: 'GitHub Pages', href: 'https://pages.github.com' }
 ]
 
+const ARTWORK: TechLink[] = [
+  { key: 'fluent', name: 'Fluent Emoji', href: 'https://github.com/microsoft/fluentui-emoji' },
+  { key: 'mit', name: 'MIT License', href: 'https://github.com/microsoft/fluentui-emoji/blob/main/LICENSE' }
+]
+
 const BROWSER: TechLink[] = [
   { key: 'webcodecs', name: 'WebCodecs API', href: 'https://developer.mozilla.org/en-US/docs/Web/API/WebCodecs_API' },
   { key: 'webgl', name: 'WebGL2', href: 'https://developer.mozilla.org/en-US/docs/Web/API/WebGL2RenderingContext' },
@@ -45,7 +50,7 @@ export default defineComponent({
   name: 'TechView',
   components: { HelpLayout, Callout },
   data() {
-    return { libraries: LIBRARIES, build: BUILD, browser: BROWSER, repoUrl: REPO_URL }
+    return { libraries: LIBRARIES, artwork: ARTWORK, build: BUILD, browser: BROWSER, repoUrl: REPO_URL }
   }
 })
 </script>
@@ -97,6 +102,20 @@ export default defineComponent({
       <p>{{ $t('help.tech.buildText') }}</p>
       <ul>
         <li v-for="item in build" :key="item.key">
+          <a :href="item.href" target="_blank" rel="noopener noreferrer" class="inline-flex min-h-11 items-center gap-1 font-semibold text-fg no-underline">
+            {{ item.name }}<span class="sr-only"> ({{ $t('help.common.newTab') }})</span>
+            <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" class="size-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9" /></svg>
+          </a>
+          <p class="text-base text-muted">{{ $t(`help.tech.items.${item.key}`) }}</p>
+        </li>
+      </ul>
+    </section>
+
+    <section id="artwork" class="scroll-mt-6">
+      <h2>{{ $t('help.tech.artworkTitle') }}</h2>
+      <p>{{ $t('help.tech.artworkText') }}</p>
+      <ul>
+        <li v-for="item in artwork" :key="item.key">
           <a :href="item.href" target="_blank" rel="noopener noreferrer" class="inline-flex min-h-11 items-center gap-1 font-semibold text-fg no-underline">
             {{ item.name }}<span class="sr-only"> ({{ $t('help.common.newTab') }})</span>
             <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" class="size-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9" /></svg>

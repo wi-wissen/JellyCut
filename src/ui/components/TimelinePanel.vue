@@ -11,6 +11,9 @@ import type { Micros } from '../../core/time'
 import { frameDuration } from '../../core/time'
 import { clipEnd } from '../../core/timeline/edit'
 import { clipForFineCut } from '../../core/timeline/fineCut'
+import { hasClipSound } from '../../core/timeline/speed'
+import { splitMusicAt } from '../../core/timeline/musicOps'
+import { setSpeedOpener, useSpeedDialogStore } from '../stores/speedDialog'
 import { planTimeline } from '../../core/render/scene'
 import { formatNumber } from '../numberFormat'
 import type { ItemRef } from '../../core/timeline/ops'
@@ -240,8 +243,9 @@ export default defineComponent({
           widthPx: px(end - clip.start)
         }
       })
+      // Clips faster than 4x have no sound (see core/timeline/speed), so they have no bar here either.
       const originalAudioItems = sortedClips
-        .filter((clip) => !clip.muted && hasSound.get(clip.assetId) === true)
+        .filter((clip) => !clip.muted && hasClipSound(clip.speed) && hasSound.get(clip.assetId) === true)
         .map((clip): LaneItem => {
           const end = clipEnd(clip)
           return {
@@ -339,6 +343,17 @@ export default defineComponent({
       const ref = this.menu?.item.ref
       if (!ref) return []
       const t = (key: string): string => this.$t(`actions.${key}`)
+      if (ref.kind === 'music') {
+        // Own sound: the same split, duplicate, delete and mute as the clips.
+        const music = this.project.music.find((m) => m.id === ref.id)
+        const canSplit = music !== undefined && splitMusicAt(this.project, ref.id, this.playheadMicros, '', this.fps) !== this.project
+        return [
+          { key: 'split', label: t('split'), icon: 'split', enabled: canSplit },
+          { key: 'duplicate', label: t('duplicate'), icon: 'copy', enabled: true },
+          { key: 'mute', label: t(music?.muted ? 'unmute' : 'mute'), icon: 'mute', enabled: true },
+          { key: 'delete', label: t('delete'), icon: 'trash', enabled: true }
+        ]
+      }
       if (ref.kind !== 'clip') {
         return [
           { key: 'duplicate', label: t('duplicate'), icon: 'copy', enabled: true },
@@ -359,7 +374,8 @@ export default defineComponent({
         { key: 'flip', label: t('flip'), icon: 'flip', enabled: true },
         { key: 'rotate', label: t('rotate'), icon: 'rotate', enabled: true },
         { key: 'speed', label: t('speed'), icon: 'speed', enabled: true },
-        { key: 'mute', label: t('mute'), icon: 'mute', enabled: true }
+        // The label names the action the click does: "Ton an" while the clip is muted.
+        { key: 'mute', label: t(clip?.muted ? 'unmute' : 'mute'), icon: 'mute', enabled: true }
       ]
       if (spansPlayhead) {
         entries.push({ key: 'freeze', label: this.$t('polish.menu.freezeFrame'), icon: 'camera', enabled: true })
@@ -457,11 +473,15 @@ export default defineComponent({
       'duplicateSelected',
       'flipSelected',
       'rotateSelected',
-      'cycleSpeedSelected',
+      'splitSelectedMusic',
+      'moveMusic',
+      'trimMusicStart',
+      'trimMusicEnd',
       'toggleMuteSelected',
       'insertFreezeFrame'
     ]),
     ...mapActions(useFineCutStore, { openFineCut: 'open' }),
+    ...mapActions(useSpeedDialogStore, { openSpeed: 'openFor' }),
 
     onPointerKindChange(event: MediaQueryListEvent) {
       this.coarse = event.matches
@@ -486,7 +506,7 @@ export default defineComponent({
       return item.ref !== null && sel !== null && sel.kind === item.ref.kind && sel.id === item.ref.id
     },
     handlesFor(item: LaneItem): boolean {
-      return this.isSelected(item) && item.ref !== null && item.ref.kind !== 'music'
+      return this.isSelected(item) && item.ref !== null
     },
     offsetFor(item: LaneItem): number {
       return this.dragKey === item.key ? this.dragOffset : 0
@@ -640,10 +660,14 @@ export default defineComponent({
       if (restoreFocus && opener?.isConnected) void this.$nextTick(() => opener.focus({ preventScroll: true }))
     },
     runMenu(key: string) {
-      const restore = key !== 'fineCut'
+      // The fine-cut and speed dialogs move the focus themselves.
+      const restore = key !== 'fineCut' && key !== 'speed'
+      const item = this.menu?.item
+      const opener = this.menu?.opener ?? null
       switch (key) {
         case 'split':
-          this.splitAtPlayhead()
+          if (item?.ref?.kind === 'music') this.splitSelectedMusic()
+          else this.splitAtPlayhead()
           break
         case 'fineCut':
           void this.openFineCut()
@@ -658,7 +682,10 @@ export default defineComponent({
           this.rotateSelected()
           break
         case 'speed':
-          this.cycleSpeedSelected()
+          if (item?.ref?.kind === 'clip') {
+            setSpeedOpener(opener)
+            this.openSpeed(item.ref.id)
+          }
           break
         case 'mute':
           this.toggleMuteSelected()
@@ -720,7 +747,8 @@ export default defineComponent({
           .filter((other) => other.key !== item.key)
           .map((other) => ({ leftPx: other.leftPx, endPx: other.leftPx + other.widthPx }))
         this.gesture = gesture
-      } else if (item.ref.kind === 'text' || item.ref.kind === 'overlay') {
+      } else {
+        // Text, pictures and shapes, and own sound: all move in time with the snap points of the project.
         this.beginGesture()
         const gesture = this.makeGesture('move-text', event, item)
         gesture.candidates = collectSnapPoints(this.project, item.ref.id, this.playheadMicros)
@@ -728,7 +756,7 @@ export default defineComponent({
       }
     },
     onHandleDown(edge: 'start' | 'end', event: PointerEvent, item: LaneItem) {
-      if (!item.ref || item.ref.kind === 'music') return
+      if (!item.ref) return
       this.beginGesture()
       const gesture = this.makeGesture(edge === 'start' ? 'trim-start' : 'trim-end', event, item)
       gesture.candidates = collectSnapPoints(this.project, item.ref.id, this.playheadMicros)
@@ -756,16 +784,22 @@ export default defineComponent({
       let t = origin + pxToMicros(dx, this.pxPerSecond)
       if (this.snapping) t = snapTime(t, gesture.candidates, pxToMicros(SNAP_THRESHOLD_PX, this.pxPerSecond))
       const minLength = frameDuration(this.fps)
-      // Start can only shrink: the video track is closed, so a clip cannot leave its neighbour.
-      t = isStart
-        ? Math.min(Math.max(t, gesture.originStart), gesture.originEnd - minLength)
-        : Math.max(t, gesture.originStart + minLength)
+      // Own sound clamps itself in core: its start may come back as far as the source has audio.
+      if (gesture.itemKind !== 'music') {
+        // Start can only shrink: the video track is closed, so a clip cannot leave its neighbour.
+        t = isStart
+          ? Math.min(Math.max(t, gesture.originStart), gesture.originEnd - minLength)
+          : Math.max(t, gesture.originStart + minLength)
+      }
       if (gesture.itemKind === 'clip') {
         if (isStart) this.trimStart(gesture.id, t)
         else this.trimEnd(gesture.id, t)
       } else if (gesture.itemKind === 'overlay') {
         if (isStart) this.trimOverlayStart(gesture.id, t)
         else this.trimOverlayEnd(gesture.id, t)
+      } else if (gesture.itemKind === 'music') {
+        if (isStart) this.trimMusicStart(gesture.id, t)
+        else this.trimMusicEnd(gesture.id, t)
       } else if (isStart) {
         this.trimTextStart(gesture.id, t)
       } else {
@@ -779,6 +813,7 @@ export default defineComponent({
       let t = gesture.originStart + pxToMicros(dx, this.pxPerSecond)
       if (this.snapping) t = snapTime(t, gesture.candidates, pxToMicros(SNAP_THRESHOLD_PX, this.pxPerSecond))
       if (gesture.itemKind === 'overlay') this.moveOverlay(gesture.id, Math.max(0, t))
+      else if (gesture.itemKind === 'music') this.moveMusic(gesture.id, Math.max(0, t))
       else this.moveText(gesture.id, Math.max(0, t))
     },
     updateReorder(gesture: Gesture, event: PointerEvent) {
@@ -832,7 +867,8 @@ export default defineComponent({
         case 's':
         case 'S':
           event.preventDefault()
-          this.splitAtPlayhead()
+          if (this.selection?.kind === 'music') this.splitSelectedMusic()
+          else this.splitAtPlayhead()
           break
         case 'ArrowLeft':
         case 'ArrowRight': {

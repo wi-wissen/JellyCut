@@ -2,6 +2,7 @@ import type { Micros } from '../time'
 import type { FormatRatio, Project } from './types'
 import { CREDIT_FIELDS, CREDIT_MAX_LENGTH, isHttpUrl } from '../credits/credits'
 import { canonicalAnimation } from '../render/animations'
+import { isStickerImageId } from '../render/stickerImages'
 import { stickerShape } from '../render/stickerShapes'
 
 export const CURRENT_VERSION = 1
@@ -293,6 +294,7 @@ function validateMusic(value: unknown, path: string, assetIds: Set<string>, erro
     need(errors, isVolume(m.volume), `${p}.volume`, `must be a number from 0 to ${MAX_VOLUME}`)
     need(errors, isMicros(m.fadeIn), `${p}.fadeIn`, MICROS_MSG)
     need(errors, isMicros(m.fadeOut), `${p}.fadeOut`, MICROS_MSG)
+    need(errors, m.muted === undefined || typeof m.muted === 'boolean', `${p}.muted`, BOOL_MSG)
   })
 }
 
@@ -327,10 +329,13 @@ function validateOverlays(value: unknown, path: string, errors: Errors): void {
     if (o.loop !== undefined && o.loop !== null) need(errors, OVERLAY_LOOPS.includes(o.loop as (typeof OVERLAY_LOOPS)[number]), `${p}.loop`, `must be one of ${OVERLAY_LOOPS.join(', ')}`)
 
     if (o.kind === 'sticker') {
-      if (o.emoji !== undefined) {
+      if (o.imageId !== undefined) {
+        need(errors, isStickerImageId(o.imageId), `${p}.imageId`, 'must be an id of the sticker catalog')
+        need(errors, o.emoji === undefined && o.shape === undefined, `${p}.imageId`, 'cannot be combined with emoji or shape')
+      } else if (o.emoji !== undefined) {
         need(errors, typeof o.emoji === 'string' && o.emoji.length > 0 && o.emoji.length <= MAX_EMOJI_LENGTH, `${p}.emoji`, `must be a string of 1 to ${MAX_EMOJI_LENGTH} characters`)
       } else {
-        need(errors, typeof o.shape === 'string' && stickerShape(o.shape) !== null, `${p}.shape`, 'must be a known sticker shape (or give an emoji)')
+        need(errors, typeof o.shape === 'string' && stickerShape(o.shape) !== null, `${p}.shape`, 'must be a known sticker shape (or give an emoji or imageId)')
         need(errors, typeof o.color === 'string' && HEX_COLOR.test(o.color), `${p}.color`, 'must be #RRGGBB')
         need(errors, o.outline === undefined || o.outline === null || (typeof o.outline === 'string' && HEX_COLOR.test(o.outline)), `${p}.outline`, 'must be #RRGGBB or null')
       }

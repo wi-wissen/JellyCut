@@ -9,6 +9,7 @@ import {
   addShape,
   addSticker,
   addStroke,
+  addImageSticker,
   addVectorSticker,
   bringForward,
   bringToFront,
@@ -33,14 +34,21 @@ import { formatTimecode, frameIndexAt, frameStart, secondsToMicros, type Micros 
 import { applyGradeToAll, setClipGrade as setGrade, type GradePatch } from '../../core/filters/ops'
 import { nextId } from '../../core/timeline/ids'
 import { freezeFrameAt } from '../../core/timeline/freezeOps'
-import { updateMusic, type MusicPatch } from '../../core/timeline/musicOps'
+import { timelineLength } from '../../core/timeline/speed'
+import {
+  moveMusic as moveMusicInTime,
+  splitMusicAt,
+  trimMusicEnd,
+  trimMusicStart,
+  updateMusic,
+  type MusicPatch
+} from '../../core/timeline/musicOps'
 import { addText, updateText, type TextPresetId, type TextPatch } from '../../core/timeline/textOps'
 import { DEFAULT_TRANSITION, setTransition, transitionTargetClipId } from '../../core/timeline/transitionOps'
 import {
   deleteItem,
   duplicateItem,
   moveText as moveTextInTime,
-  nextSpeed,
   projectIds,
   type ClipPatch,
   reorderVideoClip,
@@ -168,7 +176,7 @@ function normalizeAngle(degrees: number): number {
 
 /** Timeline length of a clip after speed is applied. */
 function clipLength(clip: Clip): Micros {
-  return Math.round((clip.srcOut - clip.srcIn) / clip.speed)
+  return timelineLength(clip.srcOut - clip.srcIn, clip.speed)
 }
 
 export function projectDuration(project: Project): Micros {
@@ -462,6 +470,12 @@ export const useEditorStore = defineStore('editor', {
       if (ref.kind === 'overlay') return project.overlays.find((o) => o.id === ref.id) ?? null
       return project.music.find((m) => m.id === ref.id) ?? null
     },
+    /** The music item (own sound) the selection points to; null for any other item. */
+    selectedMusic(state): MusicItem | null {
+      const ref = state.selection
+      if (ref?.kind !== 'music') return null
+      return state.history.present.music.find((m) => m.id === ref.id) ?? null
+    },
     selectedOverlay(state): OverlayItem | null {
       const ref = state.selection
       if (ref?.kind !== 'overlay') return null
@@ -714,10 +728,15 @@ export const useEditorStore = defineStore('editor', {
       this.commitProject(next)
       this.selection = { kind: ref.kind, id }
     },
+    /** Mute of the selected clip (original sound) or of the selected own sound item. */
     toggleMuteSelected() {
       const clip = this.selectedClip
-      if (!clip) return
-      this.commitProject(setClipProps(this.project, clip.id, { muted: !clip.muted }))
+      if (clip) {
+        this.commitProject(setClipProps(this.project, clip.id, { muted: !clip.muted }))
+        return
+      }
+      const music = this.selectedMusic
+      if (music) this.commitProject(updateMusic(this.project, music.id, { muted: !music.muted }))
     },
     flipSelected() {
       const clip = this.selectedClip
@@ -730,10 +749,24 @@ export const useEditorStore = defineStore('editor', {
       const rotation = normalizeAngle(clip.transform.rotation + 90)
       this.commitProject(setClipProps(this.project, clip.id, { transform: { rotation } }))
     },
-    cycleSpeedSelected() {
-      const clip = this.selectedClip
-      if (!clip) return
-      this.commitProject(setClipProps(this.project, clip.id, { speed: nextSpeed(clip.speed) }))
+    /**
+     * Sets the tempo of the selected clip (one undo step). Returns false when the speed is out of range
+     * or the clip would be shorter than one microsecond; the project is then unchanged.
+     */
+    setClipSpeed(clipId: string, speed: number): boolean {
+      const project = this.project
+      const next = setClipProps(project, clipId, { speed })
+      if (next === project) return false
+      this.commitProject(next)
+      return true
+    },
+    /** Splits the selected own sound item at the playhead (one undo step). */
+    splitSelectedMusic() {
+      const music = this.selectedMusic
+      if (!music) return
+      const project = this.project
+      const id = freshId(project, ID_PREFIX.music)
+      this.commitProject(splitMusicAt(project, music.id, this.playheadMicros, id, project.format.fps))
     },
 
     /**
@@ -846,6 +879,15 @@ export const useEditorStore = defineStore('editor', {
       })
       if (next !== project) this.commitProject(next)
     },
+    /** Adds a picture sticker of the catalog at the playhead and selects it. */
+    addImageStickerAtPlayhead(imageId: string) {
+      const project = this.project
+      const id = freshId(project, ID_PREFIX.overlay)
+      const next = addImageSticker(project, id, this.playheadMicros, imageId)
+      if (next === project) return
+      this.commitProject(next)
+      this.selection = { kind: 'overlay', id }
+    },
     /** Adds a built-in vector sticker at the playhead and selects it. */
     addVectorStickerAtPlayhead(shape: StickerShapeId) {
       const project = this.project
@@ -891,6 +933,15 @@ export const useEditorStore = defineStore('editor', {
       const ref = this.selection
       if (ref?.kind !== 'overlay') return
       this.commitProject(updateOverlay(this.project, ref.id, patch), key)
+    },
+    moveMusic(id: string, t: Micros) {
+      this.editProject((base) => moveMusicInTime(base, id, t), `music-move:${id}`)
+    },
+    trimMusicStart(id: string, t: Micros) {
+      this.editProject((base) => trimMusicStart(base, id, t, base.format.fps), `music-trim-start:${id}`)
+    },
+    trimMusicEnd(id: string, t: Micros) {
+      this.editProject((base) => trimMusicEnd(base, id, t, base.format.fps), `music-trim-end:${id}`)
     },
     moveOverlay(id: string, t: Micros) {
       this.editProject((base) => moveOverlayInTime(base, id, t), `overlay-move:${id}`)

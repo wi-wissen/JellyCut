@@ -7,32 +7,29 @@ export interface Span {
 export const OVERLAY_ROW_LIMIT = 4
 
 /**
- * Greedy row packing for bars in one lane: each span takes the first row whose last bar has ended
- * before it starts, so only overlapping bars get different rows. With `maxRows`, rows past the limit
- * are not added: a span that fits no row goes to the last row even if it overlaps, so the lane stays
- * short and the bars there are drawn on top of each other (the selected one on top).
+ * Stacking rows for bars in one lane. The input is in stacking order: later spans are in front. The
+ * front-most bar takes the upper row, and a bar behind it that overlaps it in time goes one row lower.
+ * Bars that do not overlap may share a row. Each span is placed below every span in front of it that it
+ * overlaps, so for every overlapping pair the front bar has the smaller row number.
+ * With `maxRows`, rows past the limit are not added: a span that would need a lower row goes to the last
+ * row even if it overlaps, so the lane stays short and the bars there are drawn on top of each other.
  * Returns the row of every input span (same order) and the number of rows (at least one).
  */
 export function packRows(spans: readonly Span[], maxRows = Infinity): { rows: number[]; count: number } {
-  const order = spans.map((_, i) => i).sort((a, b) => spans[a]!.start - spans[b]!.start || a - b)
-  const rowEnds: number[] = []
   const rows = spans.map(() => 0)
+  const placed: number[] = []
   const last = Math.max(0, maxRows - 1)
-  for (const i of order) {
+  let deepest = 0
+  for (let i = spans.length - 1; i >= 0; i--) {
     const span = spans[i]!
-    let row = rowEnds.findIndex((end) => end <= span.start)
-    if (row < 0) {
-      if (rowEnds.length < maxRows) {
-        row = rowEnds.length
-        rowEnds.push(span.end)
-      } else {
-        row = last
-        rowEnds[row] = Math.max(rowEnds[row]!, span.end)
-      }
-    } else {
-      rowEnds[row] = span.end
+    let row = 0
+    for (const j of placed) {
+      const front = spans[j]!
+      if (front.start < span.end && span.start < front.end) row = Math.max(row, rows[j]! + 1)
     }
-    rows[i] = row
+    rows[i] = Math.min(row, last)
+    deepest = Math.max(deepest, rows[i]!)
+    placed.push(i)
   }
-  return { rows, count: Math.max(1, rowEnds.length) }
+  return { rows, count: Math.max(1, Math.min(deepest + 1, maxRows)) }
 }

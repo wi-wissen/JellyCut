@@ -1,0 +1,108 @@
+/**
+ * Picture stickers: Fluent Emoji (3D) by Microsoft, MIT licence. One file per id in src/assets/stickers; the
+ * engine loads them (engine/render/stickerImages). Ids are stored in projects, so they never change.
+ */
+export const STICKER_IMAGE_CATEGORIES = ['faces', 'hearts', 'animals', 'celebrate', 'nature', 'food', 'symbols', 'school'] as const
+export type StickerImageCategory = (typeof STICKER_IMAGE_CATEGORIES)[number]
+
+export interface StickerImage {
+  id: string
+  category: StickerImageCategory
+}
+
+export const STICKER_IMAGES: readonly StickerImage[] = [
+  { id: 'grin', category: 'faces' },
+  { id: 'heartEyes', category: 'faces' },
+  { id: 'laugh', category: 'faces' },
+  { id: 'cool', category: 'faces' },
+  { id: 'wink', category: 'faces' },
+  { id: 'starStruck', category: 'faces' },
+  { id: 'party', category: 'faces' },
+  { id: 'thinking', category: 'faces' },
+  { id: 'scream', category: 'faces' },
+  { id: 'cry', category: 'faces' },
+  { id: 'exploding', category: 'faces' },
+  { id: 'heart', category: 'hearts' },
+  { id: 'sparklingHeart', category: 'hearts' },
+  { id: 'heartArrow', category: 'hearts' },
+  { id: 'thumbsUp', category: 'hearts' },
+  { id: 'clap', category: 'hearts' },
+  { id: 'wave', category: 'hearts' },
+  { id: 'victory', category: 'hearts' },
+  { id: 'okHand', category: 'hearts' },
+  { id: 'muscle', category: 'hearts' },
+  { id: 'dog', category: 'animals' },
+  { id: 'cat', category: 'animals' },
+  { id: 'panda', category: 'animals' },
+  { id: 'fox', category: 'animals' },
+  { id: 'unicorn', category: 'animals' },
+  { id: 'rabbit', category: 'animals' },
+  { id: 'lion', category: 'animals' },
+  { id: 'penguin', category: 'animals' },
+  { id: 'frog', category: 'animals' },
+  { id: 'butterfly', category: 'animals' },
+  { id: 'owl', category: 'animals' },
+  { id: 'dino', category: 'animals' },
+  { id: 'partyPopper', category: 'celebrate' },
+  { id: 'balloon', category: 'celebrate' },
+  { id: 'cake', category: 'celebrate' },
+  { id: 'gift', category: 'celebrate' },
+  { id: 'fireworks', category: 'celebrate' },
+  { id: 'trophy', category: 'celebrate' },
+  { id: 'medal', category: 'celebrate' },
+  { id: 'crown', category: 'celebrate' },
+  { id: 'sparkles', category: 'celebrate' },
+  { id: 'sun', category: 'nature' },
+  { id: 'rainbow', category: 'nature' },
+  { id: 'cloud', category: 'nature' },
+  { id: 'rain', category: 'nature' },
+  { id: 'lightning', category: 'nature' },
+  { id: 'fire', category: 'nature' },
+  { id: 'sunflower', category: 'nature' },
+  { id: 'clover', category: 'nature' },
+  { id: 'cherryBlossom', category: 'nature' },
+  { id: 'tree', category: 'nature' },
+  { id: 'pizza', category: 'food' },
+  { id: 'burger', category: 'food' },
+  { id: 'fries', category: 'food' },
+  { id: 'iceCream', category: 'food' },
+  { id: 'doughnut', category: 'food' },
+  { id: 'apple', category: 'food' },
+  { id: 'strawberry', category: 'food' },
+  { id: 'cookie', category: 'food' },
+  { id: 'popcorn', category: 'food' },
+  { id: 'watermelon', category: 'food' },
+  { id: 'check', category: 'symbols' },
+  { id: 'cross', category: 'symbols' },
+  { id: 'exclamation', category: 'symbols' },
+  { id: 'question', category: 'symbols' },
+  { id: 'hundred', category: 'symbols' },
+  { id: 'arrowRight', category: 'symbols' },
+  { id: 'arrowLeft', category: 'symbols' },
+  { id: 'arrowUp', category: 'symbols' },
+  { id: 'star', category: 'symbols' },
+  { id: 'warning', category: 'symbols' },
+  { id: 'speech', category: 'symbols' },
+  { id: 'boom', category: 'symbols' },
+  { id: 'books', category: 'school' },
+  { id: 'pencil', category: 'school' },
+  { id: 'memo', category: 'school' },
+  { id: 'gradCap', category: 'school' },
+  { id: 'lightbulb', category: 'school' },
+  { id: 'microphone', category: 'school' },
+  { id: 'clapper', category: 'school' },
+  { id: 'camera', category: 'school' },
+  { id: 'headphone', category: 'school' },
+  { id: 'laptop', category: 'school' },
+  { id: 'megaphone', category: 'school' },
+  { id: 'globe', category: 'school' },
+  { id: 'rocket', category: 'school' },
+  { id: 'magnifier', category: 'school' },
+  { id: 'school', category: 'school' },
+]
+
+const IMAGE_IDS: ReadonlySet<string> = new Set(STICKER_IMAGES.map((s) => s.id))
+
+export function isStickerImageId(value: unknown): value is string {
+  return typeof value === 'string' && IMAGE_IDS.has(value)
+}

@@ -16,6 +16,7 @@ import type { OverlayPatch } from '../../../core/timeline/overlayOps'
 import { REFERENCE_HEIGHT, REGION_EFFECTS, REGION_SHAPES, SHAPE_KINDS } from '../../../core/timeline/overlayCatalog'
 import type { Asset } from '../../../core/project/types'
 import { STICKER_SHAPES } from '../../../core/render/stickerShapes'
+import { stickerImageUrl } from '../../../engine/render/stickerImages'
 import { PICTURE_SHAPES, pictureShapeOf, pictureShapePatch, type PictureShape } from '../../../core/timeline/mediaShape'
 
 const DEFAULT_OUTLINE = '#14121f'
@@ -54,7 +55,7 @@ export default defineComponent({
     },
     header(): string {
       const item = this.item
-      if (item.kind === 'sticker') return this.$t('overlays.header.sticker', { name: item.emoji ?? this.$t(`overlays3.sticker.${item.shape}`) })
+      if (item.kind === 'sticker') return this.$t('overlays.header.sticker', { name: item.imageId !== undefined ? this.$t(`stickers.image.${item.imageId}`) : item.emoji ?? this.$t(`overlays3.sticker.${item.shape}`) })
       if (item.kind === 'shape') return this.$t('overlays.header.shape', { name: this.$t(`overlays.shape.${item.shape}`) })
       if (item.kind === 'region') return this.$t('overlays2.regionHeader', { name: this.$t(`overlays2.effects.${item.effect}`) })
       if (item.kind === 'media') return this.$t('overlays2.pictureHeader', { name: this.asset?.name ?? '' })
@@ -121,6 +122,9 @@ export default defineComponent({
     stickerName(id: string): string {
       return this.$t(`overlays3.sticker.${id}`)
     },
+    imageUrl(id: string): string {
+      return stickerImageUrl(id)
+    },
     shapeName(shape: string): string {
       return this.$t(`overlays.shape.${shape}`)
     },
@@ -151,7 +155,14 @@ export default defineComponent({
     <DesignSection :title="$t('design.content')" first>
       <!-- Stickers: the shape picker and the outline. Legacy emoji stickers only show their emoji. -->
       <template v-if="item.kind === 'sticker'">
-        <p v-if="!isVectorSticker" class="text-2xl leading-none" aria-hidden="true">{{ item.emoji }}</p>
+        <img
+          v-if="item.imageId !== undefined"
+          :src="imageUrl(item.imageId)"
+          alt=""
+          class="size-16 object-contain"
+          aria-hidden="true"
+        />
+        <p v-else-if="!isVectorSticker" class="text-2xl leading-none" aria-hidden="true">{{ item.emoji }}</p>
         <template v-else>
           <div class="grid grid-cols-6 gap-1.5" role="group" :aria-label="$t('tabs.sticker')">
             <button

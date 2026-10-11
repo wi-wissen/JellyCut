@@ -3,6 +3,7 @@ import { defineComponent, type PropType } from 'vue'
 import { mapActions, mapState } from 'pinia'
 import BackLink from './BackLink.vue'
 import RangeField from './RangeField.vue'
+import ToggleSwitch from './ToggleSwitch.vue'
 import { useEditorStore } from '../../stores/editor'
 import type { MusicItem } from '../../../core/project/types'
 import { secondsToMicros } from '../../../core/time'
@@ -10,7 +11,7 @@ import { formatNumber } from '../../numberFormat'
 
 export default defineComponent({
   name: 'MusicProperties',
-  components: { BackLink, RangeField },
+  components: { BackLink, RangeField, ToggleSwitch },
   props: {
     item: { type: Object as PropType<MusicItem>, required: true }
   },
@@ -34,6 +35,9 @@ export default defineComponent({
   },
   methods: {
     ...mapActions(useEditorStore, ['updateSelectedMusic', 'endGesture']),
+    toggleSound(): void {
+      this.updateSelectedMusic({ muted: !this.item.muted })
+    },
     keyFor(field: string): string {
       return `music-${field}:${this.item.id}`
     },
@@ -62,6 +66,12 @@ export default defineComponent({
     <h2 class="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">{{ header }}</h2>
 
     <section class="flex flex-col gap-3 rounded-[10px] border border-line bg-bg p-3">
+      <ToggleSwitch
+        :label="$t('music.sound')"
+        :state-text="item.muted ? $t('timeline.off') : $t('timeline.on')"
+        :checked="!item.muted"
+        @toggle="toggleSound"
+      />
       <RangeField
         :label="$t('music.volume')"
         :model-value="volumePercent"

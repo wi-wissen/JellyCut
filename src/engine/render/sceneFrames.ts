@@ -1,6 +1,7 @@
 import type { Scene } from '../../core/render/types'
 import type { ExactFrameProvider } from '../media/frames'
 import type { FrameSource } from './compositor'
+import { loadSceneStickers } from './stickerImages'
 
 /**
  * Frames a scene needs, keyed by clip id for the video layers and by overlay id for picture-in-picture
@@ -8,6 +9,7 @@ import type { FrameSource } from './compositor'
  */
 export async function sceneFrames(scene: Scene, provider: ExactFrameProvider): Promise<Map<string, FrameSource>> {
   const frames = new Map<string, FrameSource>()
+  await loadSceneStickers(scene)
   for (const [lane, layer] of scene.videos.entries()) {
     const frame = await provider.getFrame(layer.assetId, layer.srcTime, String(lane))
     if (frame) frames.set(layer.clipId, frame)

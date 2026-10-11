@@ -212,9 +212,9 @@ export class Compositor {
     const pictures = scene.overlays.filter((l) => l.item.kind === 'media').map((l) => l.item.id)
     this.pruneFrameTextures(new Set([...scene.videos.map((v) => v.clipId), ...pictures]))
     const screen: Target = { fbo: null, tex: null, w, h }
-    const regions = scene.overlays.filter((l) => l.item.kind === 'region')
-    // Regions read the composed picture, so with any region the picture is built off screen first.
-    const picture = regions.length > 0 ? this.pageTarget(2) : screen
+    // A region reads everything composed below it, so with any region the picture is built off screen first.
+    const hasRegion = scene.overlays.some((l) => l.item.kind === 'region')
+    const picture = hasRegion ? this.pageTarget(2) : screen
     const layers = scene.videos.slice(-2)
     const top = layers.at(-1)
 
@@ -236,8 +236,7 @@ export class Compositor {
       this.clear(picture, this.backgroundRgb(format))
     }
 
-    if (regions.length > 0) this.drawRegions(regions, picture, screen)
-    this.drawOverlays(scene.overlays, screen, frames)
+    this.drawOverlayStack(scene.overlays, picture, screen, frames)
     this.drawTexts(scene.texts, screen)
     this.lastError = this.readGlError()
   }
@@ -620,15 +619,32 @@ export class Compositor {
     this.drawQuad(corners, UV_UPRIGHT)
   }
 
-  /** Applies the blur / pixelate regions in list order, each to the picture the previous ones left. */
-  private drawRegions(layers: readonly OverlayLayer[], start: Target, screen: Target): void {
-    let current = start
+  /**
+   * Draws the overlays back to front. Pictures, stickers, shapes and strokes are drawn onto the picture composed
+   * so far; a region replaces its shape by the blurred / pixelated picture below it. The two off-screen pages
+   * (2 and 3) swap roles after every region, so a region never reads the page it writes. The last region writes
+   * to the screen, and what is above it is drawn on the screen directly.
+   */
+  private drawOverlayStack(layers: readonly OverlayLayer[], picture: Target, screen: Target, frames: ReadonlyMap<string, FrameSource>): void {
+    let lastRegion = -1
     layers.forEach((layer, i) => {
-      const last = i === layers.length - 1
+      if (layer.item.kind === 'region') lastRegion = i
+    })
+    let current = picture
+    let batch: OverlayLayer[] = []
+    layers.forEach((layer, i) => {
+      if (layer.item.kind !== 'region') {
+        batch.push(layer)
+        return
+      }
+      this.drawOverlays(batch, current, frames)
+      batch = []
+      const last = i === lastRegion
       const next = last ? screen : current === this.pageTarget(2) ? this.pageTarget(3) : this.pageTarget(2)
       this.regionPass(next, current, layer)
       current = next
     })
+    this.drawOverlays(batch, current, frames)
   }
 
   private regionPass(target: Target, src: Target, layer: OverlayLayer): void {
@@ -661,6 +677,8 @@ export class Compositor {
     gl.uniform1f(p.uniform('u_radius'), Math.min(Math.max(0, radius) * target.h, box.w / 2, box.h / 2))
     gl.uniform1f(p.uniform('u_alpha'), layer.alpha)
     this.drawQuad(FULL_QUAD, UV_UPRIGHT)
+    // Nothing stays bound to the second unit, so a later draw into one of these pages cannot read it.
+    gl.bindTexture(gl.TEXTURE_2D, null)
     gl.activeTexture(gl.TEXTURE0)
   }
 

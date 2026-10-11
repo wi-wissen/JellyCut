@@ -57,16 +57,16 @@ describe('stacking order', () => {
     expect(next.overlays.find((o) => o.id === 'a')).toEqual(p.overlays[0])
   })
 
-  it('is a stacking-only change: the timeline row packing is the same for every list order', () => {
+  it('the timeline lanes follow the stacking: the bar in front gets the upper row', () => {
     const spans: Span[] = [
       { start: 0, end: 3 },
       { start: 1, end: 2 },
       { start: 2.5, end: 4 }
     ]
-    const forward = packRows(spans)
-    const reversed = packRows([...spans].reverse())
-    expect(reversed.rows).toEqual([...forward.rows].reverse())
-    expect(forward.count).toBe(reversed.count)
+    // The last bar is in front: it takes row 0; the bar at the start overlaps it and goes lower.
+    expect(packRows(spans).rows).toEqual([1, 0, 0])
+    // Reversing the list reverses the front: now the first bar is in front.
+    expect(packRows([...spans].reverse()).rows).toEqual([1, 1, 0])
   })
 })
 

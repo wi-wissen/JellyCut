@@ -7,6 +7,7 @@ import PlayerStage from '../components/PlayerStage.vue'
 import ActionBar from '../components/ActionBar.vue'
 import TimelinePanel from '../components/TimelinePanel.vue'
 import FineCutOverlay from '../components/fineCut/FineCutOverlay.vue'
+import SpeedDialog from '../components/SpeedDialog.vue'
 import UpdateToast from '../pwa/UpdateToast.vue'
 import { useEditorStore } from '../stores/editor'
 import '../fonts'
@@ -21,7 +22,7 @@ function isTextEntry(target: EventTarget | null): boolean {
 
 export default defineComponent({
   name: 'EditorView',
-  components: { TopBar, LeftPanel, PlayerStage, ActionBar, TimelinePanel, FineCutOverlay, UpdateToast },
+  components: { TopBar, LeftPanel, PlayerStage, ActionBar, TimelinePanel, FineCutOverlay, SpeedDialog, UpdateToast },
   mounted() {
     this.applyTheme()
     document.addEventListener('keydown', this.onKeydown)
@@ -66,6 +67,7 @@ export default defineComponent({
       <LeftPanel />
     </aside>
     <FineCutOverlay />
+    <SpeedDialog />
     <UpdateToast />
   </div>
 </template>

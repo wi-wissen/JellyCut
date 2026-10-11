@@ -5,7 +5,7 @@ import BackLink from './BackLink.vue'
 import RangeField from './RangeField.vue'
 import ToggleSwitch from './ToggleSwitch.vue'
 import { useEditorStore } from '../../stores/editor'
-import { SPEED_STEPS, speedStepIndex } from '../../../core/timeline/speed'
+import { useSpeedDialogStore } from '../../stores/speedDialog'
 import { canHaveTransition } from '../../../core/timeline/transitionOps'
 import { isFilterId } from '../../../core/filters/filters'
 import type { Clip } from '../../../core/project/types'
@@ -15,9 +15,6 @@ import { formatNumber } from '../../numberFormat'
 export default defineComponent({
   name: 'ClipPanel',
   components: { BackLink, RangeField, ToggleSwitch },
-  data() {
-    return { speedSteps: SPEED_STEPS }
-  },
   computed: {
     ...mapState(useEditorStore, ['project', 'selectedClip', 'playheadMicros']),
     clip(): Clip | null {
@@ -45,9 +42,6 @@ export default defineComponent({
     volumePercent(): number {
       return Math.round((this.clip?.volume ?? 1) * 100)
     },
-    speedIndex(): number {
-      return speedStepIndex(this.clip?.speed ?? 1)
-    },
     speedText(): string {
       return this.$t('units.tempo', { value: formatNumber(this.clip?.speed ?? 1, 2) })
     },
@@ -67,6 +61,7 @@ export default defineComponent({
     }
   },
   methods: {
+    ...mapActions(useSpeedDialogStore, { openSpeed: 'openFor' }),
     ...mapActions(useEditorStore, [
       'setSelectedClipProps',
       'removeTransition',
@@ -87,9 +82,8 @@ export default defineComponent({
     toggleOriginalAudio(): void {
       if (this.clip) this.setSelectedClipProps({ muted: !this.clip.muted })
     },
-    onSpeed(index: number): void {
-      const speed = SPEED_STEPS[Math.round(index)]
-      if (speed !== undefined) this.setSelectedClipProps({ speed }, this.keyFor('speed'))
+    openSpeedDialog(): void {
+      if (this.clip) this.openSpeed(this.clip.id)
     },
     onFreeze(): void {
       if (this.freezeAvailable) this.insertFreezeFrame()
@@ -149,16 +143,18 @@ export default defineComponent({
 
     <section v-if="!isFreeze" class="flex flex-col gap-1.5 border-t border-line pt-3">
       <h3 class="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">{{ $t('clip.timing') }}</h3>
-      <RangeField
-        :label="$t('clip.tempo')"
-        :model-value="speedIndex"
-        :min="0"
-        :max="speedSteps.length - 1"
-        :step="1"
-        :display="speedText"
-        @update="onSpeed"
-        @commit="endEdit"
-      />
+      <div class="flex items-center justify-between gap-3">
+        <span class="text-xs font-semibold text-fg">{{ $t('clip.tempo') }}: <span class="font-normal tabular-nums text-muted">{{ speedText }}</span></span>
+        <button
+          type="button"
+          class="min-h-11 rounded-lg bg-panel2 px-3 text-xs font-semibold text-fg hover:bg-panel"
+          aria-haspopup="dialog"
+          data-role="speed-open"
+          @click="openSpeedDialog"
+        >
+          {{ $t('clip.tempoChange') }}
+        </button>
+      </div>
     </section>
 
     <section class="flex flex-col gap-1.5 border-t border-line pt-3">

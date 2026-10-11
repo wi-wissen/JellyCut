@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildScene, planTimeline } from './scene'
 import { createProject } from '../project/schema'
-import type { Clip, Project, TextItem } from '../project/types'
+import type { Clip, OverlayItem, Project, TextItem } from '../project/types'
 import { resolveGrade } from '../filters/filters'
 
 const S = 1_000_000
@@ -195,5 +195,34 @@ describe('buildScene: texts', () => {
   it('keeps text scenes working when there is no video at that time', () => {
     const q = project([], [text('x', 0, S)])
     expect(buildScene(q, planTimeline(q), S / 2).texts).toHaveLength(1)
+  })
+})
+
+describe('buildScene: overlay stacking', () => {
+  const base = { start: 0, duration: 4 * S, scale: 1, rotation: 0, pos: { x: 0.5, y: 0.5 } }
+  const sticker = (id: string, extra: Partial<OverlayItem> = {}): OverlayItem =>
+    ({ ...base, id, kind: 'sticker', shape: 'heart', color: '#ff0000', size: 0.2, ...extra }) as OverlayItem
+  const region = (id: string, extra: Partial<OverlayItem> = {}): OverlayItem =>
+    ({ ...base, id, kind: 'region', shape: 'rect', effect: 'pixelate', strength: 0.5, width: 0.3, height: 0.2, ...extra }) as OverlayItem
+  const media = (id: string): OverlayItem =>
+    ({ ...base, id, kind: 'media', assetId: 'a', width: 0.3, height: 0.2, radius: 0, border: 0, borderColor: '#ffffff' }) as OverlayItem
+  const ids = (overlays: OverlayItem[], t = S) => {
+    const p = project([clip('c1', 'a', 0, 10 * S, 0)])
+    p.overlays = overlays
+    return buildScene(p, planTimeline(p), t).overlays.map((l) => l.item.id)
+  }
+
+  it('keeps regions and other kinds in one list in project order', () => {
+    expect(ids([sticker('s1'), region('r1'), media('m1'), sticker('s2')])).toEqual(['s1', 'r1', 'm1', 's2'])
+    expect(ids([region('r1'), sticker('s1')])).toEqual(['r1', 's1'])
+  })
+  it('keeps the order when items drop out by time', () => {
+    const list = [sticker('s1'), region('r1', { start: 2 * S }), media('m1'), sticker('s2', { start: 2 * S })]
+    expect(ids(list, S)).toEqual(['s1', 'm1'])
+    expect(ids(list, 3 * S)).toEqual(['s1', 'r1', 'm1', 's2'])
+  })
+  it('does not reorder by kind: swapping the list swaps the scene', () => {
+    expect(ids([sticker('s1'), region('r1')])).toEqual(['s1', 'r1'])
+    expect(ids([region('r1'), sticker('s1')])).toEqual(['r1', 's1'])
   })
 })

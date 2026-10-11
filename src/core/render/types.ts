@@ -79,7 +79,10 @@ export interface Scene {
   format: ProjectFormat
   /** Back to front. At most two layers (the two sides of a transition). */
   videos: VideoLayer[]
-  /** Overlays on screen at this time, back to front. */
+  /**
+   * Overlays on screen at this time, back to front, all kinds in one list (project order). A region blurs or
+   * pixelates everything below it in this list; what comes later is drawn on top, unaffected.
+   */
   overlays: OverlayLayer[]
   texts: TextLayer[]
 }

@@ -7,7 +7,7 @@ A simple video editor for schools that runs entirely in the browser: no account,
 
 ## Stack
 
-Vue 3 (Options API), TypeScript, Vite, Tailwind v4, Pinia, vue-i18n (German and English), Vitest, [Mediabunny](https://mediabunny.dev) (container reading and MP4 writing, pinned to an exact version), WebCodecs, WebGL2, Web Audio. Fonts are self-hosted through Fontsource (all SIL OFL).
+Vue 3 (Options API), TypeScript, Vite, Tailwind v4, Pinia, vue-i18n (German and English), Vitest, [Mediabunny](https://mediabunny.dev) (container reading and MP4 writing, pinned to an exact version), WebCodecs, WebGL2, Web Audio. Fonts are self-hosted through Fontsource (all SIL OFL). The picture stickers are [Fluent Emoji](https://github.com/microsoft/fluentui-emoji) (3D style) by Microsoft, MIT licence, copyright notice in [`src/assets/stickers/LICENSE-FluentEmoji.txt`](src/assets/stickers/LICENSE-FluentEmoji.txt); the app credits them on its technology help page.
 
 ## Architecture
 
@@ -62,6 +62,7 @@ node scripts/e2e-canvas.mjs       # editing text and clips directly in the playe
 node scripts/e2e-overlays.mjs      # stickers, shapes and pen strokes: preview pixels, export frame, undo
 node scripts/e2e-overlays2.mjs     # opacity, animations, blur/pixelate areas, pictures and videos: preview and export pixels
 node scripts/e2e-overlays3.mjs     # vector stickers, slide directions, stacking order, marker pen, picture timing: preview and export pixels
+node scripts/e2e-stickers.mjs     # picture stickers: gallery tabs and search, preview and export pixels, save/load, old vector stickers (port 5360)
 node scripts/e2e-design.mjs       # design tabs: shared item sections, no position fields, arrow keys, pen, stacking, rounded areas (port 5310)
 node scripts/e2e-finecut.mjs
 node scripts/e2e-record.mjs
