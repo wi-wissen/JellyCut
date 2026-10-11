@@ -99,6 +99,9 @@
         "compressedCaption": "Komprimiert bei Qualität {quality} %",
         "qualityLabel": "Qualität",
         "grid": "8 × 8 Pixel-Blöcke zeigen"
+      },
+      "glossary": {
+        "heading": "Begriffe aus dieser Seite"
       }
     }
   }

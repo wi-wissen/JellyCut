@@ -198,7 +198,8 @@ check('setup: the test pattern is drawn (high detail picture)', baseStats.lumStd
 // --- 1. blur area from the quick action, changed by its settings
 await page.getByRole('tab', { name: 'Design' }).click()
 await page.getByRole('button', { name: 'Stickers', exact: true }).click()
-await page.getByRole('button', { name: 'Blur a region', exact: true }).click()
+await page.getByRole('button', { name: 'Hide', exact: true }).click()
+await page.getByRole('button', { name: 'Blur an area', exact: true }).click()
 await settle()
 let regions = await overlayNamed('region')
 check('blur area: the quick action adds one blur region at the playhead', regions.length === 1 && regions[0].effect === 'blur' && regions[0].start === S && regions[0].shape === 'rect', JSON.stringify(regions))
@@ -217,7 +218,7 @@ const outsideOnly = await analyze({ a: blurShot, b: refBlur, kind: 'changed', re
 check('blur area: the picture outside the area is untouched', outsideOnly.changed === 0 && outsideChanged.changed > 1000, JSON.stringify({ outsideOnly, outsideChanged }))
 
 // --- 2. pixelate with the effect select and the strength slider
-await page.getByLabel('Effect', { exact: true }).selectOption('pixelate')
+await page.getByRole('button', { name: 'Pixelate', exact: true }).click()
 await setRange('Strength', 100)
 await settle()
 const pixShot = await canvasShot()
@@ -228,7 +229,7 @@ const pixOutside = await analyze({ a: pixShot, b: refBlur, kind: 'changed', rect
 check('pixelate area: outside is untouched', pixOutside.changed === 0, JSON.stringify(pixOutside))
 
 // An ellipse leaves the corners of its box alone; a rectangle is restored for the checks below.
-await page.getByLabel('Shapes', { exact: true }).selectOption('ellipse')
+await page.getByRole('button', { name: 'Oval', exact: true }).click()
 await settle(300)
 const ellipseShot = await canvasShot()
 // The very corner of the box lies well outside the ellipse.
@@ -236,7 +237,7 @@ const boxCorner = [inside[0], inside[0] + 0.004, inside[2], inside[2] + 0.004]
 const ellipseCorner = await analyze({ a: ellipseShot, b: refBlur, kind: 'changed', rect: boxCorner })
 const ellipseCentre = await analyze({ a: ellipseShot, kind: 'stats', rect: [0.3 - 0.02, 0.3 + 0.02, 0.5 - 0.02, 0.5 + 0.02] })
 check('area shape: an ellipse leaves the corners of its box untouched and pixelates its centre', ellipseCorner.changed === 0 && ellipseCentre.sameNeighbour > 0.85, JSON.stringify({ corner: ellipseCorner.changed, centre: ellipseCentre.sameNeighbour }))
-await page.getByLabel('Shapes', { exact: true }).selectOption('rect')
+await page.getByRole('button', { name: 'Rectangle', exact: true }).click()
 await settle(300)
 
 // --- 3. opacity of the area: 0 shows the picture unchanged; undo brings the setting back
@@ -261,7 +262,7 @@ await st('(ed, me, id) => ed.updateSelectedOverlay({ opacity: 1 })', region.id)
 await settle(200)
 
 // --- 4. sticker: fade in, then a wiggle loop
-await page.getByRole('button', { name: 'Back to library' }).click().catch(() => undefined)
+await page.getByRole('button', { name: 'Back', exact: true }).click().catch(() => undefined)
 await page.getByRole('button', { name: 'Star', exact: true }).click()
 await settle()
 let star = (await overlayNamed('sticker'))[0]
@@ -297,9 +298,10 @@ star = (await overlayNamed('sticker'))[0]
 check('animation: the anchor stays where it was placed', Math.abs(star.pos.x - 0.5) < 1e-9 && star.loop === 'wiggle' && star.animIn === 'fade', JSON.stringify(star))
 
 // --- 5. a rectangle frame with opacity 50 %: the drawn line is half as strong as at 100 %
-await page.getByRole('button', { name: 'Back to library' }).click().catch(() => undefined)
+await page.getByRole('button', { name: 'Back', exact: true }).click().catch(() => undefined)
 await st('(ed, me) => ed.setPlayhead(1000000)')
 await settle(300)
+await page.getByRole('button', { name: 'Shapes', exact: true }).click()
 await page.getByRole('button', { name: 'Frame', exact: true }).click()
 await settle()
 await st('(ed, me) => ed.setPlayhead(1000000)')
@@ -319,14 +321,16 @@ await settle()
 check('undo: undoing the opacity change restores the full rectangle', (await itemById((await overlayNamed('shape'))[0].id)).opacity === undefined)
 
 // --- 6. picture: library image with rounded corners and a border
-await page.getByRole('button', { name: 'Back to library' }).click().catch(() => undefined)
+await page.getByRole('button', { name: 'Back', exact: true }).click().catch(() => undefined)
+await page.getByRole('button', { name: 'Picture in picture', exact: true }).click()
 await page.getByRole('button', { name: 'Add overlays2-magenta.png at the playhead' }).click()
 await settle()
 const pic = (await overlayNamed('media'))[0]
 check('picture: the image is added at the playhead with its own shape', pic && pic.start === S && Math.abs(pic.width / pic.height - 16 / 9) < 0.01, JSON.stringify(pic))
 await st('(ed, me, id) => ed.updateSelectedOverlay({ pos: { x: 0.8, y: 0.75 }, width: 0.4, height: 0.3 })', pic.id)
-await setRange('Corners', 50)
-await setRange('Border', 8)
+await page.getByRole('button', { name: 'Rounded', exact: true }).click()
+await settle(150)
+await setRange('Border width', 8)
 await settle(250)
 const refPic = await referenceShot()
 const picShot = await canvasShot()
@@ -341,7 +345,8 @@ check('picture: the border is drawn inside the edge', edge.matched > 5, JSON.str
 // --- 7. video in the picture: green video from the library, muted, plays in the preview
 await st('(ed) => ed.setPlayhead(1500000)')
 await settle(200)
-await page.getByRole('button', { name: 'Back to library' }).click().catch(() => undefined)
+await page.getByRole('button', { name: 'Back', exact: true }).click().catch(() => undefined)
+await page.getByRole('button', { name: 'Picture in picture', exact: true }).click()
 await page.getByRole('button', { name: 'Add overlays2-green.webm at the playhead' }).click()
 await settle(300)
 const vid = (await overlayNamed('media')).find((o) => o.assetId !== pic.assetId)
@@ -430,19 +435,21 @@ check('file: the project with the new fields saves and loads', roundTrip.ok === 
 await st('(ed, me, id) => ed.select({ kind: "overlay", id })', region.id)
 await settle()
 await page.screenshot({ path: `${SHOTS}/ov2-light.png` })
-await page.getByRole('button', { name: 'Back to library' }).click().catch(() => undefined)
-await page.getByRole('button', { name: 'Blur a region', exact: true }).scrollIntoViewIfNeeded()
+await page.getByRole('button', { name: 'Back', exact: true }).click().catch(() => undefined)
+await page.getByRole('button', { name: 'Hide', exact: true }).click()
+await page.getByRole('button', { name: 'Blur an area', exact: true }).scrollIntoViewIfNeeded()
 await settle()
 await page.screenshot({ path: `${SHOTS}/ov2-panel-light.png` })
 await st('(ed, me, id) => ed.select({ kind: "overlay", id })', pic.id)
 await settle()
-await page.getByLabel('Corners', { exact: true }).scrollIntoViewIfNeeded()
+await page.getByRole('button', { name: 'Rounded', exact: true }).scrollIntoViewIfNeeded()
 await page.screenshot({ path: `${SHOTS}/ov2-props-light.png` })
 await page.emulateMedia({ colorScheme: 'dark' })
 await settle()
 await page.screenshot({ path: `${SHOTS}/ov2-dark.png` })
-await page.getByRole('button', { name: 'Back to library' }).click().catch(() => undefined)
-await page.getByRole('button', { name: 'Blur a region', exact: true }).scrollIntoViewIfNeeded()
+await page.getByRole('button', { name: 'Back', exact: true }).click().catch(() => undefined)
+await page.getByRole('button', { name: 'Hide', exact: true }).click()
+await page.getByRole('button', { name: 'Blur an area', exact: true }).scrollIntoViewIfNeeded()
 await settle()
 await page.screenshot({ path: `${SHOTS}/ov2-panel-dark.png` })
 

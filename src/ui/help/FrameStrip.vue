@@ -46,7 +46,7 @@ export default defineComponent({
       return formatNumber(this.position / MICROS_PER_SECOND, 2)
     },
     valueText(): string {
-      return this.$t('container.frames.time', { time: this.timeText, frame: this.frame })
+      return this.$t('help.container.frames.time', { time: this.timeText, frame: this.frame })
     }
   },
   methods: {
@@ -98,7 +98,7 @@ export default defineComponent({
     <div
       role="slider"
       tabindex="0"
-      :aria-label="$t('container.frames.sliderLabel')"
+      :aria-label="$t('help.container.frames.sliderLabel')"
       aria-orientation="horizontal"
       aria-valuemin="0"
       :aria-valuemax="lastFrame"
@@ -130,7 +130,7 @@ export default defineComponent({
       <div class="pointer-events-none absolute -inset-y-1 w-0.5 bg-fill" :style="{ left: `${percent}%` }" aria-hidden="true"></div>
     </div>
     <p class="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-muted">
-      <span>{{ $t('container.frames.hint') }}</span>
+      <span>{{ $t('help.container.frames.hint') }}</span>
       <output class="font-mono font-semibold tabular-nums text-fg" aria-hidden="true">{{ valueText }}</output>
     </p>
   </div>

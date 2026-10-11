@@ -38,20 +38,20 @@ export default defineComponent({
           <rect x="106" y="54" width="28" height="12" rx="4" style="fill: var(--jc-track-text)" />
         </g>
       </svg>
-      <span>{{ open ? $t('container.box.close') : $t('container.box.open') }}</span>
+      <span>{{ open ? $t('help.container.box.close') : $t('help.container.box.open') }}</span>
     </button>
 
     <ul
       id="container-box-tracks"
       v-show="open"
-      :aria-label="$t('container.box.regionLabel')"
+      :aria-label="$t('help.container.box.regionLabel')"
       class="mt-4 grid gap-2 sm:grid-cols-2"
     >
       <li v-for="track in tracks" :key="track.key" class="flex gap-3 rounded-xl border border-line bg-panel2 p-3">
         <span class="mt-1 size-3 shrink-0 rounded-full" :style="{ background: track.color }" aria-hidden="true"></span>
         <div class="min-w-0">
-          <p class="font-semibold text-fg">{{ $t(`container.box.tracks.${track.key}.name`) }}</p>
-          <p class="text-sm leading-snug text-muted">{{ $t(`container.box.tracks.${track.key}.text`) }}</p>
+          <p class="font-semibold text-fg">{{ $t(`help.container.box.tracks.${track.key}.name`) }}</p>
+          <p class="text-sm leading-snug text-muted">{{ $t(`help.container.box.tracks.${track.key}.text`) }}</p>
         </div>
       </li>
     </ul>

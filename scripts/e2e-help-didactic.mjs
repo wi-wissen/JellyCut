@@ -79,6 +79,20 @@ for (const slug of PAGES) {
   })
 }
 
+/** The section of a help page whose heading matches re. */
+const section = (page, re) => page.locator('section').filter({ has: page.getByRole('heading', { name: re }) })
+
+/** Sets a range input the way a user would: value, then the input event. */
+async function setRange(locator, value) {
+  await locator.evaluate((el, v) => {
+    el.value = String(v)
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+  }, value)
+}
+
+/** Text of an element that carries data-stat=name. */
+const stat = (page, name) => page.locator(`[data-stat="${name}"]`).first().innerText()
+
 await check('container: box opens and shows the tracks', async () => {
   const { page, context } = await open('container')
   const button = page.getByRole('button', { name: 'Box öffnen' })
@@ -92,12 +106,12 @@ await check('container: box opens and shows the tracks', async () => {
 await check('container: frame strip responds to keyboard and pointer', async () => {
   const { page, context } = await open('container')
   const slider = page.getByRole('slider', { name: 'Position im Video' })
-  const before = await slider.getAttribute('aria-valuenow')
+  const before = Number(await slider.getAttribute('aria-valuenow'))
   await slider.focus()
   await page.keyboard.press('ArrowRight')
   await page.keyboard.press('ArrowRight')
-  const afterKeys = await slider.getAttribute('aria-valuenow')
-  assert(Number(afterKeys) === Number(before) + 2, `keys moved ${before} -> ${afterKeys}`)
+  const afterKeys = Number(await slider.getAttribute('aria-valuenow'))
+  assert(afterKeys === before + 2, `keys moved ${before} -> ${afterKeys}`)
   const box = await slider.boundingBox()
   await page.mouse.move(box.x + box.width * 0.5, box.y + box.height / 2)
   await page.mouse.down()
@@ -108,15 +122,12 @@ await check('container: frame strip responds to keyboard and pointer', async () 
   await context.close()
 })
 
-/** Text of an element that carries data-stat=name. */
-const stat = (page, name) => page.locator(`[data-stat="${name}"]`).first().innerText()
-
-await check('compression: flipbook slider changes the highlighted pixel count', async () => {
+await check('compression: flipbook frame slider changes the highlighted pixel count', async () => {
   const { page, context } = await open('compression')
-  const frame = page.getByLabel('Bild', { exact: true })
-  await frame.fill('1')
+  const flip = section(page, /Trick 1/)
+  await setRange(flip.locator('input[type=range]').nth(0), 0)
   const first = await stat(page, 'changed')
-  await frame.fill('6')
+  await setRange(flip.locator('input[type=range]').nth(0), 5)
   const later = await stat(page, 'changed')
   assert(first !== later, `count did not change: "${first}" vs "${later}"`)
   await context.close()
@@ -125,8 +136,7 @@ await check('compression: flipbook slider changes the highlighted pixel count', 
 await check('compression: keyframe interval changes the stored amount bars', async () => {
   const { page, context } = await open('compression')
   const before = await stat(page, 'total')
-  const keyframe = page.getByRole('slider').nth(1)
-  await keyframe.fill('0')
+  await setRange(section(page, /Trick 1/).locator('input[type=range]').nth(1), 0)
   const after = await stat(page, 'total')
   assert(before !== after, `stored amount did not change: "${before}" vs "${after}"`)
   await context.close()
@@ -134,11 +144,11 @@ await check('compression: keyframe interval changes the stored amount bars', asy
 
 await check('compression: more movement means more changed pixels', async () => {
   const { page, context } = await open('compression')
-  await page.getByLabel('Bild', { exact: true }).fill('6')
-  const motion = page.getByRole('slider').nth(2)
-  await motion.fill('0')
+  const flip = section(page, /Trick 1/)
+  await setRange(flip.locator('input[type=range]').nth(0), 5)
+  await setRange(flip.locator('input[type=range]').nth(2), 0)
   const still = await stat(page, 'changed')
-  await motion.fill('4')
+  await setRange(flip.locator('input[type=range]').nth(2), 4)
   const fast = await stat(page, 'changed')
   assert(still !== fast, `movement had no effect: "${still}" vs "${fast}"`)
   await context.close()
@@ -146,7 +156,7 @@ await check('compression: more movement means more changed pixels', async () => 
 
 await check('compression: seek demo names the keyframe before second 30', async () => {
   const { page, context } = await open('compression')
-  await page.getByText('alle 4 s', { exact: true }).click()
+  await section(page, /Mitten ins Video/).getByText('alle 4 s', { exact: true }).click()
   const text = await stat(page, 'seek')
   assert(text.includes('Sekunde 28'), `unexpected seek text: ${text}`)
   await page.getByRole('button', { name: 'Springe zu Sekunde 30' }).click()
@@ -156,18 +166,19 @@ await check('compression: seek demo names the keyframe before second 30', async 
 await check('compression: JPEG quality slider changes the displayed quality and size', async () => {
   const { page, context } = await open('compression')
   const before = await stat(page, 'size')
-  await page.getByRole('slider', { name: 'Qualität' }).fill('5')
+  await setRange(section(page, /Details weglassen/).locator('input[type=range]'), 5)
   await page.waitForTimeout(500)
   const after = await stat(page, 'size')
   assert(before !== after, `size text did not change: "${before}" vs "${after}"`)
   await context.close()
 })
 
-await check('compression: raw size calculator shows 11 GB for 1080p at 30 fps for 60 s', async () => {
+await check('compression: raw size calculator shows 11.2 GB for 1080p at 30 fps for 60 s', async () => {
   const { page, context } = await open('compression')
-  await page.getByText('Full HD', { exact: true }).click()
-  await page.getByText('30', { exact: true }).first().click()
-  await page.getByRole('slider', { name: /Länge des Videos/ }).fill('60')
+  const calc = section(page, /Warum Rohvideo/)
+  await calc.getByText('Full HD', { exact: true }).click()
+  await calc.locator('label', { hasText: /^30$/ }).click()
+  await setRange(calc.locator('input[type=range]'), 60)
   const text = await stat(page, 'raw')
   assert(text.includes('11,2 GB'), `unexpected size: ${text}`)
   await context.close()
@@ -175,12 +186,13 @@ await check('compression: raw size calculator shows 11 GB for 1080p at 30 fps fo
 
 await check('encoding: recompression slider changes the displayed degradation', async () => {
   const { page, context } = await open('encoding')
-  await page.waitForFunction(() => document.querySelector('[data-stat="drift"]')?.innerText.includes('%'))
-  await page.getByRole('slider', { name: 'Durchgänge' }).fill('2')
+  const passes = section(page, /Kopie einer Kopie/).locator('input[type=range]')
+  await page.waitForFunction(() => document.querySelector('[data-stat="drift"]')?.innerText.includes('%'), null, { timeout: 20000 })
+  await setRange(passes, 2)
   await page.waitForTimeout(600)
   const early = await stat(page, 'drift')
-  await page.getByRole('slider', { name: 'Durchgänge' }).fill('30')
-  await page.waitForFunction((before) => document.querySelector('[data-stat="drift"]')?.innerText !== before, early, { timeout: 20000 })
+  await setRange(passes, 30)
+  await page.waitForFunction((before) => document.querySelector('[data-stat="drift"]')?.innerText !== before, early, { timeout: 30000 })
   const late = await stat(page, 'drift')
   assert(early !== late, `drift did not change: "${early}" vs "${late}"`)
   await context.close()
@@ -200,12 +212,11 @@ await check('glossary: search filters terms and the count updates', async () => 
   await context.close()
 })
 
-await check('glossary: anchors scroll to the term', async () => {
+await check('glossary: anchors scroll to the term and a hidden target clears the search', async () => {
   const { page, context } = await open('glossary', { hash: '#codec' })
   await page.waitForTimeout(500)
   const top = await page.locator('#codec').evaluate((el) => el.getBoundingClientRect().top)
   assert(top >= -5 && top < 400, `codec term top at ${top}`)
-  await page.locator('a[href="#keyframe"]').first().click().catch(() => {})
   await page.getByRole('searchbox').fill('Kodieren')
   await page.evaluate(() => (location.hash = '#keyframe'))
   await page.waitForTimeout(300)
