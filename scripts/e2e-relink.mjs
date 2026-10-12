@@ -340,6 +340,54 @@ check('after granting again the menu no longer asks', (await page.getByRole('men
 check('the folder is still shown by name', (await page.locator('#project-menu-panel').innerText()).includes('Arbeitsordner'))
 await page.keyboard.press('Escape')
 
+// Scenario 7: Firefox-like browser without showOpenFilePicker / showDirectoryPicker. Re-linking works with the plain
+// file input and with dropped files, and no folder button is offered.
+{
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, locale: 'en-US' })
+  await ctx.addInitScript(() => {
+    for (const name of ['showOpenFilePicker', 'showSaveFilePicker', 'showDirectoryPicker']) {
+      Object.defineProperty(window, name, { value: undefined, configurable: true, writable: true })
+    }
+  })
+  const p2 = await ctx.newPage()
+  p2.on('pageerror', (e) => pageErrors.push(e.message))
+  await p2.goto(APP_URL)
+  await p2.waitForSelector('header')
+  await p2.locator('header button[aria-haspopup]').first().click()
+  await p2.getByRole('menuitem', { name: /New project|Neues Projekt/ }).click()
+  await p2.locator('input[type=file]').first().setInputFiles([fixture('frames.webm'), fixture('clip-a.webm')])
+  await p2.getByRole('button', { name: /frames\.webm/ }).first().click()
+  await p2.getByRole('button', { name: /clip-a\.webm/ }).first().click()
+  await p2.waitForTimeout(2500)
+  await p2.reload()
+  const dlg = p2.getByRole('dialog', { name: /Missing files/ })
+  await dlg.waitFor({ timeout: 8000 })
+  check('no-picker mode: the dialog opens after a reload', (await dlg.count()) === 1)
+  check('no-picker mode: no folder button in the dialog or the banner', (await p2.getByRole('button', { name: /Choose folder/ }).count()) === 0)
+  const [fc] = await Promise.all([p2.waitForEvent('filechooser'), dlg.getByRole('button', { name: /Select files/ }).click()])
+  await fc.setFiles([fixture('clip-a.webm')])
+  const st = async () =>
+    p2.evaluate(() => {
+      const pinia = document.querySelector('#app').__vue_app__.config.globalProperties.$pinia
+      const ed = pinia._s.get('editor')
+      const me = pinia._s.get('media')
+      return Object.fromEntries(ed.project.assets.map((a) => [a.name, me.statusOf(a.id)]))
+    })
+  for (let i = 0; i < 40 && (await st())['clip-a.webm'] !== 'ready'; i++) await p2.waitForTimeout(150)
+  const s7 = await st()
+  check('no-picker mode: a file chosen with the plain input is matched by name and size', s7['clip-a.webm'] === 'ready' && s7['frames.webm'] === 'missing', JSON.stringify(s7))
+  const bytes = readFileSync(fixture('frames.webm')).toString('base64')
+  await p2.evaluate(async (b64) => {
+    const file = new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], 'frames.webm', { type: 'video/webm' })
+    const transfer = new DataTransfer()
+    transfer.items.add(file)
+    document.querySelector('[role=dialog][aria-labelledby="relink-dialog-title"]').dispatchEvent(new DragEvent('drop', { dataTransfer: transfer, bubbles: true, cancelable: true }))
+  }, bytes)
+  for (let i = 0; i < 40 && (await st())['frames.webm'] !== 'ready'; i++) await p2.waitForTimeout(150)
+  check('no-picker mode: a dropped file is matched too', (await st())['frames.webm'] === 'ready')
+  await ctx.close()
+}
+
 check('no uncaught page errors', pageErrors.length === 0, pageErrors.join('; '))
 
 await page.screenshot({ path: join(SHOT_DIR, 'relink-final-light.png') })

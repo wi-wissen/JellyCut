@@ -12,12 +12,15 @@ export interface AutosaveRecord {
 
 const DB_NAME = 'jellycut'
 const STORE_NAME = 'kv'
+/** Object store of src/platform/mediaStore.ts (recordings and example videos). */
+export const MEDIA_STORE_NAME = 'media'
 
 type Outcome<T> = { ok: true; value: T } | { ok: false }
 
 let dbPromise: Promise<IDBDatabase | null> | null = null
 
-function openDb(): Promise<IDBDatabase | null> {
+/** The shared database; null when IndexedDB is unavailable. */
+export function openDb(): Promise<IDBDatabase | null> {
   if (!dbPromise) {
     dbPromise = new Promise<IDBDatabase | null>((resolve) => {
       if (typeof indexedDB === 'undefined') {
@@ -25,9 +28,21 @@ function openDb(): Promise<IDBDatabase | null> {
         return
       }
       try {
-        const request = indexedDB.open(DB_NAME, 1)
-        request.onupgradeneeded = () => request.result.createObjectStore(STORE_NAME)
-        request.onsuccess = () => resolve(request.result)
+        const request = indexedDB.open(DB_NAME, 2)
+        request.onupgradeneeded = () => {
+          const db = request.result
+          if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME)
+          if (!db.objectStoreNames.contains(MEDIA_STORE_NAME)) db.createObjectStore(MEDIA_STORE_NAME)
+        }
+        request.onsuccess = () => {
+          const db = request.result
+          // A newer version in another tab must not be blocked by this connection.
+          db.onversionchange = () => {
+            db.close()
+            dbPromise = null
+          }
+          resolve(db)
+        }
         request.onerror = () => resolve(null)
         request.onblocked = () => resolve(null)
       } catch {

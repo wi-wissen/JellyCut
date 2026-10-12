@@ -8,6 +8,8 @@ const h = vi.hoisted(() => ({
   importImpl: null as null | (() => Promise<void>),
   assets: [] as { id: string; name: string }[],
   statusValue: 'ready',
+  persistResult: 'stored' as string,
+  persisted: [] as string[],
   check: null as null | object,
   health: { strategy: 'raw', problem: null as null | string, expectedAudio: true, micSilent: false, systemSoundDropped: false }
 }))
@@ -42,8 +44,13 @@ vi.mock('../../engine/record/postCheck', () => ({ checkRecording: async () => h.
 vi.mock('./media', () => ({
   useMediaStore: () => ({
     importFiles: (list: File[]) => h.importImpl!().then(() => h.assets.push({ id: 'asset-1', name: list[0]!.name })),
-    statusOf: () => h.statusValue
-  })
+    statusOf: () => h.statusValue,
+    persistAsset: async (id: string) => {
+      h.persisted.push(id)
+      return h.persistResult
+    }
+  }),
+  getAssetFile: () => new File([new Uint8Array(10)], 'Screen 2026-10-11 10-00-00.webm', { type: 'video/webm' })
 }))
 vi.mock('./editor', () => ({ useEditorStore: () => ({ project: { get assets() { return h.assets } } }) }))
 
@@ -57,6 +64,8 @@ beforeEach(() => {
   setActivePinia(createPinia())
   h.assets = []
   h.statusValue = 'ready'
+  h.persistResult = 'stored'
+  h.persisted = []
   h.stopImpl = async () => file()
   h.importImpl = async () => undefined
   vi.stubGlobal('document', { documentElement: { lang: 'de' } })
@@ -89,6 +98,34 @@ describe('record store: taking the recording into the library', () => {
     await stopped
     expect(store.phase).toBe('done')
     expect(store.hasRawFile).toBe(false)
+  })
+
+  it('afterImport keeps a copy of the recording and shows no storage problem', async () => {
+    const { store, stopped } = await recordAndStop()
+    await stopped
+    expect(h.persisted).toEqual(['asset-1'])
+    expect(store.storageProblemKey).toBeNull()
+  })
+
+  it('a full storage keeps the recording in memory, says so, and the file can still be saved', async () => {
+    h.persistResult = 'quota'
+    const clicks: string[] = []
+    const link = { click: () => clicks.push('click'), remove: () => undefined, href: '', download: '' }
+    vi.stubGlobal('document', { documentElement: { lang: 'de' }, createElement: () => link, body: { append: () => undefined } })
+    vi.stubGlobal('URL', { createObjectURL: () => 'blob:x', revokeObjectURL: () => undefined })
+    const { store, stopped } = await recordAndStop()
+    await stopped
+    expect(store.phase).toBe('done')
+    expect(store.storageProblemKey).toBe('record.storage.quota')
+    store.saveRecording()
+    expect(clicks).toEqual(['click'])
+  })
+
+  it('storage that is not available gets its own message', async () => {
+    h.persistResult = 'unavailable'
+    const { store, stopped } = await recordAndStop()
+    await stopped
+    expect(store.storageProblemKey).toBe('record.storage.unavailable')
   })
 
   it('an import that never resolves ends in an error with the raw file kept, not in an endless finishing state', async () => {

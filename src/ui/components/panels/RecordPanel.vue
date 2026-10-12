@@ -15,7 +15,7 @@ export default defineComponent({
     return { copied: false }
   },
   computed: {
-    ...mapState(useRecordStore, ['phase', 'kind', 'elapsedMs', 'level', 'announcedTens', 'statusKey', 'errorKey', 'fileName', 'hasRawFile', 'capabilities', 'live', 'noticeKey', 'extraNoticeKeys', 'warningKeys', 'checkKeys', 'diagnosticsText', 'micDevices', 'micDeviceId', 'micTest', 'testLevel', 'testSilent']),
+    ...mapState(useRecordStore, ['phase', 'kind', 'elapsedMs', 'level', 'announcedTens', 'statusKey', 'errorKey', 'fileName', 'hasRawFile', 'capabilities', 'live', 'noticeKey', 'extraNoticeKeys', 'warningKeys', 'checkKeys', 'diagnosticsText', 'storageProblemKey', 'micDevices', 'micDeviceId', 'micTest', 'testLevel', 'testSilent']),
     sources(): RecordKind[] {
       return RECORD_KINDS.filter((kind) => canRecordKind(kind, this.capabilities))
     },
@@ -65,7 +65,7 @@ export default defineComponent({
       if (phase === 'recording' || phase === 'paused') this.attachPreview()
       // Focus stays on a button after each change: a focused body would let Space start the timeline.
       if (phase === 'recording') this.focusRef('stopButton')
-      if (phase === 'done') this.focusRef('addButton')
+      if (phase === 'done') this.focusRef(this.storageProblemKey ? 'rescueButton' : 'addButton')
       if (phase === 'error') this.focusRef(this.hasRawFile ? 'saveButton' : 'retryButton')
     },
     attachPreview(): void {
@@ -301,6 +301,8 @@ export default defineComponent({
       <p class="text-sm font-bold">{{ $t('record.doneTitle') }}</p>
       <p class="break-words font-mono text-xs text-muted">{{ fileName }}</p>
       <p class="text-xs text-muted">{{ $t('record.doneText') }}</p>
+      <p v-if="storageProblemKey" role="alert" data-role="storage-problem" class="rounded-lg border border-[var(--jc-danger)] bg-panel px-3 py-2 text-xs">{{ $t(storageProblemKey) }}</p>
+      <p v-else class="text-xs text-muted" data-role="stored-hint">{{ $t('record.storedHint') }}</p>
       <p v-if="noticeKey" data-role="mic-notice" class="text-xs text-muted">{{ $t(noticeKey) }}</p>
       <p v-for="key in extraNoticeKeys" :key="key" data-role="record-notice" class="text-xs text-muted">{{ $t(key) }}</p>
       <p v-for="key in checkKeys" :key="key" data-role="record-check" aria-live="polite" class="rounded-lg border border-line bg-panel px-3 py-2 text-xs">{{ $t(key) }}</p>
@@ -313,11 +315,30 @@ export default defineComponent({
         {{ $t('record.addToTimeline') }}
       </button>
       <button
+        v-if="storageProblemKey"
+        ref="rescueButton"
+        type="button"
+        data-role="save-file"
+        class="min-h-11 rounded-lg bg-fill font-bold text-fill-fg hover:opacity-90"
+        @click="saveRecording"
+      >
+        {{ $t('record.saveFile') }}
+      </button>
+      <button
         type="button"
         class="min-h-11 rounded-lg border border-line font-semibold hover:bg-panel"
         @click="reset"
       >
         {{ $t('record.again') }}
+      </button>
+      <button
+        v-if="!storageProblemKey"
+        type="button"
+        data-role="save-file"
+        class="min-h-11 self-start rounded-lg px-2 text-xs font-semibold text-txt hover:bg-panel"
+        @click="saveRecording"
+      >
+        {{ $t('record.backupFile') }}
       </button>
     </div>
 

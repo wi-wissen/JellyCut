@@ -26,7 +26,7 @@ src/core/       pure TypeScript, no DOM, no Vue, fully unit-tested
                 credit lines and licence list, help-page demos, example video, recording state
 src/engine/     browser layer: WebGL2 compositor, preview, export (worker with OffscreenCanvas, or the main thread),
                 media probing, exact frames, keyframes, waveform, sticker pictures, recording, example video
-src/platform/   File System Access (project files, work folder), IndexedDB key-value store, service worker registration
+src/platform/   File System Access (project files, work folder), IndexedDB key-value store and media store (recordings), service worker registration
 src/ui/         components/ and views/ (Vue), stores/ (Pinia), help/ and site/ (static pages), landing/, pwa/, styles/
 src/app/, src/landing/, src/help/   entry points of the editor, the start page and the help pages
 src/locales/    de.json and en.json (editor), pages/ (one file per page and language)
@@ -63,7 +63,7 @@ Deployment: `.github/workflows/ci.yml` runs typecheck, tests and build for pull 
 Nothing is uploaded. Videos, pictures and projects stay on the device:
 
 - Media is read locally, decoded and drawn in the browser (WebCodecs, WebGL2, Web Audio) and exported to a file on the device. The example video is encoded in the browser as well.
-- The editor autosaves the project in the browser's IndexedDB (`src/platform/localStore.ts`). A project file (`<name>.jellycut.json`) is written only when the user saves it, to a place they choose or to the downloads folder.
+- The editor autosaves the project in the browser's IndexedDB (`src/platform/localStore.ts`). Recordings and the generated example video exist only inside the app, so their files are also kept in this browser's private storage (IndexedDB, `src/platform/mediaStore.ts`) and come back after a reload; they never leave the device, the project menu shows their size, and they are deleted when the media is removed or a new project starts. Save a copy as a file from the Record panel to keep one outside the browser. A project file (`<name>.jellycut.json`) is written only when the user saves it, to a place they choose or to the downloads folder.
 - The only requests the app makes are for the site's own files: pages, scripts, fonts and sticker pictures. There are no analytics. Links to other sites in the help pages are plain links.
 
 ## Assets and licences
@@ -109,6 +109,7 @@ The scripts in `scripts/e2e-*.mjs` drive Chromium with Playwright (`playwright-c
 | `e2e-recorded-frames.mjs` | 5420 | clips recorded by MediaRecorder (`recorded-*.webm`): paused preview, fine cut and export are not black, safety net (media element) when the exact path fails; provider check in Firefox when installed (`MODES=none,throws,black` selects safety-net runs) |
 | `e2e-media-remove.mjs` | 5183 | removing media from the library, with and without use |
 | `e2e-relink.mjs` | 5182 | re-linking missing media, work folder, access again |
+| `e2e-persist.mjs` | 5430 | recordings survive: fine cut and export keep the media ready, reload restores from the browser storage (no re-link), New project deletes the copy, quota error and rescue download, project file opened where the recording was never stored (`BROWSER=firefox` runs it in Firefox) |
 | `e2e-record.mjs` | 5183 | Record tab with fake devices, microphone picker/test, self-healing, final-file checks, errors, screenshots (`E2E_PORT`; `BROWSER=firefox` runs it in Firefox, `ONLY=<regex>` selects checks) |
 | `e2e-timeline.mjs` | 5196 | selection, split, trim, reorder, zoom, keyboard (`E2E_PORT`) |
 | `e2e-panels.mjs` | 5189 | left column, player toolbar, one undo per slider drag (`E2E_PORT`) |

@@ -5,6 +5,7 @@ import { useEditorStore } from '../stores/editor'
 import { useMediaStore, type LinkBasis } from '../stores/media'
 import { formatBytes, formatClock } from '../../core/export/format'
 import type { Asset } from '../../core/project/types'
+import { missingKind } from '../../core/io/storedMedia'
 
 const FOCUSABLE = 'button:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
 const TITLE_ID = 'relink-dialog-title'
@@ -131,6 +132,11 @@ export default defineComponent({
       if (this.relinkRejected[asset.id]) return 'rejected'
       if (this.relinkPlan?.ambiguous[asset.id]) return 'choose'
       return 'notFound'
+    },
+    /** Recordings and example videos have no original on disk: they explain where the copy was. */
+    elsewhereKey(asset: Asset): string | null {
+      const kind = missingKind(asset)
+      return kind === 'recording' ? 'relink.recordingElsewhere' : kind === 'example' ? 'relink.exampleElsewhere' : null
     },
     basisText(asset: Asset): string {
       const basis = this.relinkReasons[asset.id]
@@ -278,6 +284,8 @@ export default defineComponent({
                   {{ $t('relink.remove') }}
                 </button>
               </div>
+
+              <p v-if="elsewhereKey(asset) && rowState(asset) !== 'matched'" data-role="relink-elsewhere" class="mt-1.5 text-xs text-muted">{{ $t(elsewhereKey(asset) as string) }}</p>
 
               <p v-if="rowState(asset) === 'matched' && basisText(asset)" class="mt-1.5 text-xs text-muted">{{ basisText(asset) }}</p>
 

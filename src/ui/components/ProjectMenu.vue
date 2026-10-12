@@ -6,6 +6,7 @@ import { useEditorStore } from '../stores/editor'
 import { useMediaStore } from '../stores/media'
 import { useCreditsStore } from '../stores/credits'
 import CreditsDialog from './CreditsDialog.vue'
+import { formatBytes } from '../../core/export/format'
 
 type SaveTone = 'green' | 'amber' | 'red' | 'neutral'
 type SaveKey = 'error' | 'saving' | 'dirty' | 'fileChanged' | 'neverFile' | 'savedFile' | 'savedBrowser' | 'demo'
@@ -39,7 +40,7 @@ export default defineComponent({
       'dirtySinceFileSave',
       'unsavedSince'
     ]),
-    ...mapState(useMediaStore, ['folder']),
+    ...mapState(useMediaStore, ['folder', 'storedBytes', 'storedAssetCount', 'persistence']),
     displayName(): string {
       return this.project.name.trim() === '' ? this.$t('project.untitled') : this.project.name
     },
@@ -91,8 +92,17 @@ export default defineComponent({
     window.clearInterval(this.clock)
   },
   methods: {
+    /** Recordings live only in this browser, so leaving the project asks even when it was saved as a file. */
     confirmDiscard(): boolean {
+      if (this.storedAssetCount > 0) return window.confirm(this.$t('project.confirmDiscardRecordings'))
       return !this.dirtySinceFileSave || window.confirm(this.$t('project.confirmDiscard'))
+    },
+    storedMediaText(): string {
+      return this.$t('project.storedMedia', { size: formatBytes(this.storedBytes, this.$i18n.locale) })
+    },
+    storedMediaTitle(): string {
+      const state = this.persistence === 'granted' ? this.$t('project.storagePersistent') : this.$t('project.storageNotPersistent')
+      return `${this.$t('project.storedMediaHint')} ${state}`
     },
     ...mapActions(useEditorStore, [
       'renameProject',
@@ -303,6 +313,7 @@ export default defineComponent({
         <p class="font-semibold">{{ saveStateText }}</p>
         <p v-if="saveStateHint" class="mt-0.5 text-muted">{{ saveStateHint }}</p>
       </div>
+      <p v-if="storedBytes > 0" class="px-2.5 pt-2 text-[11px] text-muted" data-role="stored-media" :title="storedMediaTitle()">{{ storedMediaText() }}</p>
       <p class="px-2.5 pt-2 text-[11px] tabular-nums text-muted" data-role="app-version" :title="`Build ${version}`">{{ $t('site.version', { id: version }) }}</p>
     </div>
 

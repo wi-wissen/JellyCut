@@ -17,6 +17,9 @@ export interface AssetCredit {
   license?: string
 }
 
+/** Where a medium was made. Recordings and generated example videos have no original file on disk. */
+export type AssetOrigin = 'recording' | 'example'
+
 export interface Asset {
   id: string
   kind: AssetKind
@@ -31,6 +34,10 @@ export interface Asset {
   /** Whether the file has a usable audio track. Undefined means "assume yes" for video, audio files always have it. */
   hasAudio?: boolean
   credit?: AssetCredit
+  /** Set for media made in the app. Absent means the user imported a file from disk. */
+  origin?: AssetOrigin
+  /** Key of the copy in the browser's private storage (src/platform/mediaStore.ts). Only with `origin`. */
+  storeKey?: string
 }
 
 export interface Transform {

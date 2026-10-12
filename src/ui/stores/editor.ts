@@ -563,10 +563,13 @@ export const useEditorStore = defineStore('editor', {
 
     /** Replaces the whole document. The history starts over, so undo never mixes two files. */
     replaceDocument(project: Project, file: { handle: FsFileHandle | null; name: string | null }) {
+      const previous = this.history.present
       // Quietly: a loaded project that hangs over its video is fitted, but not marked dirty.
       this.history = createHistory(fitToVideo(project))
       warmAnimatedSheets(this.history.present.overlays)
-      useMediaStore().markMissingFor(project)
+      const media = useMediaStore()
+      media.markMissingFor(project, previous)
+      void media.restoreStored(project)
       this.fileHandle = file.handle
       this.fileName = file.name
       this.dirtySinceFileSave = false
@@ -659,7 +662,10 @@ export const useEditorStore = defineStore('editor', {
       if (result.ok) {
         this.history = createHistory(fitToVideo(result.project))
         warmAnimatedSheets(this.history.present.overlays)
-        useMediaStore().markMissingFor(result.project)
+        const media = useMediaStore()
+        media.markMissingFor(result.project)
+        // Recordings come back from this browser's storage before the editor shows, so they never look missing.
+        await media.restoreStored(result.project, { sweep: true }).catch(() => undefined)
       }
     },
 

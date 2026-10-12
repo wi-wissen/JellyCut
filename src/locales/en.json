@@ -33,7 +33,12 @@
       "saved": "Autosave: saved",
       "error": "Autosave: error"
     },
-    "confirmDiscard": "There are changes that have not been saved to a file. They will be lost if you continue. Continue?"
+    "confirmDiscard": "There are changes that have not been saved to a file. They will be lost if you continue. Continue?",
+    "confirmDiscardRecordings": "This project has recordings that are stored only in this browser. They will be deleted if you continue. Did you save them as files? Continue?",
+    "storedMedia": "Recordings in this browser: {size}",
+    "storedMediaHint": "Recordings and example videos are kept only in this browser and are never uploaded. They are deleted when you remove media or start a new project.",
+    "storagePersistent": "The browser keeps this storage permanently.",
+    "storageNotPersistent": "The browser may clear this storage when space runs low. Also save important recordings as files."
   },
   "groups": {
     "material": "Material",
@@ -58,11 +63,14 @@
     "add": "Add",
     "addToTimeline": "Add {name} to the timeline",
     "emptyHint": "Add videos, images or music from your computer, or drop them here.",
+    "storedHint": "Stored in this browser, nothing is uploaded.",
     "problems": {
       "cannotDecode": "This browser cannot read this file. Please use a Chromium-based browser such as Brave, Microsoft Edge or Google Chrome.",
       "unsupportedFormat": "This file type is not supported.",
       "noMedia": "This file has no picture or sound.",
-      "missing": "File missing."
+      "missing": "File missing.",
+      "missingRecording": "Recording not found any more.",
+      "missingExample": "Example video not found any more."
     },
     "audio": "Audio"
   },
@@ -360,6 +368,12 @@
     "again": "Record again",
     "tryAgain": "Try again",
     "saveFile": "Save recording as a file",
+    "backupFile": "Save a copy as a file",
+    "storedHint": "The recording is also stored in this browser and stays after a reload. Nothing is uploaded.",
+    "storage": {
+      "quota": "This browser's storage is full. The recording exists only in this tab and is lost on reload. Save it as a file now.",
+      "unavailable": "This browser cannot keep the recording permanently (for example in a private window). It is lost on reload. Save it as a file now."
+    },
     "importAgain": "Add to the library again",
     "rawFileHint": "Your recording is not lost. Save it as a file and drag it into the library later.",
     "announceTime": "Recording time {time}",
@@ -449,6 +463,8 @@
     "banner": "{count} file is missing. Re-link it to keep editing. | {count} files are missing. Re-link them to keep editing.",
     "selectFiles": "Select files…",
     "chooseFolder": "Choose folder…",
+    "recordingElsewhere": "This recording was only stored in the other browser. If you saved it as a file, choose that file.",
+    "exampleElsewhere": "This example video was only stored in the other browser. Remove it or create a new one on the start page.",
     "tileButton": "Re-link",
     "tileLabel": "Re-link {name}",
     "title": "Missing files",

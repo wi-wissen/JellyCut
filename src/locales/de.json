@@ -33,7 +33,12 @@
       "saved": "Autosave: gespeichert",
       "error": "Autosave: Fehler"
     },
-    "confirmDiscard": "Es gibt Änderungen, die noch nicht in einer Datei gespeichert sind. Sie gehen verloren, wenn du fortfährst. Fortfahren?"
+    "confirmDiscard": "Es gibt Änderungen, die noch nicht in einer Datei gespeichert sind. Sie gehen verloren, wenn du fortfährst. Fortfahren?",
+    "confirmDiscardRecordings": "Dieses Projekt enthält Aufnahmen, die nur in diesem Browser gespeichert sind. Sie werden gelöscht, wenn du fortfährst. Hast du sie als Datei gesichert? Fortfahren?",
+    "storedMedia": "Aufnahmen in diesem Browser: {size}",
+    "storedMediaHint": "Aufnahmen und Beispielvideos liegen nur in diesem Browser und werden nie hochgeladen. Sie werden gelöscht, wenn du Medien entfernst oder ein neues Projekt beginnst.",
+    "storagePersistent": "Der Browser hält diesen Speicher dauerhaft vor.",
+    "storageNotPersistent": "Der Browser darf diesen Speicher bei Platzmangel leeren. Sichere wichtige Aufnahmen zusätzlich als Datei."
   },
   "groups": {
     "material": "Material",
@@ -58,11 +63,14 @@
     "add": "Hinzufügen",
     "addToTimeline": "{name} zur Timeline hinzufügen",
     "emptyHint": "Füge Videos, Bilder oder Musik von deinem Computer hinzu oder ziehe sie hierher.",
+    "storedHint": "Gespeichert in diesem Browser, nichts wird hochgeladen.",
     "problems": {
       "cannotDecode": "Dieser Browser kann diese Datei nicht lesen. Bitte nutze einen Chromium-basierten Browser wie Brave, Microsoft Edge oder Google Chrome.",
       "unsupportedFormat": "Dieser Dateityp wird nicht unterstützt.",
       "noMedia": "Diese Datei enthält weder Bild noch Ton.",
-      "missing": "Datei fehlt."
+      "missing": "Datei fehlt.",
+      "missingRecording": "Aufnahme nicht mehr gefunden.",
+      "missingExample": "Beispielvideo nicht mehr gefunden."
     },
     "audio": "Audio"
   },
@@ -360,6 +368,12 @@
     "again": "Neu aufnehmen",
     "tryAgain": "Erneut versuchen",
     "saveFile": "Aufnahme als Datei speichern",
+    "backupFile": "Aufnahme als Datei sichern",
+    "storedHint": "Die Aufnahme ist auch in diesem Browser gespeichert und bleibt nach dem Neuladen erhalten. Nichts wird hochgeladen.",
+    "storage": {
+      "quota": "Der Speicher dieses Browsers ist voll. Die Aufnahme ist nur in diesem Tab vorhanden und geht beim Neuladen verloren. Speichere sie jetzt als Datei.",
+      "unavailable": "Dieser Browser kann die Aufnahme nicht dauerhaft speichern (zum Beispiel im privaten Fenster). Sie geht beim Neuladen verloren. Speichere sie jetzt als Datei."
+    },
     "importAgain": "Noch einmal in die Bibliothek legen",
     "rawFileHint": "Deine Aufnahme ist nicht verloren. Speichere sie als Datei und ziehe sie später in die Bibliothek.",
     "announceTime": "Aufnahmezeit {time}",
@@ -449,6 +463,8 @@
     "banner": "{count} Datei fehlt. Verknüpfe sie neu, um weiterzuarbeiten. | {count} Dateien fehlen. Verknüpfe sie neu, um weiterzuarbeiten.",
     "selectFiles": "Dateien auswählen…",
     "chooseFolder": "Ordner auswählen…",
+    "recordingElsewhere": "Diese Aufnahme war nur in dem anderen Browser gespeichert. Hast du sie als Datei gesichert, wähle die Datei aus.",
+    "exampleElsewhere": "Dieses Beispielvideo war nur in dem anderen Browser gespeichert. Entferne es oder erzeuge auf der Startseite ein neues.",
     "tileButton": "Neu verknüpfen",
     "tileLabel": "{name} neu verknüpfen",
     "title": "Dateien fehlen",

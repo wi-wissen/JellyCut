@@ -1,5 +1,6 @@
 import type { Micros } from '../time'
 import type { FormatRatio, Project } from './types'
+import { STORE_KEY_PATTERN } from '../io/storedMedia'
 import { CREDIT_FIELDS, CREDIT_MAX_LENGTH, isHttpUrl } from '../credits/credits'
 import { canonicalAnimation } from '../render/animations'
 import { isStickerImageId } from '../render/stickerImages'
@@ -15,6 +16,7 @@ type Errors = string[]
 
 const RATIOS: readonly FormatRatio[] = ['16:9', '9:16', '1:1', '4:5']
 const ASSET_KINDS = ['video', 'audio', 'image'] as const
+const ASSET_ORIGINS = ['recording', 'example'] as const
 const FIT_MODES = ['fit', 'fill'] as const
 const MAX_VOLUME = 2
 const OPTIONAL_LISTS = ['texts', 'overlays', 'stickers', 'drawings', 'music'] as const
@@ -177,6 +179,8 @@ function validateAssets(value: unknown, path: string, errors: Errors): Set<strin
     if (a.height !== undefined) need(errors, isPositiveInt(a.height), `${p}.height`, 'must be a positive integer')
     if (a.fps !== undefined) need(errors, isPositiveNumber(a.fps), `${p}.fps`, POSITIVE_MSG)
     if (a.credit !== undefined) validateCredit(a.credit, `${p}.credit`, errors)
+    if (a.origin !== undefined) need(errors, ASSET_ORIGINS.includes(a.origin as (typeof ASSET_ORIGINS)[number]), `${p}.origin`, `must be one of ${ASSET_ORIGINS.join(', ')}`)
+    if (a.storeKey !== undefined) need(errors, typeof a.storeKey === 'string' && STORE_KEY_PATTERN.test(a.storeKey), `${p}.storeKey`, 'must be 8 to 64 letters, digits, - or _')
   })
   return ids
 }

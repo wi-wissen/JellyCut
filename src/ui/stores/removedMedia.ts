@@ -19,14 +19,18 @@ export class RemovedMediaCache<T> {
     return this.entries.has(id)
   }
 
-  put(id: string, entry: T): void {
+  /** Returns the entries that fell out because of the limit, oldest first, so the caller can free what they hold. */
+  put(id: string, entry: T): [string, T][] {
     this.entries.delete(id)
     this.entries.set(id, entry)
+    const dropped: [string, T][] = []
     while (this.entries.size > this.limit) {
       const oldest = this.entries.keys().next().value
       if (oldest === undefined) break
+      dropped.push([oldest, this.entries.get(oldest) as T])
       this.entries.delete(oldest)
     }
+    return dropped
   }
 
   take(id: string): T | undefined {
@@ -35,8 +39,11 @@ export class RemovedMediaCache<T> {
     return entry
   }
 
-  clear(): void {
+  /** Empties the cache and returns what it held. */
+  clear(): [string, T][] {
+    const all = [...this.entries]
     this.entries.clear()
+    return all
   }
 }
 

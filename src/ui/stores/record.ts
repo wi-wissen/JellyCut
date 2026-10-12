@@ -16,7 +16,7 @@ import { Recorder, detectRecordCapabilities, RecordingError, type LiveWarning } 
 import { listMicrophones, microphonePermissionGranted, startMicTest, type MicTest } from '../../engine/record/micTest'
 import { checkRecording } from '../../engine/record/postCheck'
 import { useEditorStore } from './editor'
-import { useMediaStore } from './media'
+import { getAssetFile, useMediaStore } from './media'
 
 export type RecordPhase = 'idle' | 'starting' | 'recording' | 'paused' | 'finishing' | 'done' | 'error'
 
@@ -52,6 +52,8 @@ const TIME_ANNOUNCE_MS = 10_000
  * limits). Whatever happens, the panel leaves 'finishing' and offers the raw file.
  */
 export const IMPORT_TIMEOUT_MS = 60_000
+/** Writing the copy into the browser's storage must not hold the panel back either. */
+const PERSIST_TIMEOUT_MS = 20_000
 /** Measuring the start of the finished file must never hold the panel back. */
 const CHECK_TIMEOUT_MS = 8000
 
@@ -153,6 +155,8 @@ export const useRecordStore = defineStore('record', {
     warningKeys: [] as string[],
     /** Findings about the finished file (silent sound, black picture), i18n keys; they stay until the next recording. */
     checkKeys: [] as string[],
+    /** The recording could not be kept in this browser's storage (i18n key); it exists in memory only until saved as a file. */
+    storageProblemKey: null as string | null,
     /** Technical details of the last recording, shown after a failure. */
     diagnosticsText: ''
   }),
@@ -178,6 +182,7 @@ export const useRecordStore = defineStore('record', {
       this.extraNoticeKeys = []
       this.warningKeys = []
       this.checkKeys = []
+      this.storageProblemKey = null
       this.diagnosticsText = ''
       pendingFile = null
       // Closing the test is synchronous and must stay so: the recorder's first step needs the click's user activation.
@@ -371,6 +376,7 @@ export const useRecordStore = defineStore('record', {
       this.extraNoticeKeys = []
       this.warningKeys = []
       this.checkKeys = []
+      this.storageProblemKey = null
       this.diagnosticsText = ''
       pendingFile = null
       this.statusKey = ''
@@ -389,7 +395,7 @@ export const useRecordStore = defineStore('record', {
       const editor = useEditorStore()
       // The recorder's clock backs up containers without a length (MediaRecorder output has none).
       const durationHintSeconds = this.elapsedMs > 0 ? this.elapsedMs / 1000 : undefined
-      await withTimeout(media.importFiles([file], [], { durationHintSeconds }), IMPORT_TIMEOUT_MS, 'import')
+      await withTimeout(media.importFiles([file], [], { durationHintSeconds, origin: 'recording' }), IMPORT_TIMEOUT_MS, 'import')
       const asset = [...editor.project.assets].reverse().find((a) => a.name === file.name)
       if (!asset || media.statusOf(asset.id) !== 'ready') {
         this.fail(new Error('import failed'))
@@ -397,6 +403,7 @@ export const useRecordStore = defineStore('record', {
         return
       }
       await this.checkFile(file, finished)
+      await this.afterImport(asset.id)
       pendingFile = null
       this.hasRawFile = false
       this.assetId = asset.id
@@ -405,9 +412,19 @@ export const useRecordStore = defineStore('record', {
       this.statusKey = 'record.status.stopped'
     },
 
-    /** Offers the recorded file as a download, for when the library could not take it. */
+    /**
+     * The one place that makes a finished recording durable: it keeps a copy in this browser's private storage
+     * (nothing is uploaded). A full or unavailable storage is shown, the recording stays usable in memory.
+     */
+    async afterImport(assetId: string): Promise<void> {
+      const result = await withTimeout(useMediaStore().persistAsset(assetId), PERSIST_TIMEOUT_MS, 'persist').catch(() => 'unavailable' as const)
+      this.storageProblemKey = result === 'quota' ? 'record.storage.quota' : result === 'unavailable' ? 'record.storage.unavailable' : null
+    },
+
+    /** Offers the recorded file as a download: when the library could not take it, and as a copy outside the browser. */
     saveRecording(): void {
-      if (pendingFile) downloadFile(pendingFile)
+      const file = pendingFile ?? (this.assetId ? getAssetFile(this.assetId) : undefined)
+      if (file) downloadFile(file)
     },
 
     /** Tries to take the kept recording into the library again. */

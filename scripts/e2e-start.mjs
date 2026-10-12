@@ -205,14 +205,14 @@ await check('export dialog opens and closes', async () => {
   await page.getByRole('dialog').waitFor({ state: 'detached' })
 })
 
-await check('reload keeps the project (autosave); media shows as missing after a reload', async () => {
+await check('reload keeps the project (autosave); the example video comes back from the browser storage', async () => {
   await page.waitForTimeout(1500)
   await page.reload()
   await page.locator('#export-button').waitFor()
   const after = await stores(page, '(ed) => ({ clips: ed.project.clips.length, assets: ed.project.assets.length })')
   assert(after.clips === 2 && after.assets === 2, JSON.stringify(after))
   const assets = await videoAssets(page)
-  assert(assets.every((a) => a.status === 'missing'), `statuses ${JSON.stringify(assets)}`)
+  assert(assets.every((a) => a.status === 'ready'), `statuses ${JSON.stringify(assets)}`)
   console.log(`      relink banner shown: ${(await page.getByRole('status').filter({ hasText: /file|Datei|Medi/i }).count()) > 0}`)
 })
 

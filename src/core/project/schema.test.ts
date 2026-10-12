@@ -233,3 +233,34 @@ describe('asset credits (optional)', () => {
     if (r.ok) expect(r.project.assets[0]?.credit).toEqual({ title: 'Beach', license: 'cc-by-4.0' })
   })
 })
+
+describe('asset origin and storeKey (optional)', () => {
+  const withFields = (fields: Record<string, unknown>): unknown => {
+    const p: any = structuredClone(sample())
+    Object.assign(p.assets[0], fields)
+    return p
+  }
+  it('older projects without the fields stay valid and are not changed', () => {
+    const r = validateProject(sample())
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      expect(r.project.assets[0]!.origin).toBeUndefined()
+      expect(r.project.assets[0]!.storeKey).toBeUndefined()
+    }
+  })
+  it('accepts a recording with a store key', () => {
+    expect(validateProject(withFields({ origin: 'recording', storeKey: 'rec-0123456789ab' })).ok).toBe(true)
+    expect(validateProject(withFields({ origin: 'example' })).ok).toBe(true)
+  })
+  it('rejects an unknown origin and unsafe or non-string keys', () => {
+    expect(validateProject(withFields({ origin: 'download' })).ok).toBe(false)
+    expect(validateProject(withFields({ origin: 'recording', storeKey: '../x' })).ok).toBe(false)
+    expect(validateProject(withFields({ origin: 'recording', storeKey: 42 })).ok).toBe(false)
+  })
+  it('survives a round trip through the project file text', () => {
+    const p: any = withFields({ origin: 'recording', storeKey: 'rec-0123456789ab' })
+    const r = parseProjectJson(serializeProject(p))
+    expect(r.ok).toBe(true)
+    if (r.ok) expect(r.project.assets[0]).toMatchObject({ origin: 'recording', storeKey: 'rec-0123456789ab' })
+  })
+})

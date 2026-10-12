@@ -65,11 +65,13 @@ async function addToTimeline(files: File[]): Promise<void> {
   const editor = useEditorStore()
   const media = useMediaStore()
   const before = new Set(editor.project.assets.map((a) => a.id))
-  await media.importFiles(files)
+  await media.importFiles(files, [], { origin: 'example' })
   const added = editor.project.assets.filter((a) => !before.has(a.id) && a.kind === 'video' && media.statusOf(a.id) === 'ready')
   let project = editor.project
   for (const asset of added) {
     project = appendClip(project, asset.id, nextId(projectIds(project), 'clip-'))
   }
   if (project !== editor.project) editor.commitProject(project)
+  // The generated clips exist nowhere else: keep them in this browser like recordings.
+  await Promise.all(added.map((asset) => media.persistAsset(asset.id)))
 }

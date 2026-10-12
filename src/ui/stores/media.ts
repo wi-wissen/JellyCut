@@ -3,7 +3,7 @@ import { withTimeout } from '../../core/async/timeout'
 import { createIdGenerator, nextId } from '../../core/timeline/ids'
 import { projectIds } from '../../core/timeline/ops'
 import { addAsset, addMusic, appendClip, assetFromProbe } from '../../core/timeline/insert'
-import type { Asset, Project } from '../../core/project/types'
+import type { Asset, AssetOrigin, Project } from '../../core/project/types'
 import { secondsToMicros, MICROS_PER_SECOND, type Micros } from '../../core/time'
 import { ElementFallback } from '../../engine/media/elementFallback'
 import { ExactFrameProvider, type DecodedFrame } from '../../engine/media/frames'
@@ -31,6 +31,8 @@ import {
   type WorkFolderHandle
 } from '../../platform/workFolder'
 import { chooseWorkFolder } from '../../platform/projectFiles'
+import { createIdbMediaStore, newStoreKey, requestPersistentStorage, type MediaStore, type PersistState } from '../../platform/mediaStore'
+import { droppedKeys, planSweep, storeKeysOf } from '../../core/io/storedMedia'
 import { assetUsage, removeAsset as removeAssetFromProject, removeUnusedAssets } from '../../core/timeline/assetOps'
 import { useEditorStore } from './editor'
 import { planReconcile, RemovedMediaCache, REMOVED_MEDIA_LIMIT } from './removedMedia'
@@ -72,8 +74,21 @@ interface RemovedMedia {
   status: MediaStatus
   problems: ProbeProblem[]
   thumbnail: string | null
+  storeKey?: string
 }
 const removedMedia = new RemovedMediaCache<RemovedMedia>(REMOVED_MEDIA_LIMIT)
+
+// The browser's private copies of recordings and example videos; swapped for a fake in tests.
+let storage: MediaStore = createIdbMediaStore()
+export function setMediaStorage(next: MediaStore): void {
+  storage = next
+}
+// Stored orphans younger than this may belong to another tab that is still saving its project.
+const SWEEP_GRACE_MS = 24 * 60 * 60 * 1000
+// Store key per asset id of the open document, so a removed asset's copy can be found after it left the project.
+const storeKeyById = new Map<string, string>()
+// Counts documents, so a slow restore of an earlier one cannot touch the current one.
+let documentSeq = 0
 let rememberedFolder: WorkFolderHandle | null = null
 
 /** Safety net for single pictures drawn outside the preview (fine cut view): the media element stands in when exact decoding fails. */
@@ -234,6 +249,11 @@ export const useMediaStore = defineStore('media', {
     relinkScanned: null as number | null,
     relinkNotice: null as string | null,
 
+    /** Bytes of every copy in this browser's private storage, by store key. */
+    storedSizes: {} as Record<string, number>,
+    /** Whether the browser agreed to keep the storage (see requestPersistentStorage). */
+    persistence: 'unknown' as 'unknown' | PersistState,
+
     /** The remembered work folder. Null when none is remembered. */
     folder: null as { name: string; permission: FolderPermission } | null,
 
@@ -248,6 +268,12 @@ export const useMediaStore = defineStore('media', {
     missingCount(state): number {
       return missingUsedAssets(useEditorStore().project, state.status).length
     },
+    /** Total size of the recordings and example videos kept in this browser. */
+    storedBytes: (state): number => Object.values(state.storedSizes).reduce((sum, n) => sum + n, 0),
+    /** Recordings of the open project that have a copy in this browser's storage (they exist nowhere else). */
+    storedAssetCount(state): number {
+      return useEditorStore().project.assets.filter((a) => a.origin === 'recording' && a.storeKey && state.storedSizes[a.storeKey] !== undefined).length
+    },
     /** User assets that no clip, music item or picture-in-picture uses. */
     unusedCount(): number {
       const project = useEditorStore().project
@@ -259,7 +285,7 @@ export const useMediaStore = defineStore('media', {
     async importFiles(
       list: File[],
       relPaths: (string | null)[] = [],
-      options: { durationHintSeconds?: number } = {}
+      options: { durationHintSeconds?: number; origin?: AssetOrigin } = {}
     ): Promise<void> {
       if (list.length === 0) return
       this.importing++
@@ -272,6 +298,10 @@ export const useMediaStore = defineStore('media', {
             const info = await probeFile(file, options)
             const relPath = relPaths[index] ?? file.name
             const asset = assetFromProbe(info, nextAssetId(projectIds(editor.project)), relPath)
+            if (options.origin) {
+              asset.origin = options.origin
+              asset.storeKey = newStoreKey()
+            }
             imported.push({ asset, info, file })
           } catch (e) {
             this.lastImportError = errorMessage(e)
@@ -286,6 +316,7 @@ export const useMediaStore = defineStore('media', {
         }
         for (const { asset, info, file } of imported) {
           registerFile(asset.id, file)
+          if (asset.storeKey) storeKeyById.set(asset.id, asset.storeKey)
           if (info.problems.length === 0) {
             this.status[asset.id] = 'ready'
           } else {
@@ -344,10 +375,17 @@ export const useMediaStore = defineStore('media', {
      * Called when a document replaces the current one (new, opened or restored). Its files are not
      * available in this session, so every asset of the project starts out missing.
      */
-    markMissingFor(project: Project): void {
+    markMissingFor(project: Project, previous?: Project): void {
+      documentSeq++
       resetFiles()
       pool.clear()
-      removedMedia.clear()
+      // Copies the replaced document no longer needs are deleted; those the new one refers to stay.
+      const cleared = removedMedia.clear()
+      const leaving = storeKeysOf(previous)
+      for (const [, entry] of cleared) if (entry.storeKey) leaving.add(entry.storeKey)
+      void this.purgeStored(droppedKeys(leaving, storeKeysOf(project)))
+      storeKeyById.clear()
+      for (const asset of project.assets) if (asset.storeKey) storeKeyById.set(asset.id, asset.storeKey)
       const status: Record<string, MediaStatus> = {}
       for (const asset of project.assets) status[asset.id] = 'missing'
       this.status = status
@@ -356,10 +394,92 @@ export const useMediaStore = defineStore('media', {
       this.lastImportError = null
       this.resetRelink()
 
-      const missing = missingUsedAssets(project, status).map((a) => a.id)
+      // Media with a stored copy is not missing yet: restoreStored decides.
+      const missing = missingUsedAssets(project, status).filter((a) => !a.storeKey).map((a) => a.id)
       this.relinkListIds = missing
       this.needsRelink = missing.length > 0
       this.relinkOpen = missing.length > 0
+    },
+
+    /**
+     * Loads the stored copies of the project's recordings and example videos, so they are ready without
+     * re-linking. What this browser does not have (a project file from another computer) joins the re-link list.
+     */
+    async restoreStored(project: Project, options: { sweep?: boolean } = {}): Promise<void> {
+      const seq = documentSeq
+      const wanted = project.assets.filter((a) => a.storeKey)
+      const found: { asset: Asset; file: File }[] = []
+      for (const asset of wanted) {
+        const file = await storage.get(asset.storeKey as string)
+        if (seq !== documentSeq) return
+        if (file) found.push({ asset, file })
+      }
+      for (const { asset, file } of found) {
+        registerFile(asset.id, file)
+        this.status[asset.id] = 'ready'
+        delete this.problems[asset.id]
+      }
+      const missing = missingUsedAssets(project, this.status)
+      if (missing.length > 0 || this.relinkListIds.length > 0) {
+        this.relinkListIds = [...new Set([...this.relinkListIds, ...missing.map((a) => a.id)])]
+        this.needsRelink = missing.length > 0
+        this.relinkOpen = this.relinkOpen || missing.length > 0
+      }
+      this.replan()
+      await this.refreshStored()
+      if (options.sweep) await this.sweepStored(project)
+      // Thumbnails take a moment to decode; the library shows the tiles first.
+      for (const { asset } of found) {
+        void makeThumbnail(asset).then((thumbnail) => {
+          if (thumbnail && seq === documentSeq && this.status[asset.id] === 'ready') this.thumbnails[asset.id] = thumbnail
+        })
+      }
+    },
+
+    /** Reads the sizes of the stored copies (for the size display and the discard warning). */
+    async refreshStored(): Promise<void> {
+      const list = await storage.list()
+      this.storedSizes = Object.fromEntries(list.map((s) => [s.key, s.size]))
+    },
+
+    /** Debug and test accessor: the keys of every stored copy. */
+    async storedKeys(): Promise<string[]> {
+      return (await storage.list()).map((s) => s.key)
+    },
+
+    /** Deletes stored copies that nothing refers to any more (older than a day, see SWEEP_GRACE_MS). */
+    async sweepStored(project: Project): Promise<void> {
+      const stale = planSweep(await storage.list(), storeKeysOf(project), Date.now(), SWEEP_GRACE_MS)
+      if (stale.length > 0) await this.purgeStored(stale)
+    },
+
+    /** Deletes stored copies unless the open project still refers to them. Never throws. */
+    async purgeStored(keys: string[]): Promise<void> {
+      if (keys.length === 0) return
+      const inUse = storeKeysOf(useEditorStore().project)
+      for (const key of keys) if (!inUse.has(key)) await storage.delete(key).catch(() => undefined)
+      await this.refreshStored()
+    },
+
+    /**
+     * Keeps the file of an asset made in the app (recording, example video) in this browser's private storage,
+     * so it survives reloads. 'quota' and 'unavailable' leave the file in memory only.
+     */
+    async persistAsset(assetId: string): Promise<'stored' | 'quota' | 'unavailable' | 'skipped'> {
+      const asset = useEditorStore().project.assets.find((a) => a.id === assetId)
+      const file = files.get(assetId)
+      if (!asset?.storeKey || !file) return 'skipped'
+      const result = await storage.put(asset.storeKey, file)
+      if (!result.ok) return result.reason
+      this.storedSizes = { ...this.storedSizes, [asset.storeKey]: file.size }
+      // Asked once, after the first copy; the answer arrives on its own.
+      if (this.persistence === 'unknown') {
+        this.persistence = 'denied'
+        void requestPersistentStorage().then((state) => {
+          this.persistence = state
+        })
+      }
+      return 'stored'
     },
 
     resetRelink(): void {
@@ -466,12 +586,16 @@ export const useMediaStore = defineStore('media', {
       for (const id of gone) {
         const file = files.get(id)
         if (file) {
-          removedMedia.put(id, {
+          const dropped = removedMedia.put(id, {
             file,
             status: this.status[id] ?? 'ready',
             problems: this.problems[id] ?? [],
-            thumbnail: this.thumbnails[id] ?? null
+            thumbnail: this.thumbnails[id] ?? null,
+            storeKey: storeKeyById.get(id)
           })
+          // An undo cache entry that fell out is gone for good: its stored copy goes too.
+          const freed = dropped.map(([, entry]) => entry.storeKey).filter((k): k is string => !!k)
+          if (freed.length > 0) void this.purgeStored(freed)
           files.delete(id)
         }
         delete this.status[id]
@@ -488,6 +612,7 @@ export const useMediaStore = defineStore('media', {
         const cached = removedMedia.take(id)
         if (!cached) continue
         registerFile(id, cached.file)
+        if (cached.storeKey) storeKeyById.set(id, cached.storeKey)
         this.status[id] = cached.status
         if (cached.problems.length > 0) this.problems[id] = cached.problems
         if (cached.thumbnail) this.thumbnails[id] = cached.thumbnail
@@ -774,6 +899,8 @@ export const useMediaStore = defineStore('media', {
       if (batch.length === 0) return
       for (const item of batch) {
         registerFile(item.asset.id, item.file)
+        // A re-linked recording is kept in this browser again.
+        if (item.asset.storeKey) void this.persistAsset(item.asset.id)
         this.status[item.asset.id] = 'ready'
         this.relinkReasons[item.asset.id] = item.basis
         delete this.problems[item.asset.id]

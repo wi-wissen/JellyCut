@@ -13,6 +13,15 @@ describe('RemovedMediaCache', () => {
     expect(cache.has('a')).toBe(false)
   })
 
+  it('reports the entries that fell out so their stored copies can be freed', () => {
+    const cache = new RemovedMediaCache<string>(2)
+    expect(cache.put('a', 'A')).toEqual([])
+    cache.put('b', 'B')
+    expect(cache.put('c', 'C')).toEqual([['a', 'A']])
+    expect(cache.clear()).toEqual([['b', 'B'], ['c', 'C']])
+    expect(cache.size).toBe(0)
+  })
+
   it('moves a re-put id to the newest position instead of duplicating it', () => {
     const cache = new RemovedMediaCache<number>(2)
     cache.put('a', 1)

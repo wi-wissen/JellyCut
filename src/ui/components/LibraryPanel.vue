@@ -3,6 +3,7 @@ import { defineComponent, type PropType } from 'vue'
 import { mapActions, mapState } from 'pinia'
 import Icon from './Icon.vue'
 import type { Asset, AssetKind } from '../../core/project/types'
+import { missingKind } from '../../core/io/storedMedia'
 import { useEditorStore } from '../stores/editor'
 import { useMediaStore } from '../stores/media'
 import { useCreditsStore } from '../stores/credits'
@@ -58,7 +59,8 @@ export default defineComponent({
       'missingCount',
       'folder',
       'unusedCount',
-      'removalNote'
+      'removalNote',
+      'storedSizes'
     ]),
     showRelinkBanner(): boolean {
       return this.missingCount > 0
@@ -149,11 +151,18 @@ export default defineComponent({
     },
     /** Short reason shown on a tile that cannot be used. */
     problemText(asset: Asset): string {
-      if (this.statusOf(asset.id) === 'missing') return this.$t('library.problems.missing')
+      if (this.statusOf(asset.id) === 'missing') {
+        const kind = missingKind(asset)
+        return this.$t(kind === 'recording' ? 'library.problems.missingRecording' : kind === 'example' ? 'library.problems.missingExample' : 'library.problems.missing')
+      }
       const first = this.problems[asset.id]?.[0]
       if (first === 'cannot-decode-video' || first === 'cannot-decode-audio') return this.$t('library.problems.cannotDecode')
       if (first === 'no-media') return this.$t('library.problems.noMedia')
       return this.$t('library.problems.unsupportedFormat')
+    },
+    /** Tooltip of a tile whose file is kept in this browser (recordings, example videos). */
+    storedTitle(asset: Asset): string | undefined {
+      return asset.storeKey && this.storedSizes[asset.storeKey] !== undefined ? this.$t('library.storedHint') : undefined
     },
     durationLabel(asset: Asset): string {
       // Images have no real length; their stored duration is only a limit.
@@ -285,6 +294,7 @@ export default defineComponent({
             :class="isReady(asset) ? '' : 'cursor-default'"
             :style="{ background: gradient(index) }"
             :aria-label="tileLabel(asset)"
+            :title="storedTitle(asset)"
             :aria-disabled="isReady(asset) ? undefined : 'true'"
             @click="onTile(asset)"
           >

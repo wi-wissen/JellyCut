@@ -7,6 +7,8 @@ import { useEditorStore } from './editor'
 
 vi.mock('../../platform/localStore', () => ({
   AUTOSAVE_KEY: 'autosave',
+  MEDIA_STORE_NAME: 'media',
+  openDb: vi.fn(async () => null),
   kvGet: vi.fn(async () => null),
   kvSet: vi.fn(async () => true),
   kvDelete: vi.fn(async () => true)
