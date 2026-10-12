@@ -11,6 +11,9 @@ const h = vi.hoisted(() => ({
   persistResult: 'stored' as string,
   persisted: [] as string[],
   check: null as null | object,
+  optimizeImpl: null as null | ((file: File, options: { signal?: AbortSignal; onProgress?: (f: number) => void }) => Promise<{ file: File | null; reason: string }>),
+  replaced: [] as { id: string; file: File; previous: File }[],
+  replaceResult: true,
   health: { strategy: 'raw', problem: null as null | string, expectedAudio: true, micSilent: false, systemSoundDropped: false }
 }))
 
@@ -40,11 +43,16 @@ vi.mock('../../engine/record/recorder', () => ({
     cancel() {}
   }
 }))
+vi.mock('../../engine/record/optimize', () => ({ optimizeRecording: (f: File, o: object) => h.optimizeImpl!(f, o) }))
 vi.mock('../../engine/record/postCheck', () => ({ checkRecording: async () => h.check }))
 vi.mock('./media', () => ({
   useMediaStore: () => ({
     importFiles: (list: File[]) => h.importImpl!().then(() => h.assets.push({ id: 'asset-1', name: list[0]!.name })),
     statusOf: () => h.statusValue,
+    replaceFile: async (id: string, file: File, previous: File) => {
+      h.replaced.push({ id, file, previous })
+      return h.replaceResult
+    },
     persistAsset: async (id: string) => {
       h.persisted.push(id)
       return h.persistResult
@@ -66,6 +74,9 @@ beforeEach(() => {
   h.statusValue = 'ready'
   h.persistResult = 'stored'
   h.persisted = []
+  h.replaced = []
+  h.replaceResult = true
+  h.optimizeImpl = async () => ({ file: null, reason: 'noEncoder' })
   h.stopImpl = async () => file()
   h.importImpl = async () => undefined
   vi.stubGlobal('document', { documentElement: { lang: 'de' } })
@@ -91,6 +102,84 @@ async function recordAndStop() {
   const stopped = store.stop()
   return { store, stopped }
 }
+
+describe('record store: optimising the finished recording in the background', () => {
+  const settle = async (): Promise<void> => {
+    for (let i = 0; i < 5; i++) await Promise.resolve()
+  }
+
+  it('the clip is usable at once; the optimised file replaces the raw one under the same asset id', async () => {
+    const better = new File([new Uint8Array(20)], 'Screen 2026-10-11 10-00-00.webm', { type: 'video/webm' })
+    let finish: (value: { file: File | null; reason: string }) => void = () => undefined
+    h.optimizeImpl = (_f, o) => {
+      o.onProgress?.(0.4)
+      return new Promise((resolve) => (finish = resolve))
+    }
+    const { store, stopped } = await recordAndStop()
+    await stopped
+    expect(store.phase).toBe('done')
+    expect(store.optimizeFraction).toBe(0.4)
+    finish({ file: better, reason: 'optimized' })
+    await settle()
+    expect(h.replaced).toHaveLength(1)
+    expect(h.replaced[0]!.id).toBe('asset-1')
+    expect(h.replaced[0]!.file).toBe(better)
+    expect(store.optimizeFraction).toBeNull()
+    expect(store.statusKey).toBe('record.status.optimized')
+  })
+
+  it('Skip cancels the work and keeps the raw file', async () => {
+    let signal: AbortSignal | undefined
+    h.optimizeImpl = (_f, o) => {
+      signal = o.signal
+      return new Promise((resolve) => o.signal!.addEventListener('abort', () => resolve({ file: null, reason: 'canceled' })))
+    }
+    const { store, stopped } = await recordAndStop()
+    await stopped
+    expect(store.optimizeFraction).toBe(0)
+    store.skipOptimize()
+    await settle()
+    expect(signal?.aborted).toBe(true)
+    expect(h.replaced).toHaveLength(0)
+    expect(store.optimizeFraction).toBeNull()
+  })
+
+  it('a result that arrives after Skip is not used', async () => {
+    const better = new File([new Uint8Array(20)], 'x.webm')
+    let finish: (value: { file: File | null; reason: string }) => void = () => undefined
+    h.optimizeImpl = () => new Promise((resolve) => (finish = resolve))
+    const { store, stopped } = await recordAndStop()
+    await stopped
+    store.skipOptimize()
+    finish({ file: better, reason: 'optimized' })
+    await settle()
+    expect(h.replaced).toHaveLength(0)
+  })
+
+  it('a file that is not better leaves the raw file in place', async () => {
+    h.optimizeImpl = async () => ({ file: null, reason: 'mismatch' })
+    const { store, stopped } = await recordAndStop()
+    await stopped
+    await settle()
+    expect(h.replaced).toHaveLength(0)
+    expect(store.optimizeFraction).toBeNull()
+  })
+
+  it('Save a copy still gives the recording as the browser delivered it', async () => {
+    const better = new File([new Uint8Array(20)], 'Screen 2026-10-11 10-00-00.webm')
+    h.optimizeImpl = async () => ({ file: better, reason: 'optimized' })
+    const saved: File[] = []
+    const link = { click: () => undefined, remove: () => undefined, href: '', download: '' }
+    vi.stubGlobal('document', { documentElement: { lang: 'de' }, createElement: () => link, body: { append: () => undefined } })
+    vi.stubGlobal('URL', { createObjectURL: (f: File) => (saved.push(f), 'blob:x'), revokeObjectURL: () => undefined })
+    const { store, stopped } = await recordAndStop()
+    await stopped
+    await settle()
+    store.saveRecording()
+    expect(saved).toHaveLength(1)
+    expect(saved[0]!.size).toBe(10)
+  })
+})
 
 describe('record store: taking the recording into the library', () => {
   it('ends in done when the import works', async () => {

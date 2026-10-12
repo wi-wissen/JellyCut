@@ -44,7 +44,8 @@ export default defineComponent({
       'frameMicros',
       'mediaReady',
       'mediaProblem',
-      'hintVisible'
+      'hintVisible',
+      'scanFraction'
     ]),
     locale(): string {
       return this.$i18n.locale
@@ -322,6 +323,15 @@ export default defineComponent({
             {{ $t('fineCut.hintDismiss') }}
           </button>
         </div>
+
+        <p
+          v-if="scanFraction !== null && mediaReady"
+          role="status"
+          data-testid="fine-preparing"
+          class="mx-auto w-full max-w-[980px] shrink-0 text-sm text-muted"
+        >
+          {{ $t('fineCut.preparing', { percent: Math.round(scanFraction * 100) }) }}
+        </p>
 
         <div
           v-if="!mediaReady"

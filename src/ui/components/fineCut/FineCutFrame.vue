@@ -59,6 +59,9 @@ export default defineComponent({
       const token = ++this.token
       this.loading = true
       this.failed = false
+      // What the cache already holds (the exact picture, or a thumbnail while a recording is being read) shows at once.
+      const cached = getFrameProvider().peekFrame(this.assetId, this.srcTime)
+      if (cached) this.draw(cached.frame, cached.exact ? '' : 'thumb')
       let exact: DecodedFrame | null = null
       let threw = false
       try {
@@ -68,17 +71,21 @@ export default defineComponent({
       }
       const frame = await elementFallback.pick(this.assetId, this.srcTime, exact, threw, () => this.mediaElement())
       if (token !== this.token) return
-      const canvas = this.$refs.canvas as HTMLCanvasElement | undefined
-      if (frame && canvas) {
-        const width = frame instanceof HTMLVideoElement ? frame.videoWidth : frame.width
-        const height = frame instanceof HTMLVideoElement ? frame.videoHeight : frame.height
-        canvas.width = width
-        canvas.height = height
-        canvas.getContext('2d')?.drawImage(frame, 0, 0)
-        canvas.dataset.fallback = frame === exact ? '' : 'element'
-      }
-      this.failed = !frame
+      if (frame) this.draw(frame, frame === exact ? '' : 'element')
+      this.failed = !frame && !cached
       this.loading = false
+    },
+    /** `mode`: '' exact picture, 'element' from the media element, 'thumb' a cached thumbnail shown until the exact one is ready. */
+    draw(frame: CanvasImageSource, mode: '' | 'element' | 'thumb'): void {
+      const canvas = this.$refs.canvas as HTMLCanvasElement | undefined
+      if (!canvas) return
+      const width = frame instanceof HTMLVideoElement ? frame.videoWidth : (frame as HTMLCanvasElement).width
+      const height = frame instanceof HTMLVideoElement ? frame.videoHeight : (frame as HTMLCanvasElement).height
+      canvas.width = width
+      canvas.height = height
+      canvas.getContext('2d')?.drawImage(frame, 0, 0)
+      canvas.dataset.fallback = mode === 'element' ? 'element' : ''
+      canvas.dataset.preview = mode === 'thumb' ? 'thumb' : ''
     }
   }
 })

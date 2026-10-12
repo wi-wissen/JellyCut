@@ -15,6 +15,7 @@ import {
   srcToTimeline,
   timelineToSrc
 } from '../../core/timeline/fineCut'
+import { fineCutWant } from '../../core/media/scanPlan'
 import { projectIds, splitAt } from '../../core/timeline/ops'
 import { frameDuration, frameIndexAt, frameStart, type Micros } from '../../core/time'
 import { getAssetFile, getFrameProvider, useMediaStore } from './media'
@@ -52,6 +53,10 @@ let keyframes: KeyframeIndex | null = null
 let generation = 0
 /** Keyboard steps and jumps run one after another, so a burst of presses is not lost. */
 let queue: Promise<void> = Promise.resolve()
+/** The newest frame preparation (see `prepare`); older ones stop at the next frame. */
+let prepareToken = 0
+let preparing: Promise<void> = Promise.resolve()
+let preparedKey = ''
 let audioEl: HTMLVideoElement | null = null
 let audioFile: File | null = null
 let audioUrl: string | null = null
@@ -147,6 +152,10 @@ export const useFineCutStore = defineStore('fineCut', {
     /** Incremented when waveform data changes; views read it to redraw. */
     waveformRevision: 0,
     keyframeTimes: [] as Micros[],
+    /** 0..1 while frames of a recording with few keyframes are being prepared in one forward pass, else null. */
+    scanFraction: null as number | null,
+    /** Incremented when a pass has filled the frame caches; the strip reads it to fill its tiles. */
+    framesRevision: 0,
     pendingJobs: 0,
     error: null as FineCutError
   }),
@@ -215,7 +224,9 @@ export const useFineCutStore = defineStore('fineCut', {
       this.waveformLoading = false
       this.waveformFraction = 0
       this.keyframeTimes = []
+      this.scanFraction = null
       this.error = null
+      preparedKey = ''
       if (!cutBounds(clip, tlFrame)) this.error = 'too-short'
       if (!file) {
         this.error = this.error ?? 'no-file'
@@ -232,6 +243,8 @@ export const useFineCutStore = defineStore('fineCut', {
             keyframes = index
             void this.enqueue(() => this.refreshKeyframes())
           })
+        // First, before any picture is asked for: a recording with few keyframes is read once for the whole window.
+        void this.prepare()
         this.startWaveform(clip.assetId, file, gen)
       }
       void this.enqueue(async () => {
@@ -245,6 +258,10 @@ export const useFineCutStore = defineStore('fineCut', {
 
     close(): void {
       generation++
+      prepareToken++
+      preparedKey = ''
+      if (this.assetId) getFrameProvider().clearHint(this.assetId)
+      this.scanFraction = null
       this.isOpen = false
       this.error = null
       this.keyframeTimes = []
@@ -455,7 +472,42 @@ export const useFineCutStore = defineStore('fineCut', {
       return clampCut(clip, srcToTimeline(clip, s), tlFrame)
     },
 
+    /**
+     * Makes the pictures around the cut cheap to reach. For a recording with few keyframes (MediaRecorder output)
+     * every picture needs decoding from the first keyframe, so the strip and both big pictures are produced by one
+     * forward pass over the window instead of one decode per picture. Other files return at once. A pass for an
+     * older cut position stops when a newer one is asked for.
+     */
+    prepare(): Promise<void> {
+      const assetId = this.assetId
+      if (!this.isOpen || !assetId || !getAssetFile(assetId)) return Promise.resolve()
+      const cut = this.cutSrc
+      const key = `${assetId}|${cut}`
+      if (key === preparedKey) return preparing
+      preparedKey = key
+      const token = ++prepareToken
+      const gen = generation
+      const stale = (): boolean => token !== prepareToken || gen !== generation
+      preparing = getFrameProvider()
+        .warm(assetId, fineCutWant(cut, this.frameMicros), {
+          onProgress: (fraction) => {
+            if (!stale()) this.scanFraction = fraction
+          },
+          stale
+        })
+        .then((ran) => {
+          if (stale()) return
+          if (ran) this.framesRevision++
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          if (!stale()) this.scanFraction = null
+        })
+      return preparing
+    },
+
     async refreshKeyframes(): Promise<void> {
+      void this.prepare()
       const clip = this.clip
       const index = keyframes
       if (!clip || !index) {

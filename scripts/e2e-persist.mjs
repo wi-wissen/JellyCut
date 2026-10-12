@@ -154,6 +154,8 @@ async function menuItem(page, name) {
   const asset = await recordAndPlace(page)
   check('recording is an asset on the timeline', !!asset && (await run(page, (ed) => ed.project.clips.length)) === 1)
   check('the asset is marked as a recording with a store key', asset?.origin === 'recording' && /^[A-Za-z0-9_-]{8,64}$/.test(asset?.storeKey ?? ''), JSON.stringify(asset))
+  // The background optimisation may swap the file for a better one (same asset); measure after it ended.
+  await page.waitForFunction(() => document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('record').optimizeFraction === null, null, { timeout: 60000 })
   const before = await mediaState(page, asset.id)
   check('recording is ready with a File', before.status === 'ready' && before.hasFile, JSON.stringify(before))
   check('a copy is in the browser storage', (await storedKeys(page)).includes(asset.storeKey))

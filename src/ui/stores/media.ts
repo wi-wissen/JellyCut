@@ -249,6 +249,9 @@ export const useMediaStore = defineStore('media', {
     relinkScanned: null as number | null,
     relinkNotice: null as string | null,
 
+    /** Counts the swaps of an asset's file for an equivalent one (see replaceFile); the player re-reads the file when it changes. */
+    fileRevision: {} as Record<string, number>,
+
     /** Bytes of every copy in this browser's private storage, by store key. */
     storedSizes: {} as Record<string, number>,
     /** Whether the browser agreed to keep the storage (see requestPersistentStorage). */
@@ -480,6 +483,21 @@ export const useMediaStore = defineStore('media', {
         })
       }
       return 'stored'
+    },
+
+    /**
+     * Swaps the file behind an asset for an equivalent one (same pictures and sound, better structure: the optimised
+     * recording). The asset keeps its id, its entry in the project and its original size, so nothing on the timeline
+     * changes and re-linking by the original file still matches. Only done when `previous` is still the asset's file.
+     * The browser's stored copy is replaced too.
+     */
+    async replaceFile(assetId: string, file: File, previous: File): Promise<boolean> {
+      const asset = useEditorStore().project.assets.find((a) => a.id === assetId)
+      if (!asset || files.get(assetId) !== previous) return false
+      registerFile(assetId, file)
+      this.fileRevision = { ...this.fileRevision, [assetId]: (this.fileRevision[assetId] ?? 0) + 1 }
+      if (asset.storeKey) await this.persistAsset(assetId)
+      return true
     },
 
     resetRelink(): void {

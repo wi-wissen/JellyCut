@@ -53,7 +53,7 @@ export default defineComponent({
     return { tiles: [] as Tile[], queue: [] as { frame: number; src: Micros }[], pumping: false, assetKey: '' }
   },
   computed: {
-    ...mapState(useFineCutStore, ['cutSrc', 'fps', 'assetId', 'keyframeTimes', 'frameMicros']),
+    ...mapState(useFineCutStore, ['cutSrc', 'fps', 'assetId', 'keyframeTimes', 'frameMicros', 'framesRevision']),
     innerWidth(): number {
       return Math.max(this.width, 16 * this.px)
     },
@@ -69,6 +69,9 @@ export default defineComponent({
       this.refresh()
     },
     keyframeTimes(): void {
+      this.refresh()
+    },
+    framesRevision(): void {
       this.refresh()
     },
     assetId(): void {
@@ -116,14 +119,19 @@ export default defineComponent({
       if (this.pumping) return
       this.pumping = true
       try {
+        // A recording with few keyframes fills the frame caches in one pass first; the tiles then come from there.
+        await useFineCutStore().prepare()
         while (this.queue.length > 0) {
           const job = this.queue.shift()!
           if (thumbs.has(job.frame) || !this.tiles.some((t) => t.frame === job.frame)) continue
           const assetId = this.assetId
           if (!assetId) break
           let frame: DecodedFrame | null = null
+          const provider = getFrameProvider()
           try {
-            frame = await getFrameProvider().getFrame(assetId, job.src, LANE)
+            frame = provider.getThumb(assetId, job.src)
+            // Decoding one picture of such a recording would start at its first keyframe again: leave the tile empty.
+            if (!frame && !provider.isSparseAsset(assetId)) frame = await provider.getFrame(assetId, job.src, LANE)
           } catch {
             frame = null
           }

@@ -369,6 +369,9 @@
     "tryAgain": "Erneut versuchen",
     "saveFile": "Aufnahme als Datei speichern",
     "backupFile": "Aufnahme als Datei sichern",
+    "optimizing": "Aufnahme wird optimiert … {percent} %",
+    "optimizeHint": "Das Video wird im Hintergrund für schnelles Springen und Schneiden vorbereitet. Du kannst schon weiterarbeiten.",
+    "optimizeSkip": "Überspringen",
     "storedHint": "Die Aufnahme ist auch in diesem Browser gespeichert und bleibt nach dem Neuladen erhalten. Nichts wird hochgeladen.",
     "storage": {
       "quota": "Der Speicher dieses Browsers ist voll. Die Aufnahme ist nur in diesem Tab vorhanden und geht beim Neuladen verloren. Speichere sie jetzt als Datei.",
@@ -381,6 +384,7 @@
       "started": "Aufnahme gestartet",
       "paused": "Aufnahme pausiert",
       "resumed": "Aufnahme läuft weiter",
+      "optimized": "Aufnahme optimiert",
       "stopped": "Aufnahme beendet",
       "cancelled": "Aufnahme verworfen"
     },
@@ -406,6 +410,7 @@
     "after": "Erstes Bild nach dem Schnitt",
     "cutBadge": "Schnitt",
     "frameInfo": "Bild {frame} · {time}",
+    "preparing": "Aufnahme wird vorbereitet … {percent} %",
     "loadingFrame": "Bild wird geladen …",
     "tooShort": "Dieser Clip ist zu kurz für einen Schnitt.",
     "cannotCut": "Hier ist kein Schnitt möglich.",

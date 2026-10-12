@@ -15,6 +15,7 @@ import {
 import { Recorder, detectRecordCapabilities, RecordingError, type LiveWarning } from '../../engine/record/recorder'
 import { listMicrophones, microphonePermissionGranted, startMicTest, type MicTest } from '../../engine/record/micTest'
 import { checkRecording } from '../../engine/record/postCheck'
+import { optimizeRecording } from '../../engine/record/optimize'
 import { useEditorStore } from './editor'
 import { getAssetFile, useMediaStore } from './media'
 
@@ -63,6 +64,10 @@ let ticker: ReturnType<typeof setInterval> | null = null
 let guardsInstalled = false
 // The finished recording, kept outside reactive state until it is in the library, so a failed import never loses it.
 let pendingFile: File | null = null
+// The recording as the browser delivered it. The library may switch to an optimised copy; this stays for "Save a copy".
+let rawRecording: { assetId: string; file: File } | null = null
+// The running optimisation (cancelled by "Skip", by the next recording).
+let optimizeAbort: AbortController | null = null
 // The microphone test owns a stream of its own; it is closed before any recording opens the device.
 let micTestHandle: MicTest | null = null
 
@@ -157,6 +162,8 @@ export const useRecordStore = defineStore('record', {
     checkKeys: [] as string[],
     /** The recording could not be kept in this browser's storage (i18n key); it exists in memory only until saved as a file. */
     storageProblemKey: null as string | null,
+    /** 0..1 while the finished recording is being optimised in the background, else null. */
+    optimizeFraction: null as number | null,
     /** Technical details of the last recording, shown after a failure. */
     diagnosticsText: ''
   }),
@@ -169,6 +176,8 @@ export const useRecordStore = defineStore('record', {
     async start(kind: RecordKind): Promise<void> {
       if (this.active) return
       installGuards()
+      // The picture encoder and the recording would compete for the processor.
+      this.skipOptimize()
       this.kind = kind
       this.phase = 'starting'
       this.elapsedMs = 0
@@ -404,6 +413,8 @@ export const useRecordStore = defineStore('record', {
       }
       await this.checkFile(file, finished)
       await this.afterImport(asset.id)
+      rawRecording = { assetId: asset.id, file }
+      void this.optimize(asset.id, file)
       pendingFile = null
       this.hasRawFile = false
       this.assetId = asset.id
@@ -421,9 +432,44 @@ export const useRecordStore = defineStore('record', {
       this.storageProblemKey = result === 'quota' ? 'record.storage.quota' : result === 'unavailable' ? 'record.storage.unavailable' : null
     },
 
+    /**
+     * Rewrites the recording once in the background (keyframe every second, length and index in the header), so that
+     * the fine cut, scrubbing and the export are as fast as with an ordinary video. The clip can be used with the raw
+     * file meanwhile; the optimised file replaces it under the same asset id once it was checked against it.
+     */
+    async optimize(assetId: string, raw: File): Promise<void> {
+      this.skipOptimize()
+      const controller = new AbortController()
+      optimizeAbort = controller
+      this.optimizeFraction = 0
+      try {
+        const result = await optimizeRecording(raw, {
+          signal: controller.signal,
+          onProgress: (fraction) => {
+            if (optimizeAbort === controller) this.optimizeFraction = fraction
+          }
+        })
+        if (controller.signal.aborted || !result.file) return
+        if (await useMediaStore().replaceFile(assetId, result.file, raw)) {
+          if (this.assetId === assetId && this.phase === 'done') this.statusKey = 'record.status.optimized'
+        }
+      } finally {
+        if (optimizeAbort === controller) {
+          optimizeAbort = null
+          this.optimizeFraction = null
+        }
+      }
+    },
+
+    /** Stops the optimisation and keeps the raw file ("Skip"). */
+    skipOptimize(): void {
+      optimizeAbort?.abort()
+    },
+
     /** Offers the recorded file as a download: when the library could not take it, and as a copy outside the browser. */
     saveRecording(): void {
-      const file = pendingFile ?? (this.assetId ? getAssetFile(this.assetId) : undefined)
+      const raw = rawRecording && rawRecording.assetId === this.assetId ? rawRecording.file : undefined
+      const file = pendingFile ?? raw ?? (this.assetId ? getAssetFile(this.assetId) : undefined)
       if (file) downloadFile(file)
     },
 

@@ -25,7 +25,7 @@ export default defineComponent({
   },
   computed: {
     ...mapState(useEditorStore, ['project', 'playheadMicros', 'isPlaying']),
-    ...mapState(useMediaStore, ['status']),
+    ...mapState(useMediaStore, ['status', 'fileRevision']),
     aspect(): number {
       const { width, height } = this.project.format
       return width / height
@@ -46,6 +46,12 @@ export default defineComponent({
         this.syncAssets()
         engine?.refresh()
       }
+    },
+    // An asset's file was swapped for an equivalent one: the elements follow it, but not in the middle of playback.
+    fileRevision(): void {
+      if (!engine || engine.playing) return
+      this.syncAssets()
+      engine.refresh()
     },
     playheadMicros(t: number): void {
       // While playing the engine is the source of this value; only react to outside changes.

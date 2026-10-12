@@ -4,7 +4,7 @@ import { createProject } from '../../core/project/schema'
 import type { Asset, Project } from '../../core/project/types'
 import { createMemoryMediaStore } from '../../platform/mediaStore'
 import { useEditorStore } from './editor'
-import { setMediaStorage, useMediaStore } from './media'
+import { getAssetFile, setMediaStorage, useMediaStore } from './media'
 
 vi.mock('../../platform/localStore', () => ({
   AUTOSAVE_KEY: 'autosave',
@@ -132,5 +132,37 @@ describe('media store: stored recordings', () => {
     media.markMissingFor(project)
     await media.restoreStored(project, { sweep: true })
     expect(fake.keys().sort()).toEqual(['rec-aaaaaaaa', 'rec-freshorph'])
+  })
+
+  it('replaceFile swaps the file under the same id, keeps the asset record and replaces the stored copy', async () => {
+    const raw = blob('a.webm')
+    await fake.put('rec-aaaaaaaa', raw)
+    const project = withAssets([recording('asset-1', 'rec-aaaaaaaa')])
+    const media = useMediaStore()
+    useEditorStore().history = { past: [], present: project, future: [] } as never
+    await media.restoreStored(project)
+    expect(getAssetFile('asset-1')).toBeDefined()
+
+    const current = getAssetFile('asset-1') as File
+    const better = new File([new Uint8Array(250)], 'a.webm', { type: 'video/webm' })
+    expect(await media.replaceFile('asset-1', better, current)).toBe(true)
+    expect(getAssetFile('asset-1')).toBe(better)
+    expect(media.fileRevision['asset-1']).toBe(1)
+    expect(useEditorStore().project.assets[0]!.size).toBe(100)
+    expect((await fake.get('rec-aaaaaaaa'))?.size).toBe(250)
+    expect(media.statusOf('asset-1')).toBe('ready')
+  })
+
+  it('replaceFile does nothing when the asset has another file by now or is gone', async () => {
+    await fake.put('rec-aaaaaaaa', blob('a.webm'))
+    const project = withAssets([recording('asset-1', 'rec-aaaaaaaa')])
+    const media = useMediaStore()
+    useEditorStore().history = { past: [], present: project, future: [] } as never
+    await media.restoreStored(project)
+    const better = new File([new Uint8Array(250)], 'a.webm')
+    expect(await media.replaceFile('asset-1', better, blob('other.webm'))).toBe(false)
+    expect(await media.replaceFile('asset-9', better, getAssetFile('asset-1') as File)).toBe(false)
+    expect(getAssetFile('asset-1')).not.toBe(better)
+    expect(media.fileRevision['asset-1']).toBeUndefined()
   })
 })

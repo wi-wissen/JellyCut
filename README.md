@@ -25,7 +25,7 @@ src/core/       pure TypeScript, no DOM, no Vue, fully unit-tested
   filters/, colors/, text/, credits/, learn/, demo/, record/   colour filters, palettes, font list,
                 credit lines and licence list, help-page demos, example video, recording state
 src/engine/     browser layer: WebGL2 compositor, preview, export (worker with OffscreenCanvas, or the main thread),
-                media probing, exact frames, keyframes, waveform, sticker pictures, recording, example video
+                media probing, exact frames (with caches for keyframe-sparse files), keyframes, waveform, sticker pictures, recording, example video
 src/platform/   File System Access (project files, work folder), IndexedDB key-value store and media store (recordings), service worker registration
 src/ui/         components/ and views/ (Vue), stores/ (Pinia), help/ and site/ (static pages), landing/, pwa/, styles/
 src/app/, src/landing/, src/help/   entry points of the editor, the start page and the help pages
@@ -106,6 +106,7 @@ The scripts in `scripts/e2e-*.mjs` drive Chromium with Playwright (`playwright-c
 | `e2e-media.mjs` | 5193 | media probe against the fixtures (root page) |
 | `e2e-waveform.mjs` | 5185 | keyframe index and streaming waveform (root page) |
 | `e2e-frames.mjs` | 5192 | frame-exact access to the frame numbers in the fixture (root page) |
+| `e2e-finecut-recorded.mjs` | 5440 | fine cut and optimisation of a 30 s recording with one keyframe (recorded in the page at test time, cached in the temp folder; `REGEN=1`, `SECONDS=`, `CODEC=`): time until the fine cut is usable, steps, cache budgets, keyframes every second, same length, pictures and look, progress, Skip, rescue copy |
 | `e2e-recorded-frames.mjs` | 5420 | clips recorded by MediaRecorder (`recorded-*.webm`): paused preview, fine cut and export are not black, safety net (media element) when the exact path fails; provider check in Firefox when installed (`MODES=none,throws,black` selects safety-net runs) |
 | `e2e-media-remove.mjs` | 5183 | removing media from the library, with and without use |
 | `e2e-relink.mjs` | 5182 | re-linking missing media, work folder, access again |

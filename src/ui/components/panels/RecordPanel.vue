@@ -15,7 +15,7 @@ export default defineComponent({
     return { copied: false }
   },
   computed: {
-    ...mapState(useRecordStore, ['phase', 'kind', 'elapsedMs', 'level', 'announcedTens', 'statusKey', 'errorKey', 'fileName', 'hasRawFile', 'capabilities', 'live', 'noticeKey', 'extraNoticeKeys', 'warningKeys', 'checkKeys', 'diagnosticsText', 'storageProblemKey', 'micDevices', 'micDeviceId', 'micTest', 'testLevel', 'testSilent']),
+    ...mapState(useRecordStore, ['phase', 'kind', 'elapsedMs', 'level', 'announcedTens', 'statusKey', 'errorKey', 'fileName', 'hasRawFile', 'capabilities', 'live', 'noticeKey', 'extraNoticeKeys', 'warningKeys', 'checkKeys', 'diagnosticsText', 'storageProblemKey', 'optimizeFraction', 'micDevices', 'micDeviceId', 'micTest', 'testLevel', 'testSilent']),
     sources(): RecordKind[] {
       return RECORD_KINDS.filter((kind) => canRecordKind(kind, this.capabilities))
     },
@@ -57,7 +57,7 @@ export default defineComponent({
     this.stopMicTest()
   },
   methods: {
-    ...mapActions(useRecordStore, ['start', 'stop', 'cancel', 'pause', 'resume', 'addToTimeline', 'reset', 'retry', 'saveRecording', 'importAgain', 'selectMicrophone', 'openMicPicker', 'startMicTest', 'stopMicTest']),
+    ...mapActions(useRecordStore, ['start', 'stop', 'cancel', 'pause', 'resume', 'addToTimeline', 'reset', 'retry', 'saveRecording', 'skipOptimize', 'importAgain', 'selectMicrophone', 'openMicPicker', 'startMicTest', 'stopMicTest']),
     iconFor(kind: RecordKind): string {
       return ICON_FOR_KIND[kind]
     },
@@ -125,6 +125,26 @@ export default defineComponent({
 
     <p role="status" class="min-h-5 text-xs font-semibold text-muted">{{ statusText }}</p>
     <p aria-live="polite" class="sr-only">{{ announcement }}</p>
+
+    <div
+      v-if="optimizeFraction !== null"
+      data-role="optimize"
+      class="flex flex-col gap-1.5 rounded-xl border border-line bg-panel2 px-3 py-2 text-xs"
+    >
+      <p role="status" class="font-semibold" data-role="optimize-text">{{ $t('record.optimizing', { percent: Math.round(optimizeFraction * 100) }) }}</p>
+      <div class="h-1.5 overflow-hidden rounded-full bg-panel" role="presentation">
+        <div class="h-full rounded-full bg-fill" :style="{ width: Math.round(optimizeFraction * 100) + '%' }" />
+      </div>
+      <p class="text-muted">{{ $t('record.optimizeHint') }}</p>
+      <button
+        type="button"
+        data-role="optimize-skip"
+        class="min-h-11 self-start rounded-lg border border-line px-3 font-semibold hover:bg-panel"
+        @click="skipOptimize"
+      >
+        {{ $t('record.optimizeSkip') }}
+      </button>
+    </div>
 
     <template v-if="phase === 'idle' || phase === 'error'">
       <div

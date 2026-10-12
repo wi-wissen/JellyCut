@@ -369,6 +369,9 @@
     "tryAgain": "Try again",
     "saveFile": "Save recording as a file",
     "backupFile": "Save a copy as a file",
+    "optimizing": "Optimizing the recording … {percent} %",
+    "optimizeHint": "The video is being prepared in the background for fast jumping and cutting. You can keep working.",
+    "optimizeSkip": "Skip",
     "storedHint": "The recording is also stored in this browser and stays after a reload. Nothing is uploaded.",
     "storage": {
       "quota": "This browser's storage is full. The recording exists only in this tab and is lost on reload. Save it as a file now.",
@@ -381,6 +384,7 @@
       "started": "Recording started",
       "paused": "Recording paused",
       "resumed": "Recording resumed",
+      "optimized": "Recording optimized",
       "stopped": "Recording stopped",
       "cancelled": "Recording discarded"
     },
@@ -406,6 +410,7 @@
     "after": "First frame after the cut",
     "cutBadge": "cut",
     "frameInfo": "Frame {frame} · {time}",
+    "preparing": "Preparing the recording … {percent} %",
     "loadingFrame": "Loading frame …",
     "tooShort": "This clip is too short to cut.",
     "cannotCut": "No cut is possible here.",

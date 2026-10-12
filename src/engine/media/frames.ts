@@ -1,7 +1,8 @@
 import { ALL_FORMATS, BlobSource, CanvasSink, EncodedPacketSink, Input, type InputVideoTrack, type WrappedCanvas } from 'mediabunny'
 import { FRAME_LOOKUP_TOLERANCE, frameEnd, lookupTime, spanCovers } from '../../core/media/frameLookup'
-import { keyAtOrBefore } from '../../core/media/keyList'
-import { readKeyTimes } from './keyframes'
+import { isSparseGap, type ScanWant } from '../../core/media/scanPlan'
+import { TimedCache } from '../../core/media/timedCache'
+import { SparseReader, type CachedFrame, type ScanHint, type WarmOptions } from './sparseReader'
 import type { Micros } from '../../core/time'
 
 export { FRAME_LOOKUP_TOLERANCE }
@@ -16,18 +17,30 @@ interface VideoSource {
   /** Timestamp of the first frame; recordings can start late. */
   first: Micros
 }
-/** Forward decoding from one keyframe, kept so stepping through a long keyframe-less stretch decodes each frame once. */
-interface Run {
-  key: Micros
-  iterator: AsyncGenerator<WrappedCanvas, void, undefined>
-  current: WrappedCanvas | null
-  ahead: WrappedCanvas | null
+/** Budgets of the frame caches for files with few keyframes (all assets together). */
+export const FULL_CACHE_BYTES = 96 * 1024 * 1024
+export const THUMB_CACHE_BYTES = 40 * 1024 * 1024
+/** Lane whose file handle probes for the sparse path (the fine cut's own lane, so no extra file handle is opened). */
+const WARM_LANE = 'fine-view'
+/** Lookups in the first stretch of a file are never slow, so they skip the keyframe probe. */
+const SPARSE_PROBE_FROM: Micros = 1_000_000
+
+export interface FrameCacheStats {
+  fullBytes: number
+  fullFrames: number
+  thumbBytes: number
+  thumbFrames: number
+  /** Decoder positions kept across all sparse assets. */
+  runs: number
+  /** Frames decoded by the sparse readers and passes started on request. */
+  decoded: number
+  passes: number
 }
+
 interface VideoEntry extends VideoSource {
   kind: 'video'
-  /** Keyframe times, read once and only when the demuxer's own keyframe search failed. */
-  keys: Promise<Micros[]> | null
-  run: Run | null
+  /** Set once a keyframe was seen to be far behind a lookup: the file is read through the sparse reader from then on. */
+  sparse: boolean
   /** Last returned frame, reused while the requested time stays inside it. */
   last: { canvas: DecodedFrame; start: Micros; end: Micros } | null
 }
@@ -36,6 +49,11 @@ interface ImageEntry {
   bitmap: ImageBitmap
 }
 type Entry = VideoEntry | ImageEntry
+interface Decoded {
+  canvas: DecodedFrame
+  start: Micros
+  end: Micros
+}
 
 async function openVideo(file: File): Promise<VideoSource | null> {
   const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS })
@@ -54,7 +72,6 @@ async function openVideo(file: File): Promise<VideoSource | null> {
 }
 
 function closeVideo(entry: VideoEntry): void {
-  void entry.run?.iterator.return().catch(() => undefined)
   entry.input.dispose()
 }
 
@@ -70,6 +87,11 @@ export class ExactFrameProvider {
   readonly rescues = { fromKeyframe: 0 }
   private entries = new Map<string, Promise<Entry | null>>()
   private files = new Map<string, { file: File; isImage: boolean }>()
+  private readonly fullCache = new TimedCache<CachedFrame>(FULL_CACHE_BYTES)
+  private readonly thumbCache = new TimedCache<CachedFrame>(THUMB_CACHE_BYTES)
+  private readers = new Map<string, SparseReader>()
+  /** What the next pass over an asset should keep; set before the first (asynchronous) step so no lookup beats it. */
+  private hints = new Map<string, ScanHint>()
 
   setFile(assetId: string, file: File, isImage: boolean): void {
     this.files.set(assetId, { file, isImage })
@@ -79,6 +101,9 @@ export class ExactFrameProvider {
       this.entries.delete(key)
       void entry.then((e) => (e?.kind === 'video' ? closeVideo(e) : undefined))
     }
+    this.readers.get(assetId)?.dispose()
+    this.readers.delete(assetId)
+    this.hints.delete(assetId)
   }
 
   hasFile(assetId: string): boolean {
@@ -102,26 +127,51 @@ export class ExactFrameProvider {
       return { kind: 'image', bitmap: await createImageBitmap(source.file) }
     }
     const video = await openVideo(source.file)
-    return video ? { kind: 'video', keys: null, run: null, last: null, ...video } : null
+    return video ? { kind: 'video', sparse: false, last: null, ...video } : null
   }
 
   /**
-   * Fallback for files whose keyframes the demuxer cannot find by time. Mediabunny remembers where clusters start;
-   * in a WebM without cues whose later clusters hold no keyframe (MediaRecorder output: one keyframe at the start,
-   * a cluster per second) a lookup after such a cluster was seen starts the search inside it and reports "no
-   * keyframe", so no frame could be decoded any more. Asking for the exact time of a known keyframe still works.
+   * Whether the keyframe before `lookup` is so far back that every lookup would decode a long stretch. Also true when
+   * the demuxer finds no keyframe at all: in a WebM without cues whose later clusters hold no keyframe (MediaRecorder
+   * output) a lookup after such a cluster was seen starts the search inside it and reports "no keyframe". Such files
+   * are read forward from the keyframe list by the sparse reader, which also caches what it decodes on the way.
    */
-  private async decode(entry: VideoEntry, lookup: Micros): Promise<WrappedCanvas | null> {
+  private async isSparse(entry: VideoEntry, lookup: Micros): Promise<boolean> {
+    if (entry.sparse) return true
+    if (lookup - entry.first <= SPARSE_PROBE_FROM) return false
+    let keyTime: Micros | null = null
+    try {
+      const packet = await entry.packets.getKeyPacket(lookup / 1_000_000, { metadataOnly: true })
+      keyTime = packet ? Math.round(packet.timestamp * 1_000_000) : null
+    } catch {
+      keyTime = null
+    }
+    entry.sparse = isSparseGap(lookup, keyTime)
+    return entry.sparse
+  }
+
+  private reader(assetId: string, entry: VideoEntry): SparseReader {
+    let reader = this.readers.get(assetId)
+    if (!reader) {
+      reader = new SparseReader(assetId, entry.track, entry.packets, { full: this.fullCache, thumbs: this.thumbCache }, () => this.hints.get(assetId) ?? null)
+      this.readers.set(assetId, reader)
+    }
+    return reader
+  }
+
+  private async decode(assetId: string, entry: VideoEntry, lookup: Micros): Promise<Decoded | null> {
+    if (await this.isSparse(entry, lookup)) return this.decodeSparse(assetId, entry, lookup)
     let failure: unknown = null
     try {
       const wrapped = await entry.sink.getCanvas(lookup / 1_000_000)
-      if (wrapped) return wrapped
+      if (wrapped) return await this.span(entry, wrapped)
     } catch (e) {
       failure = e
     }
     try {
-      const wrapped = await this.decodeFromKeyframe(entry, lookup)
-      if (wrapped) return wrapped
+      entry.sparse = true
+      const frame = await this.decodeSparse(assetId, entry, lookup)
+      if (frame) return frame
     } catch (e) {
       failure ??= e
     }
@@ -129,37 +179,18 @@ export class ExactFrameProvider {
     return null
   }
 
-  private keyTimes(entry: VideoEntry): Promise<Micros[]> {
-    entry.keys ??= readKeyTimes(entry.packets)
-    return entry.keys
+  private async decodeSparse(assetId: string, entry: VideoEntry, lookup: Micros): Promise<Decoded | null> {
+    const hit = await this.reader(assetId, entry).frameAt(lookup)
+    if (!hit) return null
+    this.rescues.fromKeyframe++
+    return { canvas: hit.value, start: hit.start, end: hit.end }
   }
 
-  private async decodeFromKeyframe(entry: VideoEntry, lookup: Micros): Promise<WrappedCanvas | null> {
-    const keys = await this.keyTimes(entry)
-    if (keys.length === 0) return null
-    // Last keyframe at or before the lookup; before the first one the first is the nearest.
-    const key = keyAtOrBefore(keys, lookup) ?? keys[0]!
-    let run = entry.run
-    const resumable = run && run.key === key && run.current && Math.round(run.current.timestamp * 1_000_000) <= lookup
-    if (!resumable) {
-      await run?.iterator.return()
-      run = { key, iterator: entry.sink.canvases(key / 1_000_000), current: null, ahead: null }
-      entry.run = run
-    }
-    const active = entry.run!
-    for (;;) {
-      const next: WrappedCanvas | null = active.ahead ?? (await active.iterator.next()).value ?? null
-      active.ahead = null
-      if (!next) break
-      if (active.current && Math.round(next.timestamp * 1_000_000) > lookup) {
-        active.ahead = next
-        break
-      }
-      active.current = next
-      if (Math.round(next.timestamp * 1_000_000) > lookup) break
-    }
-    if (active.current) this.rescues.fromKeyframe++
-    return active.current
+  private async span(entry: VideoEntry, wrapped: WrappedCanvas): Promise<Decoded> {
+    const start = Math.round(wrapped.timestamp * 1_000_000)
+    const duration = Math.round(wrapped.duration * 1_000_000)
+    const next = duration > 0 ? null : await this.nextFrameStart(entry, start)
+    return { canvas: wrapped.canvas, start, end: frameEnd(start, duration, next) }
   }
 
   /** Start of the first frame after `start`; null at the end of the file. */
@@ -187,13 +218,72 @@ export class ExactFrameProvider {
     const lookup = lookupTime(srcTime, entry.first)
     if (spanCovers(entry.last, lookup)) return entry.last!.canvas
 
-    const wrapped = await this.decode(entry, lookup)
-    if (!wrapped) return null
-    const start = Math.round(wrapped.timestamp * 1_000_000)
-    const duration = Math.round(wrapped.duration * 1_000_000)
-    const next = duration > 0 ? null : await this.nextFrameStart(entry, start)
-    entry.last = { canvas: wrapped.canvas, start, end: frameEnd(start, duration, next) }
-    return wrapped.canvas
+    const cached = this.fullCache.at(assetId, lookup)
+    if (cached) {
+      entry.last = { canvas: cached.value, start: cached.start, end: cached.end }
+      return cached.value
+    }
+    const frame = await this.decode(assetId, entry, lookup)
+    if (!frame) return null
+    entry.last = frame
+    return frame.canvas
+  }
+
+  /**
+   * Prepares the frames of a window of a file with few keyframes in one forward pass: thumbnails of every frame in the
+   * window and a few full-size frames, so the strip and the two big pictures of the fine cut are cache hits. Resolves
+   * true for such files and false, without doing anything, for files with ordinary keyframes (random access is cheap).
+   */
+  async warm(assetId: string, want: ScanWant, options: WarmOptions = {}): Promise<boolean> {
+    this.hints.set(assetId, { want, options })
+    const entry = await this.open(assetId, WARM_LANE)
+    if (!entry || entry.kind !== 'video') return false
+    if (!(await this.isSparse(entry, Math.max(want.thumbTo, want.fullTo)))) return false
+    return this.reader(assetId, entry).warm(want, options)
+  }
+
+  clearHint(assetId: string): void {
+    this.hints.delete(assetId)
+  }
+
+  /** True once the file was seen to be read through the sparse reader. */
+  isSparseAsset(assetId: string): boolean {
+    return this.readers.has(assetId)
+  }
+
+  /** A small picture of the frame at `srcTime` if one is in the cache. Never decodes. */
+  getThumb(assetId: string, srcTime: Micros): CachedFrame | null {
+    const lookup = srcTime + FRAME_LOOKUP_TOLERANCE
+    return this.thumbCache.at(assetId, lookup)?.value ?? this.fullCache.at(assetId, lookup)?.value ?? null
+  }
+
+  /** The best picture available without decoding: the exact one, or else a thumbnail of that frame. */
+  peekFrame(assetId: string, srcTime: Micros): { frame: CachedFrame; exact: boolean } | null {
+    const lookup = srcTime + FRAME_LOOKUP_TOLERANCE
+    const full = this.fullCache.at(assetId, lookup)
+    if (full) return { frame: full.value, exact: true }
+    const thumb = this.thumbCache.at(assetId, lookup)
+    return thumb ? { frame: thumb.value, exact: false } : null
+  }
+
+  cacheStats(): FrameCacheStats {
+    let runs = 0
+    let decoded = 0
+    let passes = 0
+    for (const reader of this.readers.values()) {
+      runs += reader.runCount
+      decoded += reader.decoded
+      passes += reader.passes
+    }
+    return {
+      fullBytes: this.fullCache.bytes,
+      fullFrames: this.fullCache.size,
+      thumbBytes: this.thumbCache.bytes,
+      thumbFrames: this.thumbCache.size,
+      runs,
+      decoded,
+      passes
+    }
   }
 
   /**
@@ -216,5 +306,9 @@ export class ExactFrameProvider {
     }
     this.entries.clear()
     this.files.clear()
+    for (const reader of this.readers.values()) reader.dispose()
+    this.readers.clear()
+    this.fullCache.clear()
+    this.thumbCache.clear()
   }
 }

@@ -21,6 +21,7 @@ Stop `npm run dev` first (it uses port 5173, which `e2e-gif.mjs` needs). Run the
 - [ ] `e2e-waveform.mjs` (5185)
 - [ ] `e2e-frames.mjs` (5192)
 - [ ] `e2e-recorded-frames.mjs` (5420)
+- [ ] `e2e-finecut-recorded.mjs` (5440)
 - [ ] `e2e-media-remove.mjs` (5183)
 - [ ] `e2e-relink.mjs` (5182)
 - [ ] `e2e-record.mjs` (5183)
