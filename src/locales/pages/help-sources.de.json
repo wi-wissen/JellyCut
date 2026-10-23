@@ -15,8 +15,7 @@
         "pixabay": "Fotos und Illustrationen. Lizenz: Pixabay Content License.",
         "pexels": "Fotos. Lizenz: Pexels License.",
         "unsplash": "Fotos. Lizenz: Unsplash License.",
-        "commons": "Dateien vieler Art, jede mit eigener Lizenz. Lies die Lizenz jeder Datei.",
-        "openverse": "Suchmaschine für offen lizenzierte Werke, auch Bilder. Lies die Lizenz jedes Treffers."
+        "commons": "Dateien vieler Art, jede mit eigener Lizenz. Lies die Lizenz jeder Datei."
       },
       "videos": {
         "title": "3. Freie Videos",
@@ -28,8 +27,7 @@
       "music": {
         "title": "4. Freie Musik und Geräusche",
         "text": "Musik und Geräusche haben eigene Lizenzen. Manche sind frei nutzbar, andere verlangen eine Nennung, und die Lizenz kann von Stück zu Stück verschieden sein.",
-        "pixabay": "Musik. Lizenz: Pixabay Content License.",
-        "fma": "Free Music Archive. Die Lizenzen unterscheiden sich von Stück zu Stück, prüfe jedes einzeln."
+        "pixabay": "Musik. Lizenz: Pixabay Content License."
       },
       "licences": {
         "title": "5. Was die Lizenzen bedeuten",
@@ -51,7 +49,7 @@
         "title": "6. So nennst du die Urheber",
         "text": "Jelly Cut merkt sich Quelle und Lizenz jedes Mediums. Öffne im Projektmenü „Credits“ oder klicke in der Bibliothek bei einer Kachel auf „Credit“. Trage Titel, Urheber, Quelle, Link und Lizenz ein und kopiere den erzeugten Text in die Videobeschreibung oder auf die Schlussfolie.",
         "exampleLabel": "Beispiel",
-        "example": "Meeresrauschen von Lena Beispiel, Quelle: Free Music Archive (https://freemusicarchive.org/home), Lizenz: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)",
+        "example": "Meeresrauschen von Lena Beispiel, Quelle: Wikimedia Commons (https://commons.wikimedia.org), Lizenz: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)",
         "tip": "Wenn du den Link zur Seite der einzelnen Datei hast, nimm diesen statt der Startseite. Die Zeile „Bearbeitet mit Jelly Cut“ fügt Jelly Cut selbst an."
       },
       "check": {

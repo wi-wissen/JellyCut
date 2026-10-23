@@ -12,11 +12,9 @@ Open each link in a current browser and confirm it is reachable and still the ex
 - [ ] https://www.pexels.com
 - [ ] https://unsplash.com
 - [ ] https://commons.wikimedia.org
-- [ ] https://openverse.org
 - [ ] https://www.pexels.com/videos/
 - [ ] https://pixabay.com/videos/
 - [ ] https://pixabay.com/music/
-- [ ] https://freemusicarchive.org/home
 - [ ] Licence links in `LICENSES`: creativecommons.org (CC0 1.0, CC BY 4.0, CC BY-SA 4.0), pixabay.com/service/license-summary/, www.pexels.com/license/, unsplash.com/license
 
 ## 2. Licence statements
@@ -27,8 +25,6 @@ For every site, read the licence or terms page itself and confirm the statements
 - [ ] Pexels (photos and videos): the Pexels License applies. Still true?
 - [ ] Unsplash: the Unsplash License applies. Still true?
 - [ ] Wikimedia Commons: each file has its own licence; the guide says so. Still true?
-- [ ] Openverse: a search engine over openly licensed works; each result shows its licence. Still true?
-- [ ] Free Music Archive: licences differ per track. Still true?
 
 ## 3. Jelly Cut defaults
 

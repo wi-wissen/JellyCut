@@ -14,8 +14,7 @@ const IMAGES: SourceLink[] = [
   { key: 'pixabay', name: 'Pixabay', href: 'https://pixabay.com' },
   { key: 'pexels', name: 'Pexels', href: 'https://www.pexels.com' },
   { key: 'unsplash', name: 'Unsplash', href: 'https://unsplash.com' },
-  { key: 'commons', name: 'Wikimedia Commons', href: 'https://commons.wikimedia.org' },
-  { key: 'openverse', name: 'Openverse', href: 'https://openverse.org' }
+  { key: 'commons', name: 'Wikimedia Commons', href: 'https://commons.wikimedia.org' }
 ]
 
 const VIDEOS: SourceLink[] = [
@@ -25,8 +24,7 @@ const VIDEOS: SourceLink[] = [
 ]
 
 const MUSIC: SourceLink[] = [
-  { key: 'pixabay', name: 'Pixabay Music', href: 'https://pixabay.com/music/' },
-  { key: 'fma', name: 'Free Music Archive', href: 'https://freemusicarchive.org/home' }
+  { key: 'pixabay', name: 'Pixabay Music', href: 'https://pixabay.com/music/' }
 ]
 
 const LICENCE_ROWS = ['cc0', 'by', 'bySa', 'reserved'] as const

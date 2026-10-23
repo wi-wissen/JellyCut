@@ -15,8 +15,7 @@
         "pixabay": "Photos and illustrations. Licence: Pixabay Content License.",
         "pexels": "Photos. Licence: Pexels License.",
         "unsplash": "Photos. Licence: Unsplash License.",
-        "commons": "Files of many kinds, each with its own licence. Read the licence of every file.",
-        "openverse": "Search engine for openly licensed works, including images. Read the licence of every result."
+        "commons": "Files of many kinds, each with its own licence. Read the licence of every file."
       },
       "videos": {
         "title": "3. Free videos",
@@ -28,8 +27,7 @@
       "music": {
         "title": "4. Free music and sounds",
         "text": "Music and sounds have their own licences. Some are free to use, others need a credit, and the licence can differ from track to track.",
-        "pixabay": "Music. Licence: Pixabay Content License.",
-        "fma": "Free Music Archive. Licences differ from track to track, so check each one."
+        "pixabay": "Music. Licence: Pixabay Content License."
       },
       "licences": {
         "title": "5. What the licences mean",
@@ -51,7 +49,7 @@
         "title": "6. How to name the creators",
         "text": "Jelly Cut keeps the source and licence of each medium. Open “Credits” in the project menu, or click “Credit” on a tile in the library. Fill in title, author, source, link and licence, then copy the generated text into the video description or onto the closing slide.",
         "exampleLabel": "Example",
-        "example": "Sea waves by Lena Example, source: Free Music Archive (https://freemusicarchive.org/home), licence: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)",
+        "example": "Sea waves by Lena Example, source: Wikimedia Commons (https://commons.wikimedia.org), licence: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)",
         "tip": "If you have the link to the page of the single file, use that instead of the start page. Jelly Cut adds the closing line “Edited with Jelly Cut” by itself."
       },
       "check": {
