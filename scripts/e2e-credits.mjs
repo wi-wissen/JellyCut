@@ -270,11 +270,10 @@ async function guideCheck(locale, lang, title) {
     els.map((a) => ({ href: a.getAttribute('href'), target: a.getAttribute('target'), rel: a.getAttribute('rel') ?? '' }))
   )
   const wantedLinks = [
-    'https://pixabay.com', 'https://www.pexels.com', 'https://unsplash.com', 'https://commons.wikimedia.org', 'https://openverse.org',
-    'https://www.pexels.com/videos/', 'https://pixabay.com/videos/', 'https://pixabay.com/music/',
-    'https://freemusicarchive.org/home'
+    'https://pixabay.com', 'https://www.pexels.com', 'https://unsplash.com', 'https://commons.wikimedia.org',
+    'https://www.pexels.com/videos/', 'https://pixabay.com/videos/', 'https://pixabay.com/music/'
   ]
-  check(`guide (${locale}): no links to the removed sources`, !external.some((l) => /freesound|incompetech/.test(l.href)))
+  check(`guide (${locale}): no links to the removed sources`, !external.some((l) => /freesound|incompetech|openverse|freemusicarchive/.test(l.href)))
   check(`guide (${locale}): every listed source is linked (${external.length} links)`, wantedLinks.every((h) => external.some((l) => l.href === h)))
   check(`guide (${locale}): external links open in a new tab with noopener`, external.length > 0 && external.every((l) => l.target === '_blank' && l.rel.split(' ').includes('noopener') && l.rel.split(' ').includes('noreferrer')), JSON.stringify(external.filter((l) => !(l.target === '_blank' && l.rel.includes('noopener')))))
   check(`guide (${locale}): each external link has a visible indicator`, (await p.locator('main a[target=_blank] svg').count()) === external.length)

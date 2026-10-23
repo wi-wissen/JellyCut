@@ -165,7 +165,7 @@ for (const locale of ['de-DE', 'en-US']) {
   const externals = await s.page.locator('main a[target="_blank"]').evaluateAll((els) => els.map((a) => ({ href: a.getAttribute('href'), text: a.innerText })))
   check('sources: external links show only their title', externals.length > 0 && externals.every((l) => !/https?:\/\//.test(l.text)), JSON.stringify(externals))
   check('sources: no links to Freesound or Incompetech', externals.every((l) => !/freesound|incompetech/i.test(l.href)))
-  check('sources: Free Music Archive links to its home page', externals.some((l) => l.href === 'https://freemusicarchive.org/home'))
+  check('sources: no links to Openverse or Free Music Archive', externals.every((l) => !/openverse|freemusicarchive/i.test(l.href)))
   const outside = await s.page.locator('main section:not(#credit)').evaluateAll((els) => els.map((e) => e.innerText).join('\n'))
   check('sources: no raw address printed outside the credit example', !/https?:\/\//.test(outside))
   const headings = await s.page.locator('main h2').allInnerTexts()
