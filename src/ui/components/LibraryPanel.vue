@@ -258,14 +258,6 @@ export default defineComponent({
     <div v-if="folderNote" role="status" class="flex shrink-0 items-center gap-2 rounded-lg bg-panel2 p-2 text-xs text-fg">
       <span class="min-w-0 flex-1">{{ folderText() }}</span>
       <button
-        v-if="folderNote.key === 'relink.folder.chosenMedia' && canImportFromFolder"
-        type="button"
-        class="min-h-11 shrink-0 rounded-lg px-2 font-bold text-txt hover:bg-panel"
-        @click="importFromWorkFolder"
-      >
-        {{ $t('relink.folder.importFromFolder') }}
-      </button>
-      <button
         type="button"
         class="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg font-bold hover:bg-panel"
         :aria-label="$t('project.dismiss')"

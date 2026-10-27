@@ -104,6 +104,7 @@ The scripts in `scripts/e2e-*.mjs` drive Chromium with Playwright (`playwright-c
 | `e2e-project.mjs` | 5198 | save, open, autosave, project menu, undo and redo |
 | `e2e-import.mjs` | 5191 | media import, library, adding to the timeline |
 | `e2e-rotation.mjs` | 5470 | phone video with rotation metadata (`clip-c-rotated.mp4`): paused and playing picture agree, a clip turned by 90° fills the output (`BROWSER=firefox` runs it in Firefox, under `xvfb-run` for WebGL) |
+| `e2e-openfolder.mjs` | 5480 | "Open folder" (OPFS stands in for the folder dialog): new project from a folder, saving into it, reopening, several projects, empty folder |
 | `e2e-media.mjs` | 5193 | media probe against the fixtures (root page) |
 | `e2e-waveform.mjs` | 5185 | keyframe index and streaming waveform (root page) |
 | `e2e-frames.mjs` | 5192 | frame-exact access to the frame numbers in the fixture (root page) |

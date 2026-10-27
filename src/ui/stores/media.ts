@@ -8,7 +8,8 @@ import { secondsToMicros, MICROS_PER_SECOND, type Micros } from '../../core/time
 import { ElementFallback } from '../../engine/media/elementFallback'
 import { ExactFrameProvider, type DecodedFrame } from '../../engine/media/frames'
 import { isImageFile, probeFile, type MediaInfo, type ProbeProblem } from '../../engine/media/probe'
-import { isMediaFileName } from '../../core/io/paths'
+import { planFolderOpen, type FolderEntry } from '../../core/io/folderOpen'
+import { parseProjectJson } from '../../core/project/schema'
 import { type FileCandidate, type RelinkReason } from '../../core/io/relink'
 import {
   candidateFromFile,
@@ -29,6 +30,7 @@ import {
   scanFolder,
   setActiveWorkFolder,
   type FolderPermission,
+  type ScannedFile,
   type WorkFolderHandle
 } from '../../platform/workFolder'
 import { chooseWorkFolder } from '../../platform/projectFiles'
@@ -91,6 +93,8 @@ const storeKeyById = new Map<string, string>()
 // Counts documents, so a slow restore of an earlier one cannot touch the current one.
 let documentSeq = 0
 let rememberedFolder: WorkFolderHandle | null = null
+/** Project files of a folder that holds several, waiting for the user's pick (handles stay out of the reactive state). */
+let folderProjects = new Map<string, ScannedFile>()
 
 /** Safety net for single pictures drawn outside the preview (fine cut view): the media element stands in when exact decoding fails. */
 export const elementFallback = new ElementFallback()
@@ -266,7 +270,9 @@ export const useMediaStore = defineStore('media', {
     /** The last removal, offered with an Undo button until the next action. */
     removalNote: null as null | { key: string; params: Record<string, string | number> },
     /** What the work folder chosen last contains; shown in the library until dismissed. */
-    folderNote: null as null | { key: string; params: Record<string, string | number> }
+    folderNote: null as null | { key: string; params: Record<string, string | number> },
+    /** Names of the project files to choose from when an opened folder holds more than one. */
+    folderChoice: null as null | { folder: string; names: string[] }
   }),
   getters: {
     /** Assets without a File (for example after a reload) count as missing. */
@@ -825,21 +831,124 @@ export const useMediaStore = defineStore('media', {
       return granted
     },
 
-    /** Tells what the work folder contains (media files found), so choosing it is not silent. */
-    async announceWorkFolder(): Promise<void> {
-      const dir = activeWorkFolder()
-      if (!dir) return
-      let count = 0
+    /**
+     * Opens a folder like a project: its project file is loaded and the media are linked from the folder; without one a
+     * new project is started from the folder's media. Saving writes into the folder. Call it straight from a click.
+     */
+    async openWorkFolder(): Promise<void> {
+      this.folderNote = null
+      let dir: WorkFolderHandle | null
       try {
-        const files = await scanFolder(dir, SCAN_MAX_DEPTH, SCAN_MAX_FILES)
-        count = files.filter((f) => isMediaFileName(f.name)).length
+        dir = (await chooseWorkFolder()) as WorkFolderHandle | null
       } catch {
-        this.folderNote = { key: 'relink.folder.chosen', params: { name: dir.name } }
+        this.folderNote = { key: 'relink.folder.pickFailed', params: {} }
         return
       }
+      if (!dir) return
+      rememberedFolder = dir
+      setActiveWorkFolder(dir)
+      this.folder = { name: dir.name, permission: 'granted' }
+      const editor = useEditorStore()
+      editor.workFolderName = dir.name
+
+      this.relinkBusy = true
+      this.relinkScanned = 0
+      let scanned: ScannedFile[]
+      try {
+        scanned = await scanFolder(dir, SCAN_MAX_DEPTH, SCAN_MAX_FILES, {
+          onProgress: (found) => {
+            this.relinkScanned = found
+          }
+        })
+      } catch {
+        this.folderNote = { key: 'relink.folder.pickFailed', params: {} }
+        return
+      } finally {
+        this.relinkBusy = false
+        this.relinkScanned = null
+      }
+      const byKey = new Map(scanned.map((f) => [f.key, f]))
+      const plan = planFolderOpen(scanned)
+      const projects = plan.projects.map((e: FolderEntry) => byKey.get(e.key)!)
+      if (projects.length === 1) {
+        await this.openFolderProject(dir, projects[0]!)
+      } else if (projects.length > 1) {
+        folderProjects = new Map(projects.map((f) => [f.name, f]))
+        this.folderChoice = { folder: dir.name, names: projects.map((f) => f.name) }
+      } else {
+        await this.startFolderProject(dir, plan.media.map((e: FolderEntry) => byKey.get(e.key)!))
+      }
+    },
+
+    /** Loads the project the user picked from a folder with several. */
+    async chooseFolderProject(name: string): Promise<void> {
+      const entry = folderProjects.get(name)
+      const dir = activeWorkFolder()
+      this.folderChoice = null
+      folderProjects = new Map()
+      if (entry && dir) await this.openFolderProject(dir, entry)
+    },
+
+    cancelFolderChoice(): void {
+      this.folderChoice = null
+      folderProjects = new Map()
+    },
+
+    async openFolderProject(dir: WorkFolderHandle, entry: ScannedFile): Promise<void> {
+      const editor = useEditorStore()
+      let text: string
+      try {
+        text = await (await entry.handle.getFile()).text()
+      } catch (e) {
+        editor.loadError = errorMessage(e)
+        return
+      }
+      const result = parseProjectJson(text)
+      if (!result.ok) {
+        editor.loadError = result.errors.join('; ')
+        return
+      }
+      editor.replaceDocument(result.project, { handle: entry.handle, name: entry.name })
+      await this.relinkFromWorkFolder(dir)
+      await this.linkUnusedFromFolder(dir)
+      this.folderNote = { key: 'relink.folder.openedProject', params: { file: entry.name } }
+    },
+
+    /** Library files no clip uses yet are not part of the relink; the folder opening links them by their stored path too. */
+    async linkUnusedFromFolder(dir: WorkFolderHandle): Promise<void> {
+      const batch: BatchItem[] = []
+      for (const asset of useEditorStore().project.assets) {
+        if (!isUserAsset(asset) || this.statusOf(asset.id) === 'ready') continue
+        const file = await findInWorkFolder(dir, asset.relPath)
+        if (!file) continue
+        try {
+          const info = await probeFile(file)
+          if (!mismatchFor(asset, info)) batch.push({ asset, file, basis: 'path' })
+        } catch {
+          // Unreadable: the asset stays missing and can be re-linked by hand.
+        }
+      }
+      await this.commitBatch(batch)
+    },
+
+    /** A folder without a project file: new project named after the folder, with all its media imported. */
+    async startFolderProject(dir: WorkFolderHandle, media: ScannedFile[]): Promise<void> {
+      const editor = useEditorStore()
+      editor.newProject(dir.name)
+      if (media.length > 0) {
+        const picked: { file: File; key: string }[] = []
+        for (const entry of media) {
+          try {
+            picked.push({ file: await entry.handle.getFile(), key: entry.key })
+          } catch {
+            // A file that vanished since the scan is skipped.
+          }
+        }
+        await this.importFiles(picked.map((p) => p.file), picked.map((p) => p.key))
+      }
       this.folderNote =
-        count > 0
-          ? { key: 'relink.folder.chosenMedia', params: { name: dir.name, count } }
+        media.length > 0
+          ? { key: 'relink.folder.chosenMedia', params: { name: dir.name, count: media.length } }
           : { key: 'relink.folder.chosenEmpty', params: { name: dir.name } }
     },
 
