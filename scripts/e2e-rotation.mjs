@@ -1,6 +1,6 @@
 // Phone video with rotation metadata (tests/fixtures/clip-c-rotated.mp4: coded 640x360, rotated, shown 360x640):
 // the paused picture (WebCodecs) and the playing picture (<video> element) must show it the same way.
-import { chromium } from 'playwright-core'
+import { chromium, firefox } from 'playwright-core'
 import { createServer } from 'vite'
 import { existsSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -18,7 +18,10 @@ function findChromium() {
 
 const server = await createServer({ server: { port: PORT, strictPort: true }, logLevel: 'error' })
 await server.listen()
-const browser = await chromium.launch({ executablePath: findChromium(), args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] })
+const FIREFOX = process.env.BROWSER === 'firefox'
+const browser = FIREFOX
+  ? await firefox.launch({ headless: !process.env.DISPLAY, firefoxUserPrefs: { 'media.autoplay.default': 0, 'media.autoplay.blocking_policy': 0 } })
+  : await chromium.launch({ executablePath: findChromium(), args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] })
 const page = await (await browser.newContext({ viewport: { width: 1280, height: 800 }, locale: 'en' })).newPage()
 let failed = 0
 const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${ok ? '' : ' ' + detail}`); if (!ok) failed++ }
@@ -26,12 +29,13 @@ const state = (fn) => page.evaluate(`(() => { const p = document.querySelector('
 
 // Bounding box of the strongly red pixels of the preview canvas, as fractions of the canvas.
 async function redBox() {
-  return page.evaluate(() => {
-    const canvas = document.querySelector('canvas')
-    const probe = new OffscreenCanvas(canvas.width, canvas.height)
-    const ctx = probe.getContext('2d', { willReadFrequently: true })
-    ctx.drawImage(canvas, 0, 0)
-    const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  // A screenshot of the canvas element: reading a WebGL canvas back directly is blank in some browsers.
+  const shot = await page.locator('canvas').first().screenshot()
+  return page.evaluate(async (b64) => {
+    const bmp = await createImageBitmap(await (await fetch(`data:image/png;base64,${b64}`)).blob())
+    const ctx = new OffscreenCanvas(bmp.width, bmp.height).getContext('2d', { willReadFrequently: true })
+    ctx.drawImage(bmp, 0, 0)
+    const { data, width, height } = ctx.getImageData(0, 0, bmp.width, bmp.height)
     let x0 = width, y0 = height, x1 = -1, y1 = -1
     for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4
@@ -39,7 +43,7 @@ async function redBox() {
     }
     if (x1 < 0) return null
     return [x0 / width, y0 / height, x1 / width, y1 / height].map((v) => Math.round(v * 100) / 100)
-  })
+  }, shot.toString('base64'))
 }
 
 try {

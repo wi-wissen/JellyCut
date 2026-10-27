@@ -9,6 +9,7 @@ import { FRAGMENT_BLUR, FRAGMENT_COPY, FRAGMENT_FRAME, FRAGMENT_GRADED_FRAME, FR
 import { Program, createTarget, createTexture, type Target } from './gl'
 import { createCanvas, parseCssColor, rasterizeText, textPixelSize, type Rgb } from './text'
 import { overlayRasterKey, rasterizeOverlay, type DrawnOverlay } from './overlays'
+import { glSource } from './videoOrientation'
 import { animatedSheetBitmap } from './stickerAnimations'
 import { animatedSticker, sheetCell, type AnimatedSticker } from '../../core/render/stickerAnimations'
 
@@ -450,7 +451,7 @@ export class Compositor {
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false)
     try {
       // SVG images are part of CanvasImageSource but WebGL rejects them; the caller only passes raster sources.
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source as TexImageSource)
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, glSource(source) as TexImageSource)
     } catch {
       return null
     }
