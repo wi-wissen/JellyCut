@@ -114,10 +114,11 @@ export default defineComponent({
       'chooseFolder',
       'dismissLoadError'
     ]),
-    ...mapActions(useMediaStore, ['refreshWorkFolder', 'grantWorkFolderAccess', 'forgetWorkFolder']),
+    ...mapActions(useMediaStore, ['refreshWorkFolder', 'grantWorkFolderAccess', 'forgetWorkFolder', 'announceWorkFolder']),
     async chooseWorkFolderItem(): Promise<void> {
       await this.chooseFolder()
       await this.refreshWorkFolder()
+      await this.announceWorkFolder()
     },
     openCredits(): void {
       useCreditsStore().show({ returnId: 'project-menu-trigger' })

@@ -1,7 +1,7 @@
 import { TRANSITION_TYPES } from '../../core/render/types'
 import type { LayerTransition, OverlayLayer, Scene, TextLayer, VideoLayer } from '../../core/render/types'
 import type { MediaOverlay, ProjectFormat, RegionOverlay, TextStyle, Transform } from '../../core/project/types'
-import { rectCorners } from '../../core/render/layout'
+import { fitBaseScale, rectCorners } from '../../core/render/layout'
 import { DEFAULT_REGION_RADIUS } from '../../core/timeline/overlayCatalog'
 import { isDrawnOverlay, overlayBox, regionBlurSigma, regionCellSize } from '../../core/render/overlayLayout'
 import { isIdentity, type Grade } from '../../core/filters/filters'
@@ -539,9 +539,7 @@ export class Compositor {
   private drawPicture(target: Target, frame: FrameTexture, t: PictureTransform, grade: Grade | null): void {
     const p = this.useFrameProgram(grade)
     if (!p) return
-    const base = t.fill
-      ? Math.max(target.w / frame.w, target.h / frame.h)
-      : Math.min(target.w / frame.w, target.h / frame.h)
+    const base = fitBaseScale(target.w, target.h, frame.w, frame.h, t.fill, (t.radians * 180) / Math.PI)
     const hw = (frame.w * base * t.scale) / 2
     const hh = (frame.h * base * t.scale) / 2
     const cx = target.w / 2 + t.x * target.w

@@ -61,6 +61,26 @@ describe('fittedFrameRect', () => {
     expect(r.cy).toBeCloseTo(540 - 216, 6)
   })
 
+  it('a portrait clip turned by 90 degrees fills a landscape output like a landscape clip', () => {
+    const r = fittedFrameRect(1920, 1080, 1080, 1920, { fit: 'fit', rotation: 90 })
+    expect(r.rotationDeg).toBe(90)
+    // Before the turn the box is 1080 wide and 1920 high (the picture's own shape); after it, 1920 x 1080 on screen.
+    expect(r.w).toBeCloseTo(1080, 6)
+    expect(r.h).toBeCloseTo(1920, 6)
+    const corners = rectCorners(r)
+    const xs = corners.map((c) => c.x)
+    const ys = corners.map((c) => c.y)
+    expect(Math.max(...xs) - Math.min(...xs)).toBeCloseTo(1920, 6)
+    expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo(1080, 6)
+  })
+
+  it('quarter turns of 270 and -90 behave like 90; other angles keep the unturned fit', () => {
+    const base = fittedFrameRect(1920, 1080, 1080, 1920, { fit: 'fit', rotation: 90 })
+    for (const rotation of [270, -90, 450]) expect(fittedFrameRect(1920, 1080, 1080, 1920, { fit: 'fit', rotation }).w).toBeCloseTo(base.w, 6)
+    expect(fittedFrameRect(1920, 1080, 1080, 1920, { fit: 'fit', rotation: 180 }).w).toBeCloseTo(607.5, 6)
+    expect(fittedFrameRect(1920, 1080, 1080, 1920, { fit: 'fit', rotation: 45 }).w).toBeCloseTo(607.5, 6)
+  })
+
   it('sanitises invalid transform values like the compositor does', () => {
     const r = fittedFrameRect(100, 100, 100, 100, { scale: -3, x: Number.NaN, rotation: Number.NaN, flipX: 1 as unknown as boolean })
     expect(r).toMatchObject({ w: 100, h: 100, cx: 50, cy: 50, rotationDeg: 0, flipX: false })

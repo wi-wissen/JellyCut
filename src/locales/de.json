@@ -502,6 +502,9 @@
       "grant": "Zugriff erneut erlauben",
       "forget": "Ordner vergessen",
       "importFromFolder": "Aus Arbeitsordner importieren…",
+      "chosen": "Arbeitsordner „{name}“ ist gesetzt.",
+      "chosenMedia": "Arbeitsordner „{name}“ ist gesetzt: 1 Video, Ton oder Bild gefunden. | Arbeitsordner „{name}“ ist gesetzt: {count} Videos, Töne und Bilder gefunden.",
+      "chosenEmpty": "Arbeitsordner „{name}“ ist gesetzt, enthält aber noch keine Videos, Töne oder Bilder.",
       "needsAccess": "Der Browser fragt nach dem Start erneut nach dem Zugriff."
     }
   },

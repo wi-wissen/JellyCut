@@ -60,6 +60,7 @@ export default defineComponent({
       'folder',
       'unusedCount',
       'removalNote',
+      'folderNote',
       'storedSizes'
     ]),
     showRelinkBanner(): boolean {
@@ -99,12 +100,19 @@ export default defineComponent({
       'requestRemoval',
       'removeUnused',
       'undoRemoval',
-      'dismissRemovalNote'
+      'dismissRemovalNote',
+      'dismissFolderNote'
     ]),
     removalText(): string {
       const note = this.removalNote
       if (!note) return ''
       if (note.key === 'relink.removed.unused') return this.$t(note.key, Number(note.params.count))
+      return this.$t(note.key, note.params)
+    },
+    folderText(): string {
+      const note = this.folderNote
+      if (!note) return ''
+      if (note.key === 'relink.folder.chosenMedia') return this.$t(note.key, { name: note.params.name }, Number(note.params.count))
       return this.$t(note.key, note.params)
     },
     onRelinkTile(asset: Asset): void {
@@ -242,6 +250,26 @@ export default defineComponent({
         class="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg font-bold hover:bg-panel"
         :aria-label="$t('project.dismiss')"
         @click="dismissRemovalNote"
+      >
+        ×
+      </button>
+    </div>
+
+    <div v-if="folderNote" role="status" class="flex shrink-0 items-center gap-2 rounded-lg bg-panel2 p-2 text-xs text-fg">
+      <span class="min-w-0 flex-1">{{ folderText() }}</span>
+      <button
+        v-if="folderNote.key === 'relink.folder.chosenMedia' && canImportFromFolder"
+        type="button"
+        class="min-h-11 shrink-0 rounded-lg px-2 font-bold text-txt hover:bg-panel"
+        @click="importFromWorkFolder"
+      >
+        {{ $t('relink.folder.importFromFolder') }}
+      </button>
+      <button
+        type="button"
+        class="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg font-bold hover:bg-panel"
+        :aria-label="$t('project.dismiss')"
+        @click="dismissFolderNote"
       >
         ×
       </button>

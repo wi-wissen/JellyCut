@@ -36,3 +36,15 @@ export function safePathSegments(relPath: string): string[] | null {
 export function joinRelPath(segments: string[]): string {
   return segments.join('/')
 }
+
+const MEDIA_EXTENSIONS = new Set([
+  'mp4', 'm4v', 'mov', 'mkv', 'webm', 'ogv', 'avi',
+  'mp3', 'wav', 'm4a', 'aac', 'ogg', 'oga', 'opus', 'flac',
+  'png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'avif'
+])
+
+/** True for file names the editor can try to import (by extension only). */
+export function isMediaFileName(name: string): boolean {
+  const dot = name.lastIndexOf('.')
+  return dot > 0 && MEDIA_EXTENSIONS.has(name.slice(dot + 1).toLowerCase())
+}

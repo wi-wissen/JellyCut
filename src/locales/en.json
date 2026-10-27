@@ -502,6 +502,9 @@
       "grant": "Grant access again",
       "forget": "Forget folder",
       "importFromFolder": "Import from work folder…",
+      "chosen": "Work folder “{name}” is set.",
+      "chosenMedia": "Work folder “{name}” is set: 1 video, sound or picture found. | Work folder “{name}” is set: {count} videos, sounds and pictures found.",
+      "chosenEmpty": "Work folder “{name}” is set, but it holds no videos, sounds or pictures yet.",
       "needsAccess": "After a restart the browser asks for access again."
     }
   },

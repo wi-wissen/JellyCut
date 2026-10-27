@@ -108,6 +108,22 @@ export function previewSize(format: Size, maxSide: number = PREVIEW_MAX_SIDE): S
   }
 }
 
+/** True for 90 and 270 degrees (and their multiples of 360): the picture then lies on its side. */
+export function isSidewaysTurn(rotationDeg: number): boolean {
+  const half = ((rotationDeg % 180) + 180) % 180
+  return Math.abs(half - 90) < 0.01
+}
+
+/**
+ * Scale from source pixels to output pixels for fit (contain) or fill (cover). A picture turned by a quarter
+ * turn is measured on its side, so a turned portrait clip fills a landscape output like a landscape clip does.
+ */
+export function fitBaseScale(outW: number, outH: number, srcW: number, srcH: number, fill: boolean, rotationDeg: number): number {
+  const w = isSidewaysTurn(rotationDeg) ? srcH : srcW
+  const h = isSidewaysTurn(rotationDeg) ? srcW : srcH
+  return fill ? Math.max(outW / w, outH / h) : Math.min(outW / w, outH / h)
+}
+
 /**
  * Where the compositor draws a video clip of the given source size in an output of outW x outH.
  * Fit (contain) or fill (cover) sets the base size; scale is around the centre; x and y are
@@ -116,7 +132,7 @@ export function previewSize(format: Size, maxSide: number = PREVIEW_MAX_SIDE): S
 export function fittedFrameRect(outW: number, outH: number, srcW: number, srcH: number, transform: PictureTransformInput): FrameRect {
   const fill = transform.fit === 'fill'
   const scale = finiteOr(transform.scale, 1) > 0 ? Math.min(finiteOr(transform.scale, 1), MAX_TRANSFORM_SCALE) : 1
-  const base = fill ? Math.max(outW / srcW, outH / srcH) : Math.min(outW / srcW, outH / srcH)
+  const base = fitBaseScale(outW, outH, srcW, srcH, fill, finiteOr(transform.rotation, 0))
   return {
     cx: outW / 2 + finiteOr(transform.x, 0) * outW,
     cy: outH / 2 + finiteOr(transform.y, 0) * outH,

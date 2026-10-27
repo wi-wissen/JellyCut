@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { joinRelPath, safePathSegments } from './paths'
+import { isMediaFileName, joinRelPath, safePathSegments } from './paths'
 
 describe('safePathSegments', () => {
   it('splits a relative path into segments', () => {
@@ -39,5 +39,14 @@ describe('joinRelPath', () => {
   })
   it('roundtrips with safePathSegments', () => {
     expect(safePathSegments(joinRelPath(['x y', 'b.mov']))).toEqual(['x y', 'b.mov'])
+  })
+})
+
+describe('isMediaFileName', () => {
+  it('accepts video, audio and image files in any case', () => {
+    for (const name of ['a.mp4', 'B.MOV', 'c.webm', 'd.m4a', 'e.PNG', 'f.jpeg']) expect(isMediaFileName(name)).toBe(true)
+  })
+  it('rejects other files and names without an extension', () => {
+    for (const name of ['notes.txt', 'project.jellycut', 'mp4', '.mp4', 'archive.zip']) expect(isMediaFileName(name)).toBe(false)
   })
 })

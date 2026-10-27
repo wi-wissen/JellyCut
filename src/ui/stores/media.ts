@@ -8,6 +8,7 @@ import { secondsToMicros, MICROS_PER_SECOND, type Micros } from '../../core/time
 import { ElementFallback } from '../../engine/media/elementFallback'
 import { ExactFrameProvider, type DecodedFrame } from '../../engine/media/frames'
 import { isImageFile, probeFile, type MediaInfo, type ProbeProblem } from '../../engine/media/probe'
+import { isMediaFileName } from '../../core/io/paths'
 import { type FileCandidate, type RelinkReason } from '../../core/io/relink'
 import {
   candidateFromFile,
@@ -263,7 +264,9 @@ export const useMediaStore = defineStore('media', {
     /** A removal waiting for the user's confirmation because the asset is used on the timeline. */
     pendingRemoval: null as null | { assetId: string; name: string; clips: number; music: number; pictures: number },
     /** The last removal, offered with an Undo button until the next action. */
-    removalNote: null as null | { key: string; params: Record<string, string | number> }
+    removalNote: null as null | { key: string; params: Record<string, string | number> },
+    /** What the work folder chosen last contains; shown in the library until dismissed. */
+    folderNote: null as null | { key: string; params: Record<string, string | number> }
   }),
   getters: {
     /** Assets without a File (for example after a reload) count as missing. */
@@ -822,11 +825,34 @@ export const useMediaStore = defineStore('media', {
       return granted
     },
 
+    /** Tells what the work folder contains (media files found), so choosing it is not silent. */
+    async announceWorkFolder(): Promise<void> {
+      const dir = activeWorkFolder()
+      if (!dir) return
+      let count = 0
+      try {
+        const files = await scanFolder(dir, SCAN_MAX_DEPTH, SCAN_MAX_FILES)
+        count = files.filter((f) => isMediaFileName(f.name)).length
+      } catch {
+        this.folderNote = { key: 'relink.folder.chosen', params: { name: dir.name } }
+        return
+      }
+      this.folderNote =
+        count > 0
+          ? { key: 'relink.folder.chosenMedia', params: { name: dir.name, count } }
+          : { key: 'relink.folder.chosenEmpty', params: { name: dir.name } }
+    },
+
+    dismissFolderNote(): void {
+      this.folderNote = null
+    },
+
     async forgetWorkFolder(): Promise<void> {
       await forgetFolder()
       rememberedFolder = null
       useEditorStore().workFolderName = null
       this.folder = null
+      this.folderNote = null
     },
 
     /** Sets the file for one asset the user picked. Null on success, otherwise an i18n key. */
