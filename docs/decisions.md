@@ -247,3 +247,10 @@ Two measures. A makes any such file fast to reach; B makes new recordings ordina
 
 Not verified here: real Firefox (its WebCodecs `VideoEncoder` and the recorded files differ; the optimisation falls back to the raw file whenever encoding or the check fails).
 
+
+## Open folder (Chromium)
+
+- *What.* "Open folder…" in the project menu replaces "Choose work folder…". The chosen folder is the work folder as before (saving, re-linking) and is read like a project: one project file (`*.jellycut.json` / `*.jellycut`, top level only) is loaded and its media are linked from the folder by their stored path, then by name and size; several project files ask which to open (`FolderProjectChoice`); none starts a new project named after the folder with all media below it imported (paths relative to the folder). Saving writes the project file back into the folder (the opened file's handle, or `<name>.jellycut.json` for a new project).
+- *Why.* Choosing a folder used to change nothing visible; the desktop editors people know open a folder and work in it.
+- *Firefox / no directory picker.* Unchanged: "Open project…" and the file picker. The menu item is hidden without `showDirectoryPicker`.
+- *Limits.* Media are matched at most 3 folder levels deep and 5000 files (the scan limits of the relink); project files in subfolders are ignored (they belong to other projects). Checked in the test Chromium with the browser's own file system standing in for the dialog (`e2e-openfolder.mjs`); not with a real folder on Windows.

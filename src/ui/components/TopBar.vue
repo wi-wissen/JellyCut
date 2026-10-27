@@ -6,13 +6,14 @@ import Icon from './Icon.vue'
 import ProjectMenu from './ProjectMenu.vue'
 import ExportDialog from './ExportDialog.vue'
 import RelinkDialog from './RelinkDialog.vue'
+import FolderProjectChoice from './FolderProjectChoice.vue'
 import RemoveAssetConfirm from './RemoveAssetConfirm.vue'
 import { useEditorStore } from '../stores/editor'
 import { useExportStore } from '../stores/export'
 
 export default defineComponent({
   name: 'TopBar',
-  components: { Icon, ProjectMenu, ExportDialog, RelinkDialog, RemoveAssetConfirm },
+  components: { Icon, ProjectMenu, ExportDialog, RelinkDialog, RemoveAssetConfirm, FolderProjectChoice },
   data() {
     return { logoUrl, moreOpen: false }
   },
@@ -149,5 +150,6 @@ export default defineComponent({
     <ExportDialog />
     <RelinkDialog />
     <RemoveAssetConfirm />
+    <FolderProjectChoice />
   </header>
 </template>

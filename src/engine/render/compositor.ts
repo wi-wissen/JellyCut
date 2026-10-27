@@ -1,7 +1,7 @@
 import { TRANSITION_TYPES } from '../../core/render/types'
 import type { LayerTransition, OverlayLayer, Scene, TextLayer, VideoLayer } from '../../core/render/types'
 import type { MediaOverlay, ProjectFormat, RegionOverlay, TextStyle, Transform } from '../../core/project/types'
-import { rectCorners } from '../../core/render/layout'
+import { fitBaseScale, rectCorners } from '../../core/render/layout'
 import { DEFAULT_REGION_RADIUS } from '../../core/timeline/overlayCatalog'
 import { isDrawnOverlay, overlayBox, regionBlurSigma, regionCellSize } from '../../core/render/overlayLayout'
 import { isIdentity, type Grade } from '../../core/filters/filters'
@@ -9,6 +9,7 @@ import { FRAGMENT_BLUR, FRAGMENT_COPY, FRAGMENT_FRAME, FRAGMENT_GRADED_FRAME, FR
 import { Program, createTarget, createTexture, type Target } from './gl'
 import { createCanvas, parseCssColor, rasterizeText, textPixelSize, type Rgb } from './text'
 import { overlayRasterKey, rasterizeOverlay, type DrawnOverlay } from './overlays'
+import { glSource } from './videoOrientation'
 import { animatedSheetBitmap } from './stickerAnimations'
 import { animatedSticker, sheetCell, type AnimatedSticker } from '../../core/render/stickerAnimations'
 
@@ -450,7 +451,7 @@ export class Compositor {
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false)
     try {
       // SVG images are part of CanvasImageSource but WebGL rejects them; the caller only passes raster sources.
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source as TexImageSource)
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, glSource(source) as TexImageSource)
     } catch {
       return null
     }
@@ -539,9 +540,7 @@ export class Compositor {
   private drawPicture(target: Target, frame: FrameTexture, t: PictureTransform, grade: Grade | null): void {
     const p = this.useFrameProgram(grade)
     if (!p) return
-    const base = t.fill
-      ? Math.max(target.w / frame.w, target.h / frame.h)
-      : Math.min(target.w / frame.w, target.h / frame.h)
+    const base = fitBaseScale(target.w, target.h, frame.w, frame.h, t.fill, (t.radians * 180) / Math.PI)
     const hw = (frame.w * base * t.scale) / 2
     const hh = (frame.h * base * t.scale) / 2
     const cx = target.w / 2 + t.x * target.w

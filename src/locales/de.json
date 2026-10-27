@@ -18,7 +18,7 @@
     "open": "Projekt öffnen…",
     "save": "Projekt speichern",
     "download": "Als Datei herunterladen",
-    "chooseFolder": "Arbeitsordner wählen…",
+    "chooseFolder": "Ordner öffnen…",
     "folderCurrent": "Arbeitsordner: {name}",
     "folderNone": "Noch kein Arbeitsordner gewählt",
     "browserInfo": "Dieser Browser speichert Projekte als Datei. Wer ein Projekt auf einem anderen Computer öffnet, muss die Medien neu verknüpfen. Für einen Arbeitsordner empfehlen wir einen Chromium-basierten Browser wie Brave, Microsoft Edge oder Google Chrome.",
@@ -502,6 +502,13 @@
       "grant": "Zugriff erneut erlauben",
       "forget": "Ordner vergessen",
       "importFromFolder": "Aus Arbeitsordner importieren…",
+      "chosenMedia": "Neues Projekt „{name}“ gestartet: 1 Datei aus dem Ordner importiert. | Neues Projekt „{name}“ gestartet: {count} Dateien aus dem Ordner importiert.",
+      "openedProject": "„{file}“ aus dem Arbeitsordner geöffnet. Speichern schreibt wieder in diesen Ordner.",
+      "choose": {
+        "title": "Welches Projekt?",
+        "text": "Im Ordner „{name}“ liegen mehrere Projekte. Wähle das Projekt zum Öffnen."
+      },
+      "chosenEmpty": "Neues Projekt „{name}“ gestartet. Der Ordner enthält noch keine Videos, Töne oder Bilder; Speichern legt die Projektdatei dort ab.",
       "needsAccess": "Der Browser fragt nach dem Start erneut nach dem Zugriff."
     }
   },

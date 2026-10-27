@@ -18,7 +18,7 @@
     "open": "Open project…",
     "save": "Save project",
     "download": "Download as file",
-    "chooseFolder": "Choose work folder…",
+    "chooseFolder": "Open folder…",
     "folderCurrent": "Work folder: {name}",
     "folderNone": "No work folder chosen yet",
     "browserInfo": "This browser saves projects as files. When you open a project on another computer, media must be re-linked. For a work folder, we recommend a Chromium-based browser such as Brave, Microsoft Edge or Google Chrome.",
@@ -502,6 +502,13 @@
       "grant": "Grant access again",
       "forget": "Forget folder",
       "importFromFolder": "Import from work folder…",
+      "chosenMedia": "New project “{name}” started: 1 file imported from the folder. | New project “{name}” started: {count} files imported from the folder.",
+      "openedProject": "Opened “{file}” from the work folder. Saving writes back into this folder.",
+      "choose": {
+        "title": "Which project?",
+        "text": "The folder “{name}” holds several projects. Choose the one to open."
+      },
+      "chosenEmpty": "New project “{name}” started. The folder holds no videos, sounds or pictures yet; saving puts the project file there.",
       "needsAccess": "After a restart the browser asks for access again."
     }
   },

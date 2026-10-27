@@ -111,12 +111,11 @@ export default defineComponent({
       'openProject',
       'saveProject',
       'downloadProject',
-      'chooseFolder',
       'dismissLoadError'
     ]),
-    ...mapActions(useMediaStore, ['refreshWorkFolder', 'grantWorkFolderAccess', 'forgetWorkFolder']),
-    async chooseWorkFolderItem(): Promise<void> {
-      await this.chooseFolder()
+    ...mapActions(useMediaStore, ['refreshWorkFolder', 'grantWorkFolderAccess', 'forgetWorkFolder', 'openWorkFolder']),
+    async openFolderItem(): Promise<void> {
+      await this.openWorkFolder()
       await this.refreshWorkFolder()
     },
     openCredits(): void {
@@ -274,7 +273,7 @@ export default defineComponent({
           type="button"
           role="menuitem"
           class="flex min-h-11 w-full items-center gap-3 rounded-lg px-2.5 text-left text-sm text-fg hover:bg-panel2 focus-visible:bg-panel2"
-          @click="run(() => chooseWorkFolderItem())"
+          @click="run(() => confirmDiscard() && openFolderItem())"
         >
           <Icon name="folderOpen" class="size-4 shrink-0 text-muted" />
           {{ $t('project.chooseFolder') }}
